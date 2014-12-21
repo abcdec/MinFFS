@@ -1,0 +1,60 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
+	<TITLE></TITLE>
+	<link rel="stylesheet" type="text/css" href="base.css" >
+</HEAD>
+<BODY LANG="en-US" DIR="LTR">
+
+<H2>Shadow Copy Service<SPAN STYLE="font-weight: normal"> (Windows only)</SPAN></H2>
+
+<P>FreeFileSync supports copying locked or shared files by creating a Volume Shadow
+Copy of the source drive. This feature can be configured via <B>Menu &rarr; Tools &rarr; Global settings: Copy locked files</B>.
+</P>
+
+<div class="bluebox">
+	<div class="bluebox_inner">
+			<B>Note</B>
+			<ul STYLE="margin: 0">
+				<LI>The volume snapshot created by the Volume Shadow Copy Service is used when copying locked files only.				
+				<LI>Accessing the Volume Shadow Copy Service requires FreeFileSync to be started with administrator rights.
+			</ul>		
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<br>
+<BR>
+
+<h3>Troubleshooting</h3>
+
+<P>If you experience problems using the Volume Shadow Copy Service a renewal of
+registration might help. Create and execute a cmd batch file and insert the following lines or enter directly via command line:
+</P>
+
+<div class="greybox">
+	<div class="greybox_inner">
+			<FONT FACE="Courier New, monospace">
+			cd /d %windir%\system32<BR>
+			Net stop vss<BR>
+			Net stop swprv<BR>
+			regsvr32 ole32.dll<BR>
+			regsvr32 oleaut32.dll<BR>
+			regsvr32 vss_ps.dll<BR>
+			Vssvc /register<BR>
+			regsvr32 /i swprv.dll<BR>
+			regsvr32 /i eventcls.dll<BR>
+			regsvr32 es.dll<BR>
+			regsvr32 stdprov.dll<BR>
+			regsvr32 vssui.dll<BR>
+			regsvr32 msxml.dll<BR>
+			regsvr32 msxml3.dll<BR>
+			regsvr32 msxml4.dll</FONT>		
+	</div>
+</div>
+<BR CLEAR=LEFT>
+Reference: <A HREF="http://support.microsoft.com/kb/940032">http://support.microsoft.com/kb/940032</A>
+
+</BODY>
+</HTML>

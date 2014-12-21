@@ -1,0 +1,89 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
+	<TITLE></TITLE>
+	<link rel="stylesheet" type="text/css" href="base.css" >
+</HEAD>
+<BODY LANG="en-US" DIR="LTR">
+
+<H2>File Versioning</H2>
+
+<P>When you need to preserve files that have been deleted or overwritten it's
+often sufficient to select <B>Recycle bin</B> in synchronization
+settings. However this is only available for local drives and offers
+little control on how to store and how long to keep the files.
+FreeFileSync therefore has an additional option, <B>Versioning</B>.
+</P>
+
+<BR>
+
+<h3>1. Keep only the most recent versions</h3>
+
+<P>In synchronization settings set deletion handling to <B>Versioning</B> and naming convention to
+<B>Replace</B>. Deleted files will be moved to the specified folder
+without any decoration and will replace already existing older
+versions.
+</P>
+
+<BR>
+
+<h3>2. Keep all versions of old files</h3>
+
+<P>Set deletion handling to <B>Versioning</B>
+and naming convention to <B>Time stamp</B>. FreeFileSync will move
+deleted files into the provided folder and add a time stamp to each
+file name. The structure of the synchronized folders is preserved so
+that old versions of a file can be conveniently accessed via a file
+browser.
+</P>
+
+<P><B>Example:</B>
+A file <FONT FACE="Courier New, monospace">Folder\File.txt</FONT> was updated three times and old versions were moved to folder <FONT FACE="Courier New, monospace">C:\Revisions</FONT>
+</P>
+
+<div class="greybox">
+	<div class="greybox_inner">
+			<FONT FACE="Courier New, monospace">
+			C:\Revisions\Folder\File.txt <B>2012-12-12 111111</B>.txt<BR>
+			C:\Revisions\Folder\File.txt <B>2012-12-12 122222</B>.txt<BR>
+			C:\Revisions\Folder\File.txt <B>2012-12-12 133333</B>.txt
+			</FONT>	
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<BR>
+<BR>
+
+<h3>3. Save versions at certain intervals</h3>
+
+<P>With naming convention <B>Replace</B>
+it is possible to refine the granularity of versions to keep by adding <A HREF="Macros.html">macros</A>
+to the versioning folder path. For example you can save deleted files
+on a per sync session basis by adding the <B>%timestamp%</B> macro:
+</P>
+
+<P><B>Example:</B> Using the dynamically generated folder name <FONT FACE="Courier New, monospace">C:\Revisions\%timestamp%</FONT></P>
+
+<div class="greybox">
+	<div class="greybox_inner">
+			<FONT FACE="Courier New, monospace">			
+				C:\Revisions\<B>2012-12-12 111111</B>\Folder\File.txt<BR>
+				C:\Revisions\<B>2012-12-12 122222</B>\Folder\File.txt<BR>
+				C:\Revisions\<B>2012-12-12 133333</B>\Folder\File.txt	
+			</FONT>	
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<BR>
+
+<P>This allows for a simple manual undo by moving the deleted files from the
+last synchronization session back to their original folders. Other
+macros like <B>%date%</B> or <B>%weekday%</B> can be used to reduce the granularity down
+to days and weeks.
+</P>
+
+</BODY>
+</HTML>

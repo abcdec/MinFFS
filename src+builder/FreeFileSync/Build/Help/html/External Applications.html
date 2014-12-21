@@ -1,0 +1,60 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
+	<TITLE></TITLE>
+	<link rel="stylesheet" type="text/css" href="base.css" >
+</HEAD>
+<BODY LANG="en-US" DIR="LTR">
+
+<H2>External Applications</H2>
+
+<P>When you double-click on one of the rows on the main dialog, FreeFileSync opens the operating system's file browser 
+by default. On Windows it calls <FONT FACE="Courier New, monospace">explorer /select, &quot;%item_path%&quot;</FONT>, on 
+Linux <FONT FACE="Courier New, monospace">xdg-open &quot;%item_folder%&quot;</FONT> and on OS X <FONT FACE="Courier New, monospace">open -R &quot;%item_path%&quot;</FONT>.
+</P>
+
+<P>You can customize this behavior and integrate other external applications into FreeFileSync:
+Navigate to <B>Menu &rarr; Tools &rarr; Global settings: Customize context menu</B>
+and add or replace a command. The first entry is executed when double-clicking a row on main grid or pressing ENTER while all other entries can be accessed via the
+context menu shown after a right mouse click. The following macros can be used:
+</P>
+
+<div class="greybox">
+	<div class="greybox_inner">
+			<FONT FACE="Courier New, monospace">%item_path%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>- full file or folder name<BR>
+			<FONT FACE="Courier New, monospace">%item_folder% &nbsp;&nbsp;</FONT>- folder part only<BR>
+			<FONT FACE="Courier New, monospace">%item2_path%&nbsp;&nbsp;&nbsp;&nbsp;</FONT>- Counterpart of %item_path% on the opposite grid<BR>
+			<FONT FACE="Courier New, monospace">%item2_folder%&nbsp;&nbsp;</FONT>- Counterpart of %item_folder% on the opposite grid
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<BR>
+
+<h3>Examples:</h3>
+
+<UL>
+	<LI>Start visual content comparison tool:<BR>
+	<FONT FACE="Courier New, monospace">&quot;C:\Program Files (x86)\WinMerge\WinMergeU.exe&quot; &quot;%item_path%&quot; &quot;%item2_path%&quot;</FONT><BR>&nbsp;
+	
+	<LI>Show file in Windows Explorer:<BR>
+	<FONT FACE="Courier New, monospace">explorer /select, &quot;%item_path%&quot;</FONT><BR>&nbsp;
+	
+	<LI>Open file with associated application:<BR>
+	<FONT FACE="Courier New, monospace">&quot;%item_path%&quot;</FONT><BR>&nbsp;
+	
+	<LI>Open console for directory:<BR>
+	<FONT FACE="Courier New, monospace">cmd /k cd /D &quot;%item_folder%&quot;</FONT>
+</UL>
+
+<div class="bluebox">
+	<div class="bluebox_inner">
+			<B>Note</B><BR>
+			You need to protect macros with quotation marks if they can resolve to a file path containing space characters.		
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+</BODY>
+</HTML>

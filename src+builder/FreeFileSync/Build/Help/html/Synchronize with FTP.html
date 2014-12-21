@@ -1,0 +1,56 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
+	<TITLE></TITLE>
+	<link rel="stylesheet" type="text/css" href="base.css" >
+</HEAD>
+<BODY LANG="en-US" DIR="LTR">
+
+<H2>Synchronize with FTP/WebDAV <SPAN STYLE="font-weight: normal">(Windows)</SPAN></H2>
+
+<P>FreeFileSync does not support accessing FTP volumes directly. But this
+functionality can be integrated by mapping the FTP web space to a drive letter:
+</P>
+
+<P><B>Example:</B> Use the free utility NetDrive (<A HREF="http://www.netdrive.net/">http://www.netdrive.net</A>)</P>
+
+<UL>
+	<LI>Add a <SPAN STYLE="font-style: normal"><B>New Site</B></SPAN> and specify site name, site URL, drive letter, account and password.
+	<LI>Use the newly created drive as if it were a normal hard disk.
+</UL>
+
+<div class="bluebox">
+	<div class="bluebox_inner">
+			<B>Note</B><BR>Most FTP drives set a file's time stamp to the current time when 
+			synchronizing ignoring the source file's time and date. As a workaround you can do a
+			<A HREF="Expert%20Settings.html">Compare by File Size</A>.
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<br>
+<BR>
+
+<H2>Synchronize with SFTP <SPAN STYLE="font-weight: normal">(Linux)</SPAN></H2>
+
+<P>An SFTP share can be easily mapped onto a local folder for use with FreeFileSync:</P>
+
+<div class="greybox">
+	<div class="greybox_inner">
+			<ul STYLE="margin: 0">
+				<li>Install:<BR>
+				<FONT FACE="Courier New, monospace">sudo apt-get install sshfs<BR>&nbsp;</FONT>				
+				
+				<li>Mount SFTP share:<BR>
+				<FONT FACE="Courier New, monospace">sshfs ssh-account@ssh-server:&lt;path&gt; mountpoint<BR>&nbsp;</FONT>				
+				
+				<li>Unmount:<BR>
+				<FONT FACE="Courier New, monospace">fusermount -u mountpoint</FONT>
+			</ul>
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+</BODY>
+</HTML>

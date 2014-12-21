@@ -1,0 +1,49 @@
+* 
+{
+}
+
+body
+{
+    font-family: Tahoma, Verdana, sans-serif;
+}
+
+h2 
+{
+	font-size: 20px;
+}
+
+h3 
+{
+	font-size: 17px;
+}
+
+.bluebox
+{
+	margin-left: 1.3cm; 
+	float: left; 
+	width: 80%; 
+	border: 1px solid #000080; 
+	color:black; 
+	background: #ccccff;	
+	padding: 0.2cm;
+}
+
+.bluebox_inner
+{
+	padding-left: 0.6cm;
+}
+
+.greybox
+{
+	margin-left: 1.3cm; 
+	float: left; 
+	width: 80%; 
+	color:black; 
+	background: #e6e6e6;
+	padding: 0.2cm;
+}
+
+.greybox_inner
+{
+	padding-left: 0.6cm;
+}

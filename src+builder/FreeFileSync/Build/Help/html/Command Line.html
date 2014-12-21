@@ -1,0 +1,140 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
+	<TITLE></TITLE>
+	<link rel="stylesheet" type="text/css" href="base.css" >
+</HEAD>
+<BODY LANG="en-US" DIR="LTR">
+
+<H2>Command Line Usage</H2>
+
+<P>FreeFileSync enables additional synchronization scenarios via a command line interface. 
+To get a syntax overview, open the console, go to the directory where FreeFileSync is installed and type:
+</P>
+
+<div class="greybox">
+	<div class="greybox_inner">
+		<FONT FACE="Courier New, monospace">FreeFileSync -h</FONT>
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<BR>
+<BR>
+
+<h3>1. Run a FreeFileSync batch job</h3>
+
+<P>In order to start synchronization in batch mode, supply the path of a ffs_batch configuration file as the first argument for FreeFileSync.exe:</P>
+
+<div class="greybox">
+	<div class="greybox_inner">
+		<FONT FACE="Courier New, monospace">FreeFileSync &quot;D:\Backup Projects.ffs_batch&quot;</FONT>
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<BR>
+
+<P>After synchronization one of the following status codes is returned:</P>
+
+<div class="greybox">
+	<div class="greybox_inner">
+			<B>Return Codes</B><BR>
+			0 - Synchronization completed successfully<BR>
+			1 - Synchronization completed with warnings<BR>
+			2 - Synchronization completed with errors<BR>
+			3 - Synchronization was aborted
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<BR>
+
+<P>
+You can evaluate these codes from a script (e.g. a cmd or bat file on Windows)
+and check if synchronization completed successfully:
+</P>
+
+<div class="greybox">
+	<div class="greybox_inner">
+			<FONT FACE="Courier New, monospace">
+			&quot;C:\Program Files\FreeFileSync\FreeFileSync.exe&quot; &quot;D:\Backup Projects.ffs_batch&quot;<BR>
+				if errorlevel 1 (<BR>
+					&nbsp;&nbsp;<FONT COLOR="#808080"><I><B>::if return code is 1 or greater, something went wrong, add special treatment here</B></I></FONT><BR>
+					&nbsp;&nbsp;echo Errors occurred during synchronization...<BR>
+					&nbsp;&nbsp;pause<BR>
+				)</FONT>
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<br>
+
+<P>Instead of displaying &quot;An error occurred!&quot; you can also send an email notification (using a third party tool).</P>
+
+<BR>
+
+<div class="bluebox">
+	<div class="bluebox_inner">
+		<B>Attention</B><BR>
+		Make sure your script is not blocked by a popup dialog. Consider the
+		following options when setting up a FreeFileSync batch job:
+		<br>&nbsp;
+		
+		<ul STYLE="margin: 0">
+			<LI>Enable checkbox <B>Run minimized</B> or have <B>On completion</B> automatically close the results dialog after synchronization.
+			
+			<LI>Set error handling to <B>Stop</B> or <B>Ignore</B>.
+		</ul>		
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<BR>
+<BR>
+
+<h3>2. Start a FreeFileSync GUI configuration</h3>
+
+<P>If you pass a ffs_gui file, FreeFileSync will start in GUI mode and immediately start comparison (but only if all directories exist):</P>
+
+<div class="greybox">
+	<div class="greybox_inner">
+		<FONT FACE="Courier New, monospace">FreeFileSync &quot;D:\Manual Backup.ffs_gui&quot;</FONT>
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<BR>
+<BR>
+
+<h3>3. Customize an existing configuration</h3>
+
+<P>You can replace the directories of a given ffs_gui or ffs_batch configuration file by using the <FONT FACE="Courier New, monospace">-LeftDir</FONT>
+and <FONT FACE="Courier New, monospace">-RightDir</FONT> parameters:
+</P>
+
+<div class="greybox">
+	<div class="greybox_inner">
+		<FONT FACE="Courier New, monospace">FreeFileSync &quot;D:\Manual Backup.ffs_gui&quot; -leftdir C:\NewSource -rightdir D:\NewTarget</FONT>
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<BR>
+<BR>
+
+<h3>4. Merge multiple configurations</h3>
+
+<P>When more than one configuration file is provided, FreeFileSync will merge
+everything into a single configuration with multiple folder pairs and start in GUI mode:</P>
+
+<div class="greybox">
+	<div class="greybox_inner">
+		<FONT FACE="Courier New, monospace">FreeFileSync &quot;D:\Manual Backup.ffs_gui&quot; &quot;D:\Backup Projects.ffs_batch&quot;</FONT>
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+</BODY>
+</HTML>

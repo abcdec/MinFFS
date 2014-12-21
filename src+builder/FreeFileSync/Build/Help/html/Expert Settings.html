@@ -1,0 +1,90 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
+	<TITLE></TITLE>
+	<link rel="stylesheet" type="text/css" href="base.css" >
+</HEAD>
+<BODY LANG="en-US" DIR="LTR">
+
+<H2>Expert Settings</H2>
+
+<P>FreeFileSync has a number of special purpose settings that can only be accessed
+directly via the global configuration file <FONT FACE="Courier New, monospace">GlobalSettings.xml</FONT>.
+Note that this file is read once when FreeFileSync starts and saved when it closes. Therefore do only apply changes while FreeFileSync is not running. <br>
+ <br>
+To locate this file on Windows enter <FONT FACE="Courier New, monospace">%appdata%\FreeFileSync</FONT> in the Windows Explorer address bar or go to the FreeFileSync
+installation folder if you are using the portable installation. 
+On Linux you can find the file in <FONT FACE="Courier New, monospace">~/.FreeFileSync</FONT> for the Launchpad release and in the installation folder for the portable version. 
+On OS X go to <FONT FACE="Courier New, monospace">~/Library/Application Support/FreeFileSync</FONT>.
+</P>
+
+<div class="greybox">
+	<div class="greybox_inner">
+			<FONT FACE="Courier New, monospace">
+			&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;<BR>
+			&lt;FreeFileSync XmlType=&quot;GLOBAL&quot;&gt;<BR>
+			&nbsp;&nbsp;&nbsp;&nbsp;&lt;Shared&gt;<BR>
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;<B>FileTimeTolerance</B> Seconds=&quot;2&quot;/&gt;<BR>
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;<B>RunWithBackgroundPriority</B> Enabled=&quot;false&quot;/&gt;<BR>
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;<B>LockDirectoriesDuringSync</B> Enabled=&quot;true&quot;/&gt;<BR>
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;<B>VerifyCopiedFiles</B> Enabled=&quot;false&quot;/&gt;<BR>
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;<B>LastSyncsLogSizeMax</B> Bytes=&quot;100000&quot;/&gt;
+			</FONT>
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<BR>
+
+<P><B>FileTimeTolerance:</B><BR>
+
+By default file modification times
+are allowed to have a 2 second difference while still being
+considered equal. This is required by FAT/FAT32 file systems which
+store file times with a 2 second precision only.<BR>This setting
+can also be used to simulate a &quot;compare by file size&quot;,
+ignoring last modification times: 
+Set tolerance to -1 which will be considered as an unlimited file time tolerance.
+Changed files will then be detected as a
+conflict (same date, different file size) and the
+synchronization direction for conflicts can be used accordingly.
+</P>
+
+<P><B>RunWithBackgroundPriority:</B><BR>
+
+While synchronization is running, other applications which are accessing the same
+data locations may experience a noticeable slowdown. Enable this
+setting to lower FreeFileSync's resource consumption at the cost of a
+significantly slower synchronization speed.
+</P>
+
+<P><B>LockDirectoriesDuringSync:</B><BR>
+
+In order to avoid race conditions of multiple FreeFileSync instances
+writing to the same folder at the same time, accesses are serialized
+by lock files (<FONT FACE="Courier New, monospace">sync.ffs_lock</FONT>).
+This allows to operate FreeFileSync with an arbitrary number of users
+in a network out of the box.
+</P>
+
+<P><B>VerifyCopiedFiles:</B><BR>
+
+If active, FreeFileSync will binary-compare source and target files after
+copying and report verification errors. Note that this may double
+file copy times and is no guarantee that data has not already been
+corrupted prior to copying and corruption is not hidden by
+deceptively reading valid data from various buffers in the
+application and hardware stack.<BR>
+<A HREF="http://blogs.msdn.com/b/oldnewthing/archive/2012/09/19/10350645.aspx">Does
+the CopyFile function verify that the data reached its final destination successfully?</A>
+</P>
+
+<P><B>LastSyncsLogSizeMax:</B><BR>
+
+The progress logs of the most recent synchronizations (for both GUI and batch jobs) are collected automatically in the file <FONT FACE="Courier New, monospace">LastSyncs.log</FONT>.
+The maximum size of this log file can be set here.
+</P>
+
+</BODY>
+</HTML>

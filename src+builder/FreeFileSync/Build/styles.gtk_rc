@@ -1,0 +1,8 @@
+style "no-inner-border"
+{
+	GtkButton::focus-padding = 0
+	GtkButton::focus-line-width = 0
+	GtkButton::inner-border = {0, 0, 0, 0}
+}
+
+class "GtkButton" style "no-inner-border"

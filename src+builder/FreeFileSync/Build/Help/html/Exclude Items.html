@@ -1,0 +1,139 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
+	<TITLE></TITLE>
+	<link rel="stylesheet" type="text/css" href="base.css" >
+</HEAD>
+<BODY LANG="en-US" DIR="LTR">
+
+<H2>Exclude Items</H2>
+
+<P>
+<IMG SRC="../img/filter.png"><BR>
+<BR>
+Files and directories are only considered for synchronization if they pass
+all filter rules. They have to match <B>at least one</B> entry in the
+include list and <B>none</B> of the entries in the exclude list as presented in the filter configuration dialog:
+</P>
+
+<div class="greybox">
+	<div class="greybox_inner">
+			<ul STYLE="margin: 0">
+			<li>Each list item must be a file or directory path <B>relative</B> to synchronization base directories.
+				
+			<li>Multiple items must be separated by <B>;</B> or a new line.
+				
+			<li>Wild cards <B>*</B> and <B>?</B> may be used: <B>*</B> means zero or more characters while <B>?</B> represents exactly one character.
+			</ul>
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<BR>
+<BR>
+
+<P><B>Example:</B> Exclude items for mirror-sync from <FONT FACE="Courier New, monospace">C:\Source</FONT> to <FONT FACE="Courier New, monospace">D:\Target</FONT>
+</P>
+
+<div STYLE="margin-left: 1.3cm">
+<div STYLE="float: left; width: 80%; color:black; background: #e6e6e6">
+	<TABLE WIDTH="100%" CELLPADDING=0 CELLSPACING=0 STYLE="padding-top: 0.1cm; color=black">
+		<TR>
+			<TD WIDTH="65%" STYLE="border-bottom: 2px solid black">
+				<P STYLE="margin-left: 0.8cm"><B>Description</B></P>
+			</TD>
+			<TD WIDTH="35%" STYLE="border-bottom: 2px solid black; border-left: 1.00pt solid black">
+				<P STYLE="margin-left: 0.8cm"><B>Exclude</B></P>
+			</TD>
+		</TR>
+		<TR>
+			<TD WIDTH="65%" STYLE="border-bottom: 1px solid black">
+				<P STYLE="margin-left: 0.8cm">Single file <FONT FACE="Courier New, monospace">C:\Source\file.txt</FONT></P>
+			</TD>
+			<TD WIDTH="35%" STYLE="border-bottom: 1px solid black; border-left: 1px solid black">
+				<P STYLE="margin-left: 0.8cm"><FONT FACE="Courier New, monospace">\file.txt</FONT></P>
+			</TD>
+		</TR>
+		<TR>
+			<TD WIDTH="65%" STYLE="border-bottom: 1px solid black">
+				<P STYLE="margin-left: 0.8cm">Single folder <FONT FACE="Courier New, monospace">C:\Source\SubFolder</FONT></P>
+			</TD>
+			<TD WIDTH="35%" STYLE="border-bottom: 1px solid black; border-left: 1px solid black">
+				<P STYLE="margin-left: 0.8cm"><FONT FACE="Courier New, monospace">\SubFolder\</FONT></P>
+			</TD>
+		</TR>
+		<TR>
+			<TD WIDTH="65%" STYLE="border-bottom: 1px solid black">
+				<P STYLE="margin-left: 0.8cm">All files (and folders) named <FONT FACE="Courier New, monospace">thumbs.db</FONT>
+				</P>
+			</TD>
+			<TD WIDTH="35%" STYLE="border-bottom: 1px solid black; border-left: 1px solid black">
+				<P STYLE="margin-left: 0.8cm"><FONT FACE="Courier New, monospace">*\thumbs.db</FONT></P>
+			</TD>
+		</TR>
+		<TR>
+			<TD WIDTH="65%" STYLE="border-bottom: 1px solid black">
+				<P STYLE="margin-left: 0.8cm">All <FONT FACE="Courier New, monospace">*.tmp</FONT> files located in <FONT FACE="Courier New, monospace">SubFolder</FONT> only</P>
+			</TD>
+			<TD WIDTH="35%" STYLE="border-bottom: 1px solid black; border-left: 1px solid black">
+				<P STYLE="margin-left: 0.8cm"><FONT FACE="Courier New, monospace">\SubFolder\*.tmp</FONT></P>
+			</TD>
+		</TR>
+		<TR>
+			<TD WIDTH="65%" STYLE="border-bottom: 1px solid black">
+				<P STYLE="margin-left: 0.8cm">Files and folders containing <FONT FACE="Courier New, monospace">temp</FONT> somewhere in their path</P>
+			</TD>
+			<TD WIDTH="35%" STYLE="border-bottom: 1px solid black; border-left: 1px solid black">
+				<P STYLE="margin-left: 0.8cm"><FONT FACE="Courier New, monospace">*temp*</FONT></P>
+			</TD>
+		</TR>
+		<TR>
+			<TD WIDTH="65%" STYLE="border-bottom: 1px solid black">
+				<P STYLE="margin-left: 0.8cm">Multiple entries separated by semicolon</P>
+			</TD>
+			<TD WIDTH="35%" STYLE="border-bottom: 1px solid black; border-left: 1px solid black">
+				<P STYLE="margin-left: 0.8cm"><FONT FACE="Courier New, monospace">*.tmp; *.doc; *.bak</FONT></P>
+			</TD>
+		</TR>
+		
+		<TR>
+			<TD WIDTH="65%" STYLE="border-bottom: 1px solid black">
+				<P STYLE="margin-left: 0.8cm">Exclude all files and folders located in subdirectories of base directories</P>
+			</TD>
+			<TD WIDTH="35%" STYLE="border-bottom: 1px solid black; border-left: 1px solid black">
+				<P STYLE="margin-left: 0.8cm"><FONT FACE="Courier New, monospace">\*\*</FONT></P>
+			</TD>
+		</TR>
+		<TR>
+			<TD WIDTH="65%">
+				<P STYLE="margin-left: 0.8cm">Exclude only <FONT FACE="Courier New, monospace">*.txt</FONT> files located in subdirectories of base directories</P>
+			</TD>
+			<TD WIDTH="35%" STYLE="border-left: 1px solid black">
+				<P STYLE="margin-left: 0.8cm"><FONT FACE="Courier New, monospace">\*\*.txt</FONT></P>
+			</TD>
+		</TR>
+	</TABLE>
+</div>
+</div>
+<BR CLEAR=LEFT>
+
+<BR>
+
+<div class="bluebox">
+	<div class="bluebox_inner">
+			<B>Note</B>
+			<ul STYLE="margin: 0">
+				<LI>For simple exclusions just right-click and exclude one item or a list
+				of items directly on main grid via context menu.
+				
+				<LI>A filter phrase is compared against
+				both file and directory paths. If you want to consider directories
+				only, you can give a hint by appending a path separator (<B>\</B>).
+			</ul>		
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+</BODY>
+</HTML>

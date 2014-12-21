@@ -1,0 +1,59 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
+	<TITLE></TITLE>
+	<link rel="stylesheet" type="text/css" href="base.css" >
+</HEAD>
+<BODY LANG="de-DE" DIR="LTR">
+
+<H2>Variable Drive Letters</H2>
+
+<P>USB memory sticks or external hard disks often get different
+drive letters assigned when plugged into distinct computers. FreeFileSync
+offers two solutions to handle this problem:
+</P>
+
+<P><B>Option 1: </B>Specify a folder path by using the volume name:</P>
+
+<div class="greybox">
+	<div class="greybox_inner">
+			Use <FONT FACE="Courier New, monospace">[ZENJU-USB]\folder</FONT> instead of <FONT FACE="Courier New, monospace">G:\folder</FONT> where ZENJU-USB
+			is the volume name of the USB stick which is currently mounted in drive <FONT FACE="Courier New, monospace">G:\</FONT>.		
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<BR>
+
+<div class="bluebox">
+	<div class="bluebox_inner">
+			<B>Note</B><BR>
+			It is not required to look up and enter the volume name manually. Just select the corresponding entry in the drop down menu.<br>
+			<IMG SRC="../img/VolumeName.png">
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<BR>
+
+<P><B>Option 2: </B>Use a relative directory name:</P>
+
+<div class="greybox">
+	<div class="greybox_inner">
+			<ul STYLE="margin: 0">
+			<li>Use <FONT FACE="Courier New, monospace">\folder</FONT> instead of <FONT FACE="Courier New, monospace">G:\folder</FONT>
+				
+			<li>Save and copy synchronization settings to the USB stick: <FONT FACE="Courier New, monospace">G:\Backup.ffs_gui</FONT>
+				
+			<li>Start FreeFileSync by double-clicking on <FONT FACE="Courier New, monospace">G:\Backup.ffs_gui</FONT><br>
+			</ul>
+			<br>
+			The working directory is then automatically set to <FONT FACE="Courier New, monospace">G:\</FONT> by the operating system so that the
+			relative path <FONT FACE="Courier New, monospace">\folder</FONT> will be resolved as <FONT FACE="Courier New, monospace">G:\folder</FONT> during synchronization.	
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+</BODY>
+</HTML>

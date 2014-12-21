@@ -1,0 +1,56 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
+	<TITLE></TITLE>
+	<link rel="stylesheet" type="text/css" href="base.css" >
+</HEAD>
+<BODY LANG="en-US" DIR="LTR">
+
+<H2>Run as Service <SPAN STYLE="font-weight: normal">(Windows)</SPAN></H2>
+
+<P>
+	RealtimeSync is designed to run as a background process which does not need further
+	attention. Depending on your requirements there are a number of ways you can start it automatically.
+	Generally the goal is to execute a command line of the form:
+</P>
+
+<div class="greybox">
+	<div class="greybox_inner">
+			<FONT FACE="Courier New, monospace">&lt;FreeFileSync installation folder&gt;\RealtimeSync.exe &lt;path to *.ffs_real or *.ffs_batch file&gt;</FONT>
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<BR>
+<BR>
+
+<h3>Example:</h3>
+
+<div class="greybox">
+	<div class="greybox_inner">
+			<FONT FACE="Courier New, monospace">&quot;C:\Program Files\FreeFileSync\RealtimeSync.exe&quot; &quot;D:\Backup Projects.ffs_real&quot;</FONT>		
+	</div>
+</div>
+<BR CLEAR=LEFT>
+
+<BR>
+
+<OL>
+	<LI><p>RealtimeSync should be monitoring while a user is logged in:<br>
+	Create a new shortcut, enter the command line from above as target and place it into the user's autostart folder.
+	</p>
+	<IMG SRC="../img/create_shortcut.png"><br><br>
+	<IMG SRC="../img/shortcut_properties.png">
+	<br>&nbsp;
+	
+	<LI><p>RealtimeSync should be monitoring while Windows is running irrespective of currently logged in users:<br>
+	Create a new task in your operating systems's task scheduler and have it execute the command line above
+	when the system starts. See <A HREF="Schedule%20a%20batch%20job.html">Schedule a Batch Job</A> for an example how to add a task. Then change
+	the user which runs the task to <B>SYSTEM</B> - a special user account always running in the background.
+	</p>
+	<IMG SRC="../img/schedule_realtimesync.png">
+</OL>
+
+</BODY>
+</HTML>
