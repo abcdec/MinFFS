@@ -1,90 +1,89 @@
-APPNAME     = FreeFileSyncMod
-prefix      = /usr
-BINDIR      = $(DESTDIR)$(prefix)/bin
-SHAREDIR    = $(DESTDIR)$(prefix)/share
-APPSHAREDIR = $(SHAREDIR)/$(APPNAME)
-DOCSHAREDIR = $(SHAREDIR)/doc/$(APPNAME)
+#PROJECT_TOP := $(shell cygpath -m -a ..\..\..)
+PROJECT_TOP := $(shell cygpath -m -a ..\..\..)
+APPNAME     := FreeFileSyncMod
 
 CXXFLAGS := -std=c++11 -pipe
 CXXFLAGS += -DWXINTL_NO_GETTEXT_MACRO
-CXXFLAGS += -I../..
-CXXFLAGS += -I../../zenXml
+CXXFLAGS += -I../../Source
+CXXFLAGS += -I../../..
+CXXFLAGS += -I../../../zenXml
 CXXFLAGS += -include "zen/i18n.h"
 CXXFLAGS += -include "zen/warn_static.h"
 CXXFLAGS += -Wall
 CXXFLAGS += -O3
-CXXFLAGS += -DNDEBUG `wx-config --cxxflags --debug=no`
-CXXFLAGS += -DZEN_LINUX -pthread
+#CXXFLAGS += -DNDEBUG `wx-config --cxxflags --debug=no`
+CXXFLAGS += -DNDEBUG
+#CXXFLAGS += -DZEN_LINUX -pthread
 
 LINKFLAGS = -s `wx-config --libs std, aui --debug=no` -lboost_thread -lboost_system -lz -pthread
 
 #Gtk - support recycler/icon loading/no button border/grid scrolling
-CXXFLAGS  += `pkg-config --cflags gtk+-2.0`
-LINKFLAGS += `pkg-config --libs   gtk+-2.0`
+#CXXFLAGS  += `pkg-config --cflags gtk+-2.0`
+#LINKFLAGS += `pkg-config --libs   gtk+-2.0`
 
 CPP_LIST=
-CPP_LIST+=algorithm.cpp
-CPP_LIST+=application.cpp
-CPP_LIST+=comparison.cpp
-CPP_LIST+=structures.cpp
-CPP_LIST+=synchronization.cpp
-CPP_LIST+=file_hierarchy.cpp
-CPP_LIST+=ui/custom_grid.cpp
-CPP_LIST+=ui/folder_history_box.cpp
-CPP_LIST+=ui/on_completion_box.cpp
-CPP_LIST+=ui/dir_name.cpp
-CPP_LIST+=ui/batch_config.cpp
-CPP_LIST+=ui/batch_status_handler.cpp
-CPP_LIST+=ui/check_version.cpp
-CPP_LIST+=ui/grid_view.cpp
-CPP_LIST+=ui/tree_view.cpp
-CPP_LIST+=ui/gui_generated.cpp
-CPP_LIST+=ui/gui_status_handler.cpp
-CPP_LIST+=ui/main_dlg.cpp
-CPP_LIST+=ui/progress_indicator.cpp
-CPP_LIST+=ui/search.cpp
-CPP_LIST+=ui/small_dlgs.cpp
-CPP_LIST+=ui/sync_cfg.cpp
-CPP_LIST+=ui/taskbar.cpp
-CPP_LIST+=ui/triple_splitter.cpp
-CPP_LIST+=ui/tray_icon.cpp
-CPP_LIST+=lib/binary.cpp
-CPP_LIST+=lib/db_file.cpp
-CPP_LIST+=lib/dir_lock.cpp
-CPP_LIST+=lib/hard_filter.cpp
-CPP_LIST+=lib/icon_buffer.cpp
-CPP_LIST+=lib/localization.cpp
-CPP_LIST+=lib/parallel_scan.cpp
-CPP_LIST+=lib/process_xml.cpp
-CPP_LIST+=lib/resolve_path.cpp
-CPP_LIST+=lib/perf_check.cpp
-CPP_LIST+=lib/status_handler.cpp
-CPP_LIST+=lib/versioning.cpp
-CPP_LIST+=lib/ffs_paths.cpp
-CPP_LIST+=../../zen/xml_io.cpp
-CPP_LIST+=../../zen/recycler.cpp
-CPP_LIST+=../../zen/file_access.cpp
-CPP_LIST+=../../zen/file_io.cpp
-CPP_LIST+=../../zen/file_traverser.cpp
-CPP_LIST+=../../zen/zstring.cpp
-CPP_LIST+=../../zen/format_unit.cpp
-CPP_LIST+=../../zen/process_priority.cpp
-CPP_LIST+=../../wx+/grid.cpp
-CPP_LIST+=../../wx+/image_tools.cpp
-CPP_LIST+=../../wx+/graph.cpp
-CPP_LIST+=../../wx+/tooltip.cpp
-CPP_LIST+=../../wx+/image_resources.cpp
-CPP_LIST+=../../wx+/popup_dlg.cpp
-CPP_LIST+=../../wx+/popup_dlg_generated.cpp
-CPP_LIST+=../../wx+/zlib_wrap.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/algorithm.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/application.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/comparison.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/structures.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/synchronization.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/file_hierarchy.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/custom_grid.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/folder_history_box.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/on_completion_box.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/dir_name.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/batch_config.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/batch_status_handler.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/check_version.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/grid_view.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/tree_view.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/gui_generated.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/gui_status_handler.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/main_dlg.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/progress_indicator.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/search.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/small_dlgs.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/sync_cfg.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/taskbar.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/triple_splitter.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/tray_icon.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/binary.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/db_file.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/dir_lock.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/hard_filter.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/icon_buffer.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/localization.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/parallel_scan.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/process_xml.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/resolve_path.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/perf_check.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/status_handler.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/versioning.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/ffs_paths.cpp
+CPP_LIST+=$(PROJECT_TOP)/zen/xml_io.cpp
+CPP_LIST+=$(PROJECT_TOP)/zen/recycler.cpp
+CPP_LIST+=$(PROJECT_TOP)/zen/file_access.cpp
+CPP_LIST+=$(PROJECT_TOP)/zen/file_io.cpp
+CPP_LIST+=$(PROJECT_TOP)/zen/file_traverser.cpp
+CPP_LIST+=$(PROJECT_TOP)/zen/zstring.cpp
+CPP_LIST+=$(PROJECT_TOP)/zen/format_unit.cpp
+CPP_LIST+=$(PROJECT_TOP)/zen/process_priority.cpp
+CPP_LIST+=$(PROJECT_TOP)/wx+/grid.cpp
+CPP_LIST+=$(PROJECT_TOP)/wx+/image_tools.cpp
+CPP_LIST+=$(PROJECT_TOP)/wx+/graph.cpp
+CPP_LIST+=$(PROJECT_TOP)/wx+/tooltip.cpp
+CPP_LIST+=$(PROJECT_TOP)/wx+/image_resources.cpp
+CPP_LIST+=$(PROJECT_TOP)/wx+/popup_dlg.cpp
+CPP_LIST+=$(PROJECT_TOP)/wx+/popup_dlg_generated.cpp
+CPP_LIST+=$(PROJECT_TOP)/wx+/zlib_wrap.cpp
 
-OBJECT_LIST = $(CPP_LIST:%.cpp=../Obj/FFS_GCC_Make_Release/ffs/src/%.o)
+OBJECT_LIST = $(CPP_LIST:%.cpp=Obj/%.o)
 
 all: launchpad
 
 launchpad: FreeFileSync
 
-../Obj/FFS_GCC_Make_Release/ffs/src/%.o : %.cpp
+Obj/%.o : %.cpp
 	mkdir -p $(dir $@)
 	g++ $(CXXFLAGS) -c $< -o $@
 
