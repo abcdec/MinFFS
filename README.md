@@ -1,21 +1,15 @@
 MinFFS
 ======
 
-Fake Minimalist's Free File Sync Modified
+Fake Minimalist's FreeFileSync Modified
 
 
-Project Goal
-------------
+Follower Branch
+---------------
 
-- Build binaries of FFS using MinGW.
-- Optimize FFS for large volume file system and large size binary file.
+Tracks original files from http://sourceforge.net/projects/freefilesync/
 
+Versions
+--------
 
-External Projects
------------------
-
-Original FreeFileSync http://sourceforge.net/projects/freefilesync/
-
-
-
-
+2014/12/21 Baseline to version 6.12
