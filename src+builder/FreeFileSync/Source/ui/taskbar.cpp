@@ -10,8 +10,9 @@
     #include <zen/dll.h>
     #include <zen/win_ver.h>
     #include <zen/stl_tools.h>
+#ifdef TODO_MinFFS
     #include "../dll/Taskbar_Seven/taskbar.h"
-
+#endif // TODO_MinFFS
 #elif defined HAVE_UBUNTU_UNITY
     #include <unity/unity/unity.h>
 
@@ -25,6 +26,7 @@ using namespace zen;
 
 
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
 using namespace tbseven;
 
 
@@ -77,6 +79,7 @@ private:
     DllFun<FunType_setStatus>   setStatus_;
     DllFun<FunType_setProgress> setProgress_;
 };
+#endif // TODO_MinFFS
 
 #elif defined HAVE_UBUNTU_UNITY //Ubuntu unity
 namespace
@@ -170,8 +173,10 @@ public:
 
 //########################################################################################################
 
+#ifdef TODO_MinFFS
 Taskbar::Taskbar(const wxFrame& window) : pimpl_(zen::make_unique<Pimpl>(window)) {} //throw TaskbarNotAvailable
 Taskbar::~Taskbar() {}
 
 void Taskbar::setStatus(Status status) { pimpl_->setStatus(status); }
 void Taskbar::setProgress(double fraction) { pimpl_->setProgress(fraction); }
+#endif // TODO_MinFFS

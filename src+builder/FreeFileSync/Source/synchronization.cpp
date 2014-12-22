@@ -790,13 +790,17 @@ public:
                           bool copyFilePermissions,
                           bool transactionalFileCopy,
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
                           shadow::ShadowCopy* shadowCopyHandler,
+#endif // TODO_MinFFS
 #endif
                           DeletionHandling& delHandlingLeft,
                           DeletionHandling& delHandlingRight) :
         procCallback_(procCallback),
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
         shadowCopyHandler_(shadowCopyHandler),
+#endif // TODO_MinFFS
 #endif
         delHandlingLeft_(delHandlingLeft),
         delHandlingRight_(delHandlingRight),
@@ -872,7 +876,9 @@ private:
 
     ProcessCallback& procCallback_;
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
     shadow::ShadowCopy* shadowCopyHandler_; //optional!
+#endif // TODO_MinFFS
 #endif
     DeletionHandling& delHandlingLeft_;
     DeletionHandling& delHandlingRight_;
@@ -1800,6 +1806,7 @@ InSyncAttributes SynchronizeFolderPair::copyFileWithCallback(const Zstring& sour
     }
     catch (ErrorFileLocked& e1)
     {
+#ifdef TODO_MinFFS
         //if file is locked (try to) use Windows Volume Shadow Copy Service
         if (!shadowCopyHandler_)
             throw;
@@ -1821,6 +1828,9 @@ InSyncAttributes SynchronizeFolderPair::copyFileWithCallback(const Zstring& sour
 
         //now try again
         return copyOperation(shadowSource);
+#else
+        return copyOperation(sourceFile);
+#endif // TODO_MinFFS
     }
 #else
     return copyOperation(sourceFile);
@@ -2271,10 +2281,12 @@ void zen::synchronize(const TimeComp& timeStamp,
     //-------------------end of basic checks------------------------------------------
 
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
     //shadow copy buffer: per sync-instance, not folder pair
     std::unique_ptr<shadow::ShadowCopy> shadowCopyHandler;
     if (copyLockedFiles)
         shadowCopyHandler = make_unique<shadow::ShadowCopy>();
+#endif // TODO_MinFFS
 #endif
 
     try
@@ -2363,7 +2375,9 @@ void zen::synchronize(const TimeComp& timeStamp,
 
                 SynchronizeFolderPair syncFP(callback, verifyCopiedFiles, copyPermissionsFp, transactionalFileCopy,
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
                                              shadowCopyHandler.get(),
+#endif // TODO_MinFFS
 #endif
                                              delHandlerL, delHandlerR);
                 syncFP.startSync(*j);

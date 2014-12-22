@@ -15,7 +15,9 @@
     #include "privilege.h"
     #include "long_path_prefix.h"
     #include "dll.h"
-
+#ifdef MinFFS
+    #include "winioctl.h"
+#endif // MinFFS
 #elif defined ZEN_LINUX || defined ZEN_MAC
     #include <unistd.h>
     #include <stdlib.h> //realpath
@@ -43,6 +45,7 @@ Zstring getSymlinkTargetRaw(const Zstring& linkPath); //throw FileError
 
 //################################ implementation ################################
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS // MinGW has this defined in winnt.h
 //I don't have Windows Driver Kit at hands right now, so unfortunately we need to redefine this structure and cross fingers...
 typedef struct _REPARSE_DATA_BUFFER //from ntifs.h
 {
@@ -75,6 +78,7 @@ typedef struct _REPARSE_DATA_BUFFER //from ntifs.h
     };
 } REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
 #define REPARSE_DATA_BUFFER_HEADER_SIZE   FIELD_OFFSET(REPARSE_DATA_BUFFER, GenericReparseBuffer)
+#endif // TODO_MinFFS
 #endif
 
 namespace
@@ -87,9 +91,11 @@ Zstring getSymlinkRawTargetString_impl(const Zstring& linkPath) //throw FileErro
     //FSCTL_GET_REPARSE_POINT: http://msdn.microsoft.com/en-us/library/aa364571(VS.85).aspx
 
     //reading certain symlinks/junctions requires admin rights!
+#ifdef TODO_MinFFS
     try
     { activatePrivilege(SE_BACKUP_NAME); } //throw FileError
     catch (FileError&) {} //This shall not cause an error in user mode!
+#endif // TODO_MinFFS
 
     const HANDLE hLink = ::CreateFile(applyLongPathPrefix(linkPath).c_str(), //_In_      LPCTSTR lpFileName,
                                       //it seems we do not even need GENERIC_READ!
@@ -157,12 +163,13 @@ Zstring getResolvedFilePath_impl(const Zstring& linkPath) //throw FileError
 {
     using namespace zen;
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
     //GetFinalPathNameByHandle() is not available before Vista!
     typedef DWORD (WINAPI* GetFinalPathNameByHandleWFunc)(HANDLE hFile, LPTSTR lpszFilePath, DWORD cchFilePath, DWORD dwFlags);
     const SysDllFun<GetFinalPathNameByHandleWFunc> getFinalPathNameByHandle(L"kernel32.dll", "GetFinalPathNameByHandleW");
     if (!getFinalPathNameByHandle)
         throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtFileName(linkPath)), replaceCpy(_("Cannot find system function %x."), L"%x", L"\"GetFinalPathNameByHandleW\""));
-
+#endif //TODO_MinFFS
 
     const HANDLE hDir = ::CreateFile(applyLongPathPrefix(linkPath).c_str(),                  //_In_      LPCTSTR lpFileName,
                                      0,                                                      //_In_      DWORD dwDesiredAccess,
@@ -176,15 +183,26 @@ Zstring getResolvedFilePath_impl(const Zstring& linkPath) //throw FileError
         throwFileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtFileName(linkPath)), L"CreateFile", getLastError());
     ZEN_ON_SCOPE_EXIT(::CloseHandle(hDir));
 
+#ifdef TODO_MinFFS
     const DWORD bufferSize = getFinalPathNameByHandle(hDir, nullptr, 0, 0);
+#else
+    const DWORD bufferSize = ::GetFinalPathNameByHandle(hDir, nullptr, 0, 0);
+#endif //TODO_MinFFS
     if (bufferSize == 0)
         throwFileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtFileName(linkPath)), L"GetFinalPathNameByHandle", getLastError());
 
     std::vector<wchar_t> targetPath(bufferSize);
+#ifdef TODO_MinFFS
     const DWORD charsWritten = getFinalPathNameByHandle(hDir,           //__in   HANDLE hFile,
                                                         &targetPath[0], //__out  LPTSTR lpszFilePath,
                                                         bufferSize,     //__in   DWORD cchFilePath,
                                                         0);             //__in   DWORD dwFlags
+#else
+    const DWORD charsWritten = ::GetFinalPathNameByHandle(hDir,           //__in   HANDLE hFile,
+                                                        &targetPath[0], //__out  LPTSTR lpszFilePath,
+                                                        bufferSize,     //__in   DWORD cchFilePath,
+                                                        0);             //__in   DWORD dwFlags
+#endif //TODO_MinFFS
     if (charsWritten == 0 || charsWritten >= bufferSize)
     {
         const std::wstring errorMsg = replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtFileName(linkPath));

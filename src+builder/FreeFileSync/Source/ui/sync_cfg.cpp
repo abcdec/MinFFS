@@ -210,7 +210,9 @@ ConfigDialog::ConfigDialog(wxWindow* parent,
     versioningFolder(*m_panelVersioning, *m_buttonSelectDirVersioning, *m_versioningFolder/*, m_staticTextResolvedPath*/)
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
     new zen::MouseMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere...; ownership passed to "this"
+#endif // TODO_MinFFS
 #endif
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 

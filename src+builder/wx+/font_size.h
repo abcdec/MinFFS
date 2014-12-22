@@ -12,8 +12,10 @@
 #ifdef ZEN_WIN
     #include <zen/dll.h>
     #include <Uxtheme.h>
+#ifdef TODO_MinFFS
     #include <vsstyle.h> //TEXT_MAININSTRUCTION
     #include <vssym32.h> //TMT_COLOR
+#endif // TODO_MinFFS
 #endif
 
 namespace zen
@@ -50,6 +52,7 @@ void setMainInstructionFont(wxWindow& control)
 #ifdef ZEN_WIN //http://msdn.microsoft.com/de-DE/library/windows/desktop/aa974176#fonts
     font.SetPointSize(wxNORMAL_FONT->GetPointSize() * 4 / 3); //integer round down
 
+#ifdef TODO_MinFFS
     //get main instruction color: don't hard-code, respect accessibility!
     typedef HTHEME  (WINAPI* OpenThemeDataFun )(HWND hwnd, LPCWSTR pszClassList);
     typedef HRESULT (WINAPI* CloseThemeDataFun)(HTHEME hTheme);
@@ -72,6 +75,7 @@ void setMainInstructionFont(wxWindow& control)
                               &cr) == S_OK)         //  _Out_  COLORREF *pColor
                 control.SetForegroundColour(wxColour(cr));
         }
+#endif // TODO_MinFFS
 
 #elif defined ZEN_LINUX //https://developer.gnome.org/hig-book/3.2/hig-book.html#alert-text
     font.SetPointSize(numeric::round(wxNORMAL_FONT->GetPointSize() * 12.0 / 11));

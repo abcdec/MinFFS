@@ -108,6 +108,7 @@ bool isRealOsVersion(const OsVersion& ver)
 inline
 bool runningWOW64() //test if process is running under WOW64: http://msdn.microsoft.com/en-us/library/ms684139(VS.85).aspx
 {
+#ifdef TODO_MinFFS
     typedef BOOL (WINAPI* IsWow64ProcessFun)(HANDLE hProcess, PBOOL Wow64Process);
 
     const SysDllFun<IsWow64ProcessFun> isWow64Process(L"kernel32.dll", "IsWow64Process");
@@ -117,6 +118,7 @@ bool runningWOW64() //test if process is running under WOW64: http://msdn.micros
         if (isWow64Process(::GetCurrentProcess(), &isWow64))
             return isWow64 != FALSE;
     }
+#endif
     return false;
 }
 

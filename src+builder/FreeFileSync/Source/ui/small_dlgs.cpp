@@ -80,7 +80,9 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     fgSizerTranslators->Fit(m_scrolledWindowTranslators);
 
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
     new zen::MouseMoveWindow(*this); //-> put *after* creating credits
+#endif // TODO_MinFFS
 #endif
 
     //build information
@@ -176,7 +178,9 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
     tickCountStartup(getTicks())
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
     new zen::MouseMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere...; ownership passed to "this"
+#endif // TODO_MinFFS
 #endif
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOK).setCancel(m_buttonCancel));
 
@@ -300,7 +304,9 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
     m_dontShowAgain(dontShowAgain)
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
     new zen::MouseMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere...; ownership passed to "this"
+#endif // TODO_MinFFS
 #endif
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonStartSync).setCancel(m_buttonCancel));
 
@@ -400,7 +406,9 @@ OptionsDlg::OptionsDlg(wxWindow* parent, xmlAccess::XmlGlobalSettings& globalSet
     settings(globalSettings)
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
     new zen::MouseMoveWindow(*this); //allow moving dialog by clicking (nearly) anywhere...; ownership passed to "this"
+#endif // TODO_MinFFS
 #endif
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
@@ -662,7 +670,9 @@ SelectTimespanDlg::SelectTimespanDlg(wxWindow* parent, std::int64_t& timeFrom, s
     timeTo_(timeTo)
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
     new zen::MouseMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere...; ownership passed to "this"
+#endif // TODO_MinFFS
 #endif
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 

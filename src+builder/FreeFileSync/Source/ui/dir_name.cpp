@@ -21,7 +21,9 @@
 #ifdef ZEN_WIN
     #include <zen/dll.h>
     #include <zen/win_ver.h>
+#ifdef TODO_MinFFS
     #include "../dll/IFileDialog_Vista\ifile_dialog.h"
+#endif // TODO_MinFFS
 #endif
 
 using namespace zen;
@@ -204,6 +206,7 @@ void DirectoryName<NameControl>::onSelectDir(wxCommandEvent& event)
 #ifdef ZEN_WIN
     if (vistaOrLater())
     {
+#ifdef TODO_MinFFS
 #define DEF_DLL_FUN(name) const DllFun<ifile::FunType_##name> name(ifile::getDllName(), ifile::funName_##name);
         DEF_DLL_FUN(showFolderPicker);
         DEF_DLL_FUN(freeString);
@@ -236,6 +239,7 @@ void DirectoryName<NameControl>::onSelectDir(wxCommandEvent& event)
                 return;
             newFolder = make_unique<wxString>(selectedFolder);
         }
+#endif // TODO_MinFFS
     }
 #endif
     if (!newFolder.get())

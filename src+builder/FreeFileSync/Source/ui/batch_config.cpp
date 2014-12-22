@@ -72,7 +72,9 @@ BatchDialog::BatchDialog(wxWindow* parent,
     batchCfgOutRef(batchCfg)
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
     new zen::MouseMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere...; ownership passed to "this"
+#endif // TODO_MinFFS
     wxWindowUpdateLocker dummy(this); //leads to GUI corruption problems on Linux/OS X!
 #endif
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonSaveAs).setCancel(m_buttonCancel));

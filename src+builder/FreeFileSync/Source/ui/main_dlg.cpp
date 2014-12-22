@@ -262,6 +262,7 @@ private:
 
 
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
 class PanelMoveWindow : public MouseMoveWindow
 {
 public:
@@ -285,6 +286,7 @@ public:
 private:
     MainDialog& mainDlg_;
 };
+#endif // TODO_MinFFS
 #endif
 
 
@@ -634,7 +636,9 @@ MainDialog::MainDialog(const Zstring& globalConfigFile,
     cleanedUp = false;
 
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
     new PanelMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere... //ownership passed to "this"
+#endif // TODO_MinFFS
 #endif
 
     {

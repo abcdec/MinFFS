@@ -14,6 +14,7 @@ Usage:
     warn_static("my message")
 */
 
+#ifdef TODO_MinFFS
 #ifdef _MSC_VER
 #define STATIC_WARNING_MAKE_STRINGIZE_SUB(NUM)   #NUM
 #define STATIC_WARNING_MAKE_STRINGIZE(NUM) STATIC_WARNING_MAKE_STRINGIZE_SUB(NUM)
@@ -30,4 +31,7 @@ Usage:
     enum { STATIC_WARNING_CONCAT(warn_static_dummy_value, __LINE__) = sizeof(STATIC_WARNING_87903124) };
 #endif
 
+#else   // TODO_MinFFS
+#define warn_static(TXT) {}
+#endif  // TODO_MinFFS
 #endif //WARN_STATIC_HEADER_08724567834560832745

@@ -1,0 +1,4 @@
+#ifndef TODO_MinFFS_WXPLUS_MOUSE_MOVE_DLG_H_
+#define TODO_MinFFS_WXPLUS_MOUSE_MOVE_DLG_H_
+#endif
+

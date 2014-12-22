@@ -1,25 +1,36 @@
-#PROJECT_TOP := $(shell cygpath -m -a ..\..\..)
-PROJECT_TOP := $(shell cygpath -m -a ..\..\..)
+
 APPNAME     := FreeFileSyncMod
 
+#PROJECT_TOP := $(shell cygpath -m -a ../../..)
+PROJECT_TOP := ../../..
+#MINGW_ROOT  := C:/MinGW
+WXWGT_ROOT  := C:/wxWidgets
+BOOST_ROOT  := C:/Boost/include/boost-1_54
+BOOST_VER   := 1_54
+
 CXXFLAGS := -std=c++11 -pipe
+CXXFLAGS += -D__WXMSW__
+CXXFLAGS += -DZEN_WIN
+CXXFLAGS += -DMinFFS
 CXXFLAGS += -DWXINTL_NO_GETTEXT_MACRO
-CXXFLAGS += -I../../Source
-CXXFLAGS += -I../../..
-CXXFLAGS += -I../../../zenXml
+CXXFLAGS += -I$(PROJECT_TOP)/Source
+CXXFLAGS += -I$(PROJECT_TOP)
+CXXFLAGS += -I$(PROJECT_TOP)/zenXml
+CXXFLAGS += -IC:/Boost/include/boost-1_54
 CXXFLAGS += -include "zen/i18n.h"
 CXXFLAGS += -include "zen/warn_static.h"
 CXXFLAGS += -Wall
 CXXFLAGS += -O3
-#CXXFLAGS += -DNDEBUG `wx-config --cxxflags --debug=no`
 CXXFLAGS += -DNDEBUG
-#CXXFLAGS += -DZEN_LINUX -pthread
+CXXFLAGS += -I$(WXWGT_ROOT)/include
+CXXFLAGS += -I$(WXWGT_ROOT)/lib/gcc_lib/mswud
+CXXFLAGS += -I$(BOOST_ROOT)/include/boost-$(BOOST_VER)
 
-LINKFLAGS = -s `wx-config --libs std, aui --debug=no` -lboost_thread -lboost_system -lz -pthread
+LINKFLAGS := -s
+LINKFLAGS += -L$(WXWGT_ROOT)/lib/gcc_lib
 
-#Gtk - support recycler/icon loading/no button border/grid scrolling
-#CXXFLAGS  += `pkg-config --cflags gtk+-2.0`
-#LINKFLAGS += `pkg-config --libs   gtk+-2.0`
+#CXX := $(MINGW_ROOT)/bin/g++
+CXX := g++
 
 CPP_LIST=
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/algorithm.cpp
@@ -77,23 +88,24 @@ CPP_LIST+=$(PROJECT_TOP)/wx+/popup_dlg.cpp
 CPP_LIST+=$(PROJECT_TOP)/wx+/popup_dlg_generated.cpp
 CPP_LIST+=$(PROJECT_TOP)/wx+/zlib_wrap.cpp
 
-OBJECT_LIST = $(CPP_LIST:%.cpp=Obj/%.o)
+OBJECT_LIST = $(CPP_LIST:%.cpp=%.o)
 
 all: launchpad
 
 launchpad: FreeFileSync
 
-Obj/%.o : %.cpp
-	mkdir -p $(dir $@)
-	g++ $(CXXFLAGS) -c $< -o $@
+.cpp.o:
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
 
 FreeFileSync: $(OBJECT_LIST)
-	g++ -o ../Build/$(APPNAME) $(OBJECT_LIST) $(LINKFLAGS)
+	$(CXX) -o ../Build/$(APPNAME) $(OBJECT_LIST) $(LINKFLAGS)
 
 clean:
-	rm -rf ../Obj/FFS_GCC_Make_Release
-	rm -f ../Build/$(APPNAME)
-	rm -f ../../wx+/pch.h.gch
+	rm -f $(OBJECT_LIST)
+
+filecheck:
+	@ls $(OBJECT_LIST)
 
 install:
 	mkdir -p $(BINDIR)

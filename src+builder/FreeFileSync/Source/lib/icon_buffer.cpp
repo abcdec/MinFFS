@@ -15,7 +15,9 @@
     #include <zen/dll.h>
     #include <zen/win_ver.h>
     #include <wx/image.h>
+#ifdef TODO_MinFFS
     #include "../dll/Thumbnail/thumbnail.h"
+#endif // TODO_MinFFS
 
 #elif defined ZEN_LINUX
     #include <gtk/gtk.h>
@@ -38,10 +40,12 @@ const size_t BUFFER_SIZE_MAX = 800; //maximum number of icons to hold in buffer:
 #ifdef ZEN_WIN
     const bool isXpOrLater = winXpOrLater(); //VS2010 compiled DLLs are not supported on Win 2000: Popup dialog "DecodePointer not found"
 
+#ifdef TODO_MinFFS
     #define DEF_DLL_FUN(name) const auto name = isXpOrLater ? DllFun<thumb::FunType_##name>(thumb::getDllName(), thumb::funName_##name) : DllFun<thumb::FunType_##name>();
     DEF_DLL_FUN(getIconByIndex);   //
     DEF_DLL_FUN(getThumbnail);     //let's spare the boost::call_once hustle and allocate statically
     DEF_DLL_FUN(releaseImageData); //
+#endif // TODO_MinFFS
 #endif
 
 class IconHolder //handle HICON/GdkPixbuf ownership supporting thread-safe usage (in contrast to wxIcon/wxBitmap)
@@ -69,7 +73,9 @@ public:
     {
         if (handle_ != nullptr)
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
             releaseImageData(handle_); //should be checked already before creating IconHolder!
+#endif // TODO_MinFFS
 #elif defined ZEN_LINUX
             ::g_object_unref(handle_); //superseedes "::gdk_pixbuf_unref"!
 #elif defined ZEN_MAC
@@ -178,8 +184,10 @@ IconHolder getIconByAttribute(LPCWSTR pszPath, DWORD dwFileAttributes, IconBuffe
     if (!imgList) //no need to IUnknown::Release() imgList!
         return IconHolder();
 
+#ifdef TODO_MinFFS
     if (getIconByIndex && releaseImageData)
         return IconHolder(getIconByIndex(fileInfo.iIcon, getThumbSizeType(sz)));
+#endif // TODO_MinFFS
 
     return IconHolder();
 }
@@ -251,8 +259,10 @@ bool zen::hasLinkExtension(const Zstring& filepath)
 IconHolder getThumbnailImage(const Zstring& filepath, int requestedSize) //return 0 on failure
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
     if (getThumbnail && releaseImageData)
         return IconHolder(getThumbnail(filepath.c_str(), requestedSize));
+#endif // TODO_MinFFS
 
 #elif defined ZEN_LINUX
     gint width  = 0;
@@ -361,9 +371,11 @@ IconHolder getAssociatedIcon(const Zstring& filepath, IconBuffer::IconSize sz)
         //Check for link icon type (= shell links and symlinks): SHGetFileInfo + SHGFI_ATTRIBUTES:
         //const bool isLink = (fileInfo.dwAttributes & SFGAO_LINK) != 0;
 
+#ifdef TODO_MinFFS
         if (getIconByIndex && releaseImageData)
             if (const thumb::ImageData* imgData = getIconByIndex(fileInfo.iIcon, getThumbSizeType(sz)))
                 return IconHolder(imgData);
+#endif // TODO_MinFFS
     }
 
 #elif defined ZEN_LINUX

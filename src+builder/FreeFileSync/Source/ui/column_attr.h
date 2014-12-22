@@ -33,7 +33,9 @@ struct ColumnAttributeRim
     bool          visible_;
 };
 
+#ifdef TODO_MinFFS
 warn_static("two stretched oclumsn: hide vergrößert range!")
+#endif // TODO_MinFFS
 inline
 std::vector<ColumnAttributeRim> getDefaultColumnAttributesLeft()
 {
