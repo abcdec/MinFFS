@@ -133,10 +133,20 @@ time per call | function
 #ifdef ZEN_WIN
 namespace
 {
+#ifdef MinFFS // LOCALE_INVARIANT not defined when compiling for OS 5.0 (Windows 2000) so compilation fails with original code.
+#ifdef LOCALE_INVARIANT
+    const LCID ZSTRING_INVARIANT_LOCALE = LOCALE_INVARIANT;
+#else
+    const LCID ZSTRING_INVARIANT_LOCALE = MAKELCID(
+	MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
+	SORT_DEFAULT); //see: http://msdn.microsoft.com/en-us/goglobal/bb688122.aspx
+#endif
+#else//MinFFS
 //warning: LOCALE_INVARIANT is NOT available with Windows 2000, so we have to make yet another distinction...
 const LCID ZSTRING_INVARIANT_LOCALE = zen::winXpOrLater() ?
                                       LOCALE_INVARIANT :
                                       MAKELCID(MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), SORT_DEFAULT); //see: http://msdn.microsoft.com/en-us/goglobal/bb688122.aspx
+#endif//TODO_MinFFS LOCALE_INVARIANT not defined when compiling for OS 5.0 (Windows 2000)
 
 //try to call "CompareStringOrdinal" for low-level string comparison: unfortunately available not before Windows Vista!
 //by a factor ~3 faster than old string comparison using "LCMapString"

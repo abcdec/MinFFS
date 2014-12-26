@@ -182,8 +182,8 @@ FreeFileSync:	$(APPNAME)
 $(APPNAME):	$(OBJECT_LIST)
 	$(CXX) -o $(APPNAME) $(OBJECT_LIST) $(LINKFLAGS)
 
-clean:
-	rm -rf $(APPNAME) $(OBJECT_LIST)
+#clean:
+#	del $(APPNAME) $(OBJECT_LIST)
 
 
 #
@@ -204,18 +204,17 @@ clean:
 
 # TODO_MinFFS DEBUGGING ONLY TO BE REMOVED Begin
 
-filecheck:
-	@echo TODO files
-	@grep -l TODO_MinFFS $(CPP_LIST)
-	@echo
-	@echo List of Object files compiled
-	@ls -1 $(OBJECT_LIST)
+#filecheck:
+#	@echo TODO files
+#	@grep -l TODO_MinFFS $(CPP_LIST)
+#	@echo
+#	@echo List of Object files compiled
+#	@ls -1 $(OBJECT_LIST)
 
-sanity: sanity.exe
 sanity.exe: sanity.o
 	$(CXX) -o sanity.exe sanity.o $(LINKFLAGS)
 
-cleansanity:
-	rm -rf sanity.exe sanity.o
+#cleansanity:
+#	rm -rf sanity.exe sanity.o
 
 # TODO_MinFFS DEBUGGING ONLY TO BE REMOVED End

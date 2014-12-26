@@ -9,6 +9,7 @@
 
 #include <cassert>
 #include <utility>
+#include <windows.h>
 #include "win.h" //includes "windows.h"
 #include "build_info.h"
 #include "dll.h"
@@ -36,6 +37,7 @@ const OsVersion osVersionWinVista     (6, 0);
 const OsVersion osVersionWinServer2003(5, 2);
 const OsVersion osVersionWinXp        (5, 1);
 const OsVersion osVersionWin2000      (5, 0);
+
 
 /*
 	NOTE: there are two basic APIs to check Windows version: (empiric study following)

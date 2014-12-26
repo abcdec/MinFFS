@@ -199,9 +199,10 @@ bool isFatDrive(const Zstring& filepath) //throw()
 //(try to) enhance error messages by showing which processes lock the file
 Zstring getLockingProcessNames(const Zstring& filepath) //throw(), empty string if none found or error occurred
 {
+#ifdef TODO_MinFFS
     if (vistaOrLater())
     {
-        using namespace fileop;
+	using namespace fileop;
         const DllFun<FunType_getLockingProcesses> getLockingProcesses(getDllName(), funName_getLockingProcesses);
         const DllFun<FunType_freeString>          freeString         (getDllName(), funName_freeString);
 
@@ -212,6 +213,7 @@ Zstring getLockingProcessNames(const Zstring& filepath) //throw(), empty string 
                 return procList;
             }
     }
+#endif//TODO_MinFFS
     return Zstring();
 }
 #endif
@@ -766,6 +768,7 @@ void setFileTimeRaw(const Zstring& filepath,
             //function may fail if file is read-only: https://sourceforge.net/tracker/?func=detail&atid=1093080&aid=3514569&group_id=234430
             if (lastError == ERROR_ACCESS_DENIED)
             {
+#ifdef TODO_MinFFS
                 //dynamically load windows API function: available with Windows Vista and later
                 typedef BOOL (WINAPI* SetFileInformationByHandleFunc)(HANDLE hFile, FILE_INFO_BY_HANDLE_CLASS FileInformationClass, LPVOID lpFileInformation, DWORD dwBufferSize);
                 const SysDllFun<SetFileInformationByHandleFunc> setFileInformationByHandle(L"kernel32.dll", "SetFileInformationByHandle");
@@ -814,6 +817,7 @@ void setFileTimeRaw(const Zstring& filepath,
                             lastError = ERROR_SUCCESS;
                         }
                 }
+#endif//TODO_MinFFS
             }
 
             std::wstring errorMsg = replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtFileName(filepath));
@@ -1031,7 +1035,8 @@ void copyObjectPermissions(const Zstring& source, const Zstring& target, ProcSym
     //setting privileges requires admin rights!
     try
     {
-        //enable privilege: required to read/write SACL information (only)
+#ifdef TODO_MinFFS
+	//enable privilege: required to read/write SACL information (only)
         activatePrivilege(SE_SECURITY_NAME); //throw FileError
         //Note: trying to copy SACL (SACL_SECURITY_INFORMATION) may return ERROR_PRIVILEGE_NOT_HELD (1314) on Samba shares. This is not due to missing privileges!
         //However, this is okay, since copying NTFS permissions doesn't make sense in this case anyway
@@ -1041,6 +1046,7 @@ void copyObjectPermissions(const Zstring& source, const Zstring& target, ProcSym
 
         //the following privilege may be required according to http://msdn.microsoft.com/en-us/library/aa364399(VS.85).aspx (although not needed nor active in my tests)
         activatePrivilege(SE_BACKUP_NAME); //throw FileError
+#endif//TODO_MinFFS
     }
     catch (const FileError& e)//add some more context description (e.g. user is not an admin)
     {
@@ -1431,6 +1437,7 @@ void zen::copySymlink(const Zstring& sourceLink, const Zstring& targetLink, bool
         return ret != INVALID_FILE_ATTRIBUTES && (ret & FILE_ATTRIBUTE_DIRECTORY);
     }();
 
+#ifdef TODO_MinFFS
     typedef BOOLEAN (WINAPI* CreateSymbolicLinkFunc)(LPCTSTR lpSymlinkFileName, LPCTSTR lpTargetFileName, DWORD dwFlags);
     const SysDllFun<CreateSymbolicLinkFunc> createSymbolicLink(L"kernel32.dll", "CreateSymbolicLinkW");
 
@@ -1442,11 +1449,14 @@ void zen::copySymlink(const Zstring& sourceLink, const Zstring& targetLink, bool
     if (!createSymbolicLink(targetLink.c_str(), //__in  LPTSTR lpSymlinkFileName, - seems no long path prefix is required...
                             linkPath.c_str(),   //__in  LPTSTR lpTargetFileName,
                             (isDirLink ? SYMBOLIC_LINK_FLAG_DIRECTORY : 0))) //__in  DWORD dwFlags
+#endif//TODO_MinFFS
 #elif defined ZEN_LINUX || defined ZEN_MAC
     const wchar_t functionName[] = L"symlink";
     if (::symlink(linkPath.c_str(), targetLink.c_str()) != 0)
 #endif
+#ifdef TODO_MinFFS
         throwFileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."), L"%x", L"\n" + fmtFileName(sourceLink)), L"%y", L"\n" + fmtFileName(targetLink)), functionName, getLastError());
+#endif//TODO_MinFFS
 
     //allow only consistent objects to be created -> don't place before ::symlink, targetLink may already exist!
     zen::ScopeGuard guardNewLink = zen::makeGuard([&]
@@ -1598,10 +1608,12 @@ void copyFileWindowsSparse(const Zstring& sourceFile,
     assert(canCopyAsSparse(sourceFile, targetFile));
 
     //try to get backup read and write privileges: who knows, maybe this helps solve some obscure "access denied" errors
+#ifdef TODO_MinFFS
     try { activatePrivilege(SE_BACKUP_NAME); }
     catch (const FileError&) {}
     try { activatePrivilege(SE_RESTORE_NAME); }
     catch (const FileError&) {}
+#endif//TODO_MinFFS
 
     //open sourceFile for reading
     HANDLE hFileSource = ::CreateFile(applyLongPathPrefix(sourceFile).c_str(), //_In_      LPCTSTR lpFileName,
@@ -1975,10 +1987,12 @@ void copyFileWindowsDefault(const Zstring& sourceFile,
                             InSyncAttributes* newAttrib) //throw FileError, ErrorTargetExisting, ErrorFileLocked, ErrorShouldCopyAsSparse
 {
     //try to get backup read and write privileges: who knows, maybe this helps solve some obscure "access denied" errors
+#ifdef TODO_MinFFS
     try { activatePrivilege(SE_BACKUP_NAME); }
     catch (const FileError&) {}
     try { activatePrivilege(SE_RESTORE_NAME); }
     catch (const FileError&) {}
+#endif//TODO_MinFFS
 
     zen::ScopeGuard guardTarget = zen::makeGuard([&] { try { removeFile(targetFile); } catch (FileError&) {} });
     //transactional behavior: guard just before starting copy, we don't trust ::CopyFileEx(), do we? ;)

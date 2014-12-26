@@ -17,17 +17,47 @@
 // * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
 // * General Public License for more details.                               *
 // **************************************************************************
-#ifndef ZEN_DLL_H_INCLUDED
-#define ZEN_DLL_H_INCLUDED
 
-#include <tchar.h>
-#include <windows.h>
-#include <iostream>
+#ifndef DLL_THUMBNAIL_THUMBNAIL_H_INCLUDED
+#define DLL_THUMBNAIL_THUMBNAIL_H_INCLUDED
+// The original FreeFileSync source distribution does not come with this
+// file, although it appeared this file is required to build properly.
+// Thus it was recreated from its usage context.
 
-#include "dllwrapper_includes.hpp"
+#include <string>
+#include "zen/dll.h"
 
-namespace zen {
-    #include "dllwrapper.hpp"
+namespace thumb {
+
+    struct ImageData {
+    public:
+	int width;
+	int height;
+//	std::string rgb;
+//	std::string alpha;
+	unsigned char *rgb;
+	unsigned char *alpha;
+    };
+    
+    typedef enum {
+	ICON_SIZE_16,
+	ICON_SIZE_32,
+	ICON_SIZE_48,
+	ICON_SIZE_128
+    } IconSizeType;
+
+    typedef wxImage (*FunType_getIconByIndex)(size_t userIndex);
+    typedef wxImage (*FunType_getThumbnail)(size_t userIndex);
+    typedef void (*FunType_releaseImageData)(ImageData *ptrIn);
+
+    const std::string funName_getIconByIndex = "GetIconByIndex";
+    const std::string funName_getThumbnail = "getThumbnail";
+    const std::string funName_releaseImageData = "releaseImageData";
+
+    inline std::wstring getDllName() {
+	return L"todo.dll";
+    };
+
 }
 
-#endif//ZEN_DLL_H_INCLUDED
+#endif//DLL_THUMBNAIL_THUMBNAIL_H_INCLUDED

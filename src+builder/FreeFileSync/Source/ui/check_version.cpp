@@ -56,6 +56,7 @@ class WinInetAccess //1. uses IE proxy settings! :) 2. follows HTTP redirects by
 public:
     WinInetAccess(const wchar_t* url) //throw InternetConnectionError (if url cannot be reached; no need to also call readBytes())
     {
+#ifdef TODO_MinFFS
         //::InternetAttemptConnect(0) -> not working as expected: succeeds even when there is no internet connection!
 
         hInternet = ::InternetOpen(getUserAgentName().c_str(), //_In_  LPCTSTR lpszAgent,
@@ -91,17 +92,21 @@ public:
 
         guardRequest .dismiss();
         guardInternet.dismiss();
+#endif//TODO_MinFFS
     }
 
     ~WinInetAccess()
     {
+#ifdef TODO_MinFFS
         ::InternetCloseHandle(hRequest);
         ::InternetCloseHandle(hInternet);
+#endif//TODO_MinFFS
     }
 
     template <class OutputIterator>
     OutputIterator readBytes(OutputIterator result) //throw InternetConnectionError
     {
+#ifdef TODO_MinFFS
         //internet says "HttpQueryInfo() + HTTP_QUERY_CONTENT_LENGTH" not supported by all http servers...
         const DWORD bufferSize = 64 * 1024;
         std::vector<char> buffer(bufferSize);
@@ -118,6 +123,7 @@ public:
 
             result = std::copy(buffer.begin(), buffer.begin() + bytesRead, result);
         }
+#endif//TODO_MinFFS
     }
 
 private:
@@ -138,11 +144,13 @@ bool canAccessUrl(const wchar_t* url) //throw ()
 }
 
 
+#ifdef TODO_MinFFS
 template <class OutputIterator> inline
 OutputIterator readBytesUrl(const wchar_t* url, OutputIterator result) //throw InternetConnectionError
 {
     return WinInetAccess(url).readBytes(result); //throw InternetConnectionError
 }
+#endif//TODO_MinFFS
 
 #else
 bool getStringFromUrl(const wxString& server, const wxString& page, int timeout, wxString* output, int level = 0) //true on successful connection
@@ -207,6 +215,7 @@ enum GetVerResult
 GetVerResult getOnlineVersion(wxString& version) //empty string on error;
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS
     //internet access supporting proxy connections
     std::vector<char> output;
     try
@@ -221,6 +230,9 @@ GetVerResult getOnlineVersion(wxString& version) //empty string on error;
     output.push_back('\0');
     version = utfCvrtTo<wxString>(&output[0]);
     return GET_VER_SUCCESS;
+#else//TODO_MinFFS
+    return GET_VER_NO_CONNECTION;
+#endif//TODO_MinFFS
 
 #elif defined ZEN_LINUX || defined ZEN_MAC
     wxWindowDisabler dummy;

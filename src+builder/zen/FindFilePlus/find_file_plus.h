@@ -17,17 +17,45 @@
 // * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
 // * General Public License for more details.                               *
 // **************************************************************************
-#ifndef ZEN_DLL_H_INCLUDED
-#define ZEN_DLL_H_INCLUDED
 
-#include <tchar.h>
-#include <windows.h>
-#include <iostream>
+#ifndef DLL_FINDFILEPLUS_FILE_OPFIND_FILE_PLUS_H_INCLUDED
+#define DLL_FINDFILEPLUS_FILE_OPFIND_FILE_PLUS_H_INCLUDED
+// The original FreeFileSync source distribution does not come with this
+// file, although it appeared this file is required to build properly.
+// Thus it was recreated from its usage context.
 
-#include "dllwrapper_includes.hpp"
+#include "zen/file_id_def.h"
 
-namespace zen {
-    #include "dllwrapper.hpp"
+namespace findplus
+{
+    struct FindHandle {
+    public:
+	FindHandle();
+	~FindHandle();
+    };
+    struct DirHandle {
+    public:
+	DirHandle();
+	~DirHandle();
+    };
+    struct FileInformation {
+    public:
+	FileInformation();
+	~FileInformation();
+
+        std::uint64_t fileSize;
+        FILETIME lastWriteTime;
+        FILETIME creationTime;
+        wchar_t *shortName;
+	DWORD fileAttributes;
+	std::int16_t fileId;
+
+        FILETIME ftLastWriteTime;
+        FILETIME ftCreationTime;
+	std::wstring cFileName;
+	DWORD dwFileAttributes;
+	DWORD reparseTag;
+    };
 }
 
-#endif//ZEN_DLL_H_INCLUDED
+#endif//DLL_FINDFILEPLUS_FILE_OPFIND_FILE_PLUS_H_INCLUDED

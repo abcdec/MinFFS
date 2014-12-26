@@ -3,6 +3,20 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
+// **************************************************************************
+// * This file is modified from its original source file distributed by the *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
+// *                          --EXPERIMENTAL--                              *
+// * This program is experimental and not recommended for general use.      *
+// * Please consider using the original FreeFileSync program unless there   *
+// * are specific needs to use this experimental MinFFS version.            *
+// *                          --EXPERIMENTAL--                              *
+// * This modified program is distributed in the hope that it will be       *
+// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
+// * General Public License for more details.                               *
+// **************************************************************************
 
 #include "icon_buffer.h"
 #include <queue>
@@ -15,9 +29,7 @@
     #include <zen/dll.h>
     #include <zen/win_ver.h>
     #include <wx/image.h>
-#ifdef TODO_MinFFS
     #include "../dll/Thumbnail/thumbnail.h"
-#endif // TODO_MinFFS
 
 #elif defined ZEN_LINUX
     #include <gtk/gtk.h>
@@ -40,12 +52,10 @@ const size_t BUFFER_SIZE_MAX = 800; //maximum number of icons to hold in buffer:
 #ifdef ZEN_WIN
     const bool isXpOrLater = winXpOrLater(); //VS2010 compiled DLLs are not supported on Win 2000: Popup dialog "DecodePointer not found"
 
-#ifdef TODO_MinFFS
     #define DEF_DLL_FUN(name) const auto name = isXpOrLater ? DllFun<thumb::FunType_##name>(thumb::getDllName(), thumb::funName_##name) : DllFun<thumb::FunType_##name>();
     DEF_DLL_FUN(getIconByIndex);   //
     DEF_DLL_FUN(getThumbnail);     //let's spare the boost::call_once hustle and allocate statically
     DEF_DLL_FUN(releaseImageData); //
-#endif // TODO_MinFFS
 #endif
 
 class IconHolder //handle HICON/GdkPixbuf ownership supporting thread-safe usage (in contrast to wxIcon/wxBitmap)
@@ -73,9 +83,11 @@ public:
     {
         if (handle_ != nullptr)
 #ifdef ZEN_WIN
-#ifdef TODO_MinFFS
-            releaseImageData(handle_); //should be checked already before creating IconHolder!
-#endif // TODO_MinFFS
+#ifdef TODO_MInFFS
+	    releaseImageData(handle_); //should be checked already before creating IconHolder!
+#else//TODO_MinFFS
+	{}
+#endif//TODO_MinFFS
 #elif defined ZEN_LINUX
             ::g_object_unref(handle_); //superseedes "::gdk_pixbuf_unref"!
 #elif defined ZEN_MAC
@@ -375,7 +387,7 @@ IconHolder getAssociatedIcon(const Zstring& filepath, IconBuffer::IconSize sz)
         if (getIconByIndex && releaseImageData)
             if (const thumb::ImageData* imgData = getIconByIndex(fileInfo.iIcon, getThumbSizeType(sz)))
                 return IconHolder(imgData);
-#endif // TODO_MinFFS
+#endif//TODO_MinFFS
     }
 
 #elif defined ZEN_LINUX
@@ -631,19 +643,23 @@ void WorkerThread::operator()() //thread entry
     //Prerequisites, see thumbnail.h
 
     //1. Initialize COM
+#ifdef TODO_MinFFS
     if (FAILED(::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE)))
     {
         assert(false);
         return;
     }
     ZEN_ON_SCOPE_EXIT(::CoUninitialize());
-
+#endif//TODO_MinFFS
+    
     //2. Initialize system image list
     typedef BOOL (WINAPI* FileIconInitFun)(BOOL fRestoreCache);
     const SysDllFun<FileIconInitFun> fileIconInit(L"Shell32.dll", reinterpret_cast<LPCSTR>(660)); //MS requires and documents this magic number
+#ifdef TODO_MinFFS
     assert(fileIconInit);
     if (fileIconInit)
         fileIconInit(false); //TRUE to restore the system image cache from disk; FALSE otherwise.
+#endif//MinFFS
 #endif
 
     while (true)

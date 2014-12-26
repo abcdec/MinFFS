@@ -3,6 +3,20 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
+// **************************************************************************
+// * This file is modified from its original source file distributed by the *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
+// *                          --EXPERIMENTAL--                              *
+// * This program is experimental and not recommended for general use.      *
+// * Please consider using the original FreeFileSync program unless there   *
+// * are specific needs to use this experimental MinFFS version.            *
+// *                          --EXPERIMENTAL--                              *
+// * This modified program is distributed in the hope that it will be       *
+// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
+// * General Public License for more details.                               *
+// **************************************************************************
 
 #include "dir_name.h"
 #include <zen/thread.h>
@@ -21,9 +35,7 @@
 #ifdef ZEN_WIN
     #include <zen/dll.h>
     #include <zen/win_ver.h>
-#ifdef TODO_MinFFS
     #include "../dll/IFileDialog_Vista\ifile_dialog.h"
-#endif // TODO_MinFFS
 #endif
 
 using namespace zen;
@@ -206,7 +218,6 @@ void DirectoryName<NameControl>::onSelectDir(wxCommandEvent& event)
 #ifdef ZEN_WIN
     if (vistaOrLater())
     {
-#ifdef TODO_MinFFS
 #define DEF_DLL_FUN(name) const DllFun<ifile::FunType_##name> name(ifile::getDllName(), ifile::funName_##name);
         DEF_DLL_FUN(showFolderPicker);
         DEF_DLL_FUN(freeString);
@@ -239,7 +250,6 @@ void DirectoryName<NameControl>::onSelectDir(wxCommandEvent& event)
                 return;
             newFolder = make_unique<wxString>(selectedFolder);
         }
-#endif // TODO_MinFFS
     }
 #endif
     if (!newFolder.get())

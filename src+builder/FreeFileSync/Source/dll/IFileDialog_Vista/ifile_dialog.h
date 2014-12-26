@@ -17,17 +17,36 @@
 // * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
 // * General Public License for more details.                               *
 // **************************************************************************
-#ifndef ZEN_DLL_H_INCLUDED
-#define ZEN_DLL_H_INCLUDED
 
-#include <tchar.h>
-#include <windows.h>
-#include <iostream>
+#ifndef DLL_IFILEDIALOG_VISTA_IFILE_DIALOG_H_INCLUDED
+#define DLL_IFILEDIALOG_VISTA_IFILE_DIALOG_H_INCLUDED
+// The original FreeFileSync source distribution does not come with this
+// file, although it appeared this file is required to build properly.
+// Thus it was recreated from its usage context.
 
-#include "dllwrapper_includes.hpp"
+#include <string>
+#include "zen/dll.h"
 
-namespace zen {
-    #include "dllwrapper.hpp"
+namespace ifile {
+
+    typedef char GuidProxy[16];
+
+    typedef void (*FunType_showFolderPicker)(HWND winHandleIn,
+					     const wchar_t* defaultDirPathIn,
+					     const GuidProxy* guidIn,
+					     wchar_t* &selectedFolderOut,
+					     bool &cancelledOut,
+					     wchar_t* &errorMsgOut);
+    typedef void (*FunType_freeString)(wchar_t *freeStringPtr);
+
+    const std::string funName_showFolderPicker = "ShowFolderPicker";
+    const std::string funName_freeString = "FreeString";
+
+//TODO_MinFFS need real DLL name
+    inline std::wstring getDllName() {
+	return L"ifile.dll";
+    };
+
 }
 
-#endif//ZEN_DLL_H_INCLUDED
+#endif//DLL_IFILEDIALOG_VISTA_IFILE_DIALOG_H_INCLUDED

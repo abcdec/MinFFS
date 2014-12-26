@@ -17,17 +17,36 @@
 // * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
 // * General Public License for more details.                               *
 // **************************************************************************
-#ifndef ZEN_DLL_H_INCLUDED
-#define ZEN_DLL_H_INCLUDED
 
-#include <tchar.h>
-#include <windows.h>
-#include <iostream>
+#ifndef DLL_TASKBAR_SEVEN_TASKBAR_H_INCLUDED
+#define DLL_TASKBAR_SEVEN_TASKBAR_H_INCLUDED
+// The original FreeFileSync source distribution does not come with this
+// file, although it appeared this file is required to build properly.
+// Thus it was recreated from its usage context.
 
-#include "dllwrapper_includes.hpp"
+#include <string>
+#include "zen/dll.h"
 
-namespace zen {
-    #include "dllwrapper.hpp"
+namespace tbseven
+{
+    enum TaskBarStatus {
+        STATUS_INDETERMINATE,
+	STATUS_NORMAL,
+	STATUS_ERROR,
+	STATUS_PAUSED,
+	STATUS_NOPROGRESS
+    };
+
+    typedef void (*FunType_setStatus)(void *, TaskBarStatus);
+    typedef void (*FunType_setProgress)(void *, double, double);
+
+    const std::string funName_setStatus = "SetStatus";
+    const std::string funName_setProgress = "SetProgress";
+
+    inline std::wstring getDllName() {
+	return L"MinFFS_Taskbar.dll";
+    };
+
 }
 
-#endif//ZEN_DLL_H_INCLUDED
+#endif//DLL_TASKBAR_SEVEN_TASKBAR_H_INCLUDED
