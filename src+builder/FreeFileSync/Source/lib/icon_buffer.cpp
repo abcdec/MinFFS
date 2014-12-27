@@ -46,7 +46,9 @@ namespace
 const size_t BUFFER_SIZE_MAX = 800; //maximum number of icons to hold in buffer: must be big enough to hold visible icons + preload buffer! Consider OS limit on GDI resources (wxBitmap)!!!
 
 #ifndef NDEBUG
+#ifdef TODO_MinFFS_UI
     const boost::thread::id mainThreadId = boost::this_thread::get_id();
+#endif//TODO_MinFFS_UI
 #endif
 
 #ifdef ZEN_WIN
@@ -107,7 +109,9 @@ public:
     wxBitmap extractWxBitmap()
     {
         ZEN_ON_SCOPE_EXIT(assert(!*this));
+#ifdef TODO_MinFFS_UI
         assert(boost::this_thread::get_id() == mainThreadId);
+#endif//TODO_MinFFS_UI
 
         if (!handle_)
             return wxNullBitmap;
@@ -420,11 +424,15 @@ class WorkLoad
 public:
     Zstring extractNextFile() //context of worker thread, blocking
     {
+#ifdef TODO_MinFFS_UI
         assert(boost::this_thread::get_id() != mainThreadId);
         boost::unique_lock<boost::mutex> dummy(lockFiles);
+#endif//TODO_MinFFS_UI
 
+#ifdef TODO_MinFFS_UI
         while (filesToLoad.empty())
             conditionNewFiles.timed_wait(dummy, boost::posix_time::milliseconds(100)); //interruption point!
+#endif//TODO_MinFFS_UI
 
         Zstring filepath = filesToLoad.back(); //yes, not std::bad_alloc exception-safe, but bad_alloc is not relevant for us
         filesToLoad.pop_back();                //
@@ -435,10 +443,14 @@ public:
     {
         assert(boost::this_thread::get_id() == mainThreadId);
         {
+#ifdef TODO_MinFFS_UI
             boost::lock_guard<boost::mutex> dummy(lockFiles);
+#endif//TODO_MinFFS_UI
             filesToLoad = newLoad;
         }
+#ifdef TODO_MinFFS_UI
         conditionNewFiles.notify_all(); //instead of notify_one(); workaround bug: https://svn.boost.org/trac/boost/ticket/7796
+#endif//TODO_MinFFS_UI
         //condition handling, see: http://www.boost.org/doc/libs/1_43_0/doc/html/thread/synchronization.html#thread.synchronization.condvar_ref
     }
 
@@ -446,16 +458,22 @@ public:
     {
         assert(boost::this_thread::get_id() == mainThreadId);
         {
+#ifdef TODO_MinFFS_UI
             boost::lock_guard<boost::mutex> dummy(lockFiles);
+#endif//TODO_MinFFS_UI
             filesToLoad.push_back(newEntry); //set as next item to retrieve
         }
+#ifdef TODO_MinFFS_UI
         conditionNewFiles.notify_all();
+#endif//TODO_MinFFS_UI
     }
 
 private:
     std::vector<Zstring>      filesToLoad; //processes last elements of vector first!
+#ifdef TODO_MinFFS_UI
     boost::mutex              lockFiles;
     boost::condition_variable conditionNewFiles; //signal event: data for processing available
+#endif//TODO_MinFFS_UI
 };
 
 
@@ -467,7 +485,9 @@ public:
     //called by main and worker thread:
     bool hasIcon(const Zstring& filepath) const
     {
+#ifdef TODO_MinFFS_UI
         boost::lock_guard<boost::mutex> dummy(lockIconList);
+#endif//TODO_MinFFS_UI
         return iconList.find(filepath) != iconList.end();
     }
 
@@ -475,7 +495,9 @@ public:
     Opt<wxBitmap> retrieve(const Zstring& filepath)
     {
         assert(boost::this_thread::get_id() == mainThreadId);
+#ifdef TODO_MinFFS_UI
         boost::lock_guard<boost::mutex> dummy(lockIconList);
+#endif//TODO_MinFFS_UI
 
         auto it = iconList.find(filepath);
         if (it == iconList.end())
@@ -495,7 +517,9 @@ public:
     //called by main and worker thread:
     void insert(const Zstring& entryName, IconHolder&& icon)
     {
+#ifdef TODO_MinFFS_UI
         boost::lock_guard<boost::mutex> dummy(lockIconList);
+#endif//TODO_MinFFS_UI
 
         //thread safety: moving IconHolder is free from side effects, but ~wxBitmap() is NOT! => do NOT delete items from iconList here!
         auto rc = iconList.emplace(entryName, makeValueObject());
@@ -512,7 +536,9 @@ public:
     void limitSize()
     {
         assert(boost::this_thread::get_id() == mainThreadId);
+#ifdef TODO_MinFFS_UI
         boost::lock_guard<boost::mutex> dummy(lockIconList);
+#endif//TODO_MinFFS_UI
 
         while (iconList.size() > BUFFER_SIZE_MAX)
         {
@@ -609,7 +635,9 @@ private:
         FileIconMap::iterator next_; //
     };
 
+#ifdef TODO_MinFFS_UI
     mutable boost::mutex lockIconList;
+#endif//TODO_MinFFS_UI
     FileIconMap iconList; //shared resource; Zstring is thread-safe like an int
     FileIconMap::iterator firstInsertPos;
     FileIconMap::iterator lastInsertPos;
@@ -664,7 +692,9 @@ void WorkerThread::operator()() //thread entry
 
     while (true)
     {
+#ifdef TODO_MinFFS_UI
         boost::this_thread::interruption_point();
+#endif//TODO_MinFFS_UI
 
         const Zstring filepath = workload_->extractNextFile(); //start work: blocks until next icon to load is retrieved
 
@@ -684,21 +714,27 @@ struct IconBuffer::Pimpl
     std::shared_ptr<WorkLoad> workload;
     std::shared_ptr<Buffer> buffer;
 
+#ifdef TODO_MinFFS_UI
     boost::thread worker;
+#endif//TODO_MinFFS_UI
 };
 
 
 IconBuffer::IconBuffer(IconSize sz) : pimpl(make_unique<Pimpl>()), iconSizeType(sz)
 {
+#ifdef TODO_MinFFS_UI
     pimpl->worker = boost::thread(WorkerThread(pimpl->workload, pimpl->buffer, sz));
+#endif//TODO_MinFFS_UI
 }
 
 
 IconBuffer::~IconBuffer()
 {
     setWorkload(std::vector<Zstring>()); //make sure interruption point is always reached!
+#ifdef TODO_MinFFS_UI
     pimpl->worker.interrupt();
     pimpl->worker.join(); //we assume precondition "worker.joinable()"!!!
+#endif//TODO_MinFFS_UI
 }
 
 

@@ -3,9 +3,25 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
+// **************************************************************************
+// * This file is modified from its original source file distributed by the *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
+// *                          --EXPERIMENTAL--                              *
+// * This program is experimental and not recommended for general use.      *
+// * Please consider using the original FreeFileSync program unless there   *
+// * are specific needs to use this experimental MinFFS version.            *
+// *                          --EXPERIMENTAL--                              *
+// * This modified program is distributed in the hope that it will be       *
+// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
+// * General Public License for more details.                               *
+// **************************************************************************
 
 #ifndef BOOST_THREAD_WRAP_H_78963234
 #define BOOST_THREAD_WRAP_H_78963234
+
+#ifdef TODO_MinFFS_UI
 
 //temporary solution until C++11 thread becomes fully available (considering std::thread's non-interruptibility and std::async craziness, this may be NEVER)
 #include <memory>
@@ -198,5 +214,9 @@ bool GetFirstResult<T>::timedWait(const Duration& duration) const { return async
 template <class T> inline
 std::unique_ptr<T> GetFirstResult<T>::get() const { return asyncResult->getResult(jobsTotal_); }
 }
+#else//TODO_MinFFS_UI
+#include <map>
+#include <list>
+#endif//TODO_MinFFS_UI
 
 #endif //BOOST_THREAD_WRAP_H_78963234

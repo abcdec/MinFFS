@@ -19,7 +19,9 @@
 // **************************************************************************
 
 #include "dir_name.h"
+#ifdef TODO_MinFFS_UI
 #include <zen/thread.h>
+#endif//TODO_MinFFS_UI
 #include <zen/file_access.h>
 #include <wx/dnd.h>
 #include <wx/window.h>
@@ -205,11 +207,13 @@ void DirectoryName<NameControl>::onSelectDir(wxCommandEvent& event)
         const Zstring dirFmt = getFormattedDirectoryPath(toZ(getPath()));
         if (!dirFmt.empty())
         {
+#ifdef TODO_MinFFS_UI
             //convert to Zstring first: we don't want to pass wxString by value and risk MT issues!
             auto ft = async([=] { return zen::dirExists(dirFmt); });
 
             if (ft.timed_wait(boost::posix_time::milliseconds(200)) && ft.get()) //potentially slow network access: wait 200ms at most
                 defaultdirpath = utfCvrtTo<wxString>(dirFmt);
+#endif//TODO_MinFFS_UI
         }
     }
 
@@ -268,6 +272,7 @@ void DirectoryName<NameControl>::onSelectDir(wxCommandEvent& event)
 }
 
 
+//#ifdef TODO_MinFFS_GUICONFLICT
 template <class NameControl>
 wxString DirectoryName<NameControl>::getPath() const
 {
@@ -281,10 +286,10 @@ void DirectoryName<NameControl>::setPath(const wxString& dirpath)
     setDirectoryName(dirpath, &dirpath_, dirpath_, staticText_);
 }
 
-
 //explicit template instantiations
 namespace zen
 {
 template class DirectoryName<wxTextCtrl>;
 template class DirectoryName<FolderHistoryBox>;
 }
+//#endif//TODO_MinFFS2

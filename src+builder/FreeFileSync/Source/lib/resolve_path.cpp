@@ -1,3 +1,17 @@
+// **************************************************************************
+// * This file is modified from its original source file distributed by the *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
+// *                          --EXPERIMENTAL--                              *
+// * This program is experimental and not recommended for general use.      *
+// * Please consider using the original FreeFileSync program unless there   *
+// * are specific needs to use this experimental MinFFS version.            *
+// *                          --EXPERIMENTAL--                              *
+// * This modified program is distributed in the hope that it will be       *
+// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
+// * General Public License for more details.                               *
+// **************************************************************************
 #include "resolve_path.h"
 #include <set> //not necessarily included by <map>!
 #include <map>
@@ -178,7 +192,7 @@ private:
         addCsidl(CSIDL_TEMPLATES,        L"csidl_Templates");       // C:\Users\<user>\AppData\Roaming\Microsoft\Windows\Templates
         addCsidl(CSIDL_COMMON_TEMPLATES, L"csidl_PublicTemplates"); // C:\ProgramData\Microsoft\Windows\Templates
 
-#ifdef TODO_MinFFS
+#ifdef TODO_MinFFS2
         //Vista and later:
 	addFolderId(FOLDERID_Downloads,       L"csidl_Downloads");       // C:\Users\<user>\Downloads
         addFolderId(FOLDERID_PublicDownloads, L"csidl_PublicDownloads"); // C:\Users\Public\Downloads
@@ -225,7 +239,6 @@ std::unique_ptr<Zstring> getEnvironmentVar(const Zstring& envName) //return null
         endsWith  (value, L"\"") &&
         value.length() >= 2)
         value = wxString(value.c_str() + 1, value.length() - 2);
-
     return zen::make_unique<Zstring>(utfCvrtTo<Zstring>(value));
 }
 
@@ -333,14 +346,17 @@ Opt<Zstring> getPathByVolumenName(const Zstring& volumeName) //return no value o
     if (0 < rv && rv < bufferSize)
     {
         //search for matching path in parallel until first hit
+#ifdef TODO_MinFFS_UI // -----#####CULPRIT#CULPRIT#CULPRIT#CULPRIT#CULPRIT#-------------  WORKS with #ifdef
         GetFirstResult<Zstring> firstMatch;
-
+#endif//TODO_MinFFS_UI
         for (const wchar_t* it = &buffer[0]; *it != 0; it += strLength(it) + 1) //list terminated by empty c-string
         {
             const Zstring path = it;
 
+#ifdef TODO_MinFFS_UI // -----#####CULPRIT#CULPRIT#CULPRIT#CULPRIT#CULPRIT#-------------  WORKS with #ifdef
             firstMatch.addJob([path, volumeName]() -> std::unique_ptr<Zstring>
             {
+#ifdef TODO_MinFFSINNER // -----#####CULPRIT#CULPRIT#CULPRIT#CULPRIT#CULPRIT#-------------  Does not work.  issue seems to be firstMatch.addJob([path, volumeName]() -> std::unique_ptr<Zstring>
                 UINT type = ::GetDriveType(appendSeparator(path).c_str()); //non-blocking call!
                 if (type == DRIVE_REMOTE || type == DRIVE_CDROM)
                     return nullptr;
@@ -358,11 +374,15 @@ Opt<Zstring> getPathByVolumenName(const Zstring& volumeName) //return no value o
                 0))          //__in       DWORD nFileSystemNameSize
                     if (EqualFilename()(volumeName, Zstring(&volName[0])))
                         return zen::make_unique<Zstring>(path);
+#endif//TODO_MinFFS -----#####CULPRIT#CULPRIT#CULPRIT#CULPRIT#CULPRIT#-------------
                 return nullptr;
             });
+#endif//TODO_MinFFS -----#####CULPRIT#CULPRIT#CULPRIT#CULPRIT#CULPRIT#-------------
         }
+#ifdef TODO_MinFFS_UI
         if (auto result = firstMatch.get()) //blocks until ready
             return *result;
+#endif//TODO_MinFFS_UI
     }
 
     return NoValue();
@@ -397,7 +417,6 @@ Zstring getVolumeName(const Zstring& volumePath) //return empty string on error
 Zstring expandVolumeName(const Zstring& text)  // [volname]:\folder       [volname]\folder       [volname]folder     -> C:\folder
 {
     //this would be a nice job for a C++11 regex...
-
     //we only expect the [.*] pattern at the beginning => do not touch dir names like "C:\somedir\[stuff]"
     Zstring textTmp = text;
     trim(textTmp, true, false);
@@ -418,8 +437,10 @@ Zstring expandVolumeName(const Zstring& text)  // [volname]:\folder       [volna
             //[.*] pattern was found...
             if (!volname.empty())
             {
+#ifndef TODO_MinFFS // -----#####CULPRIT#CULPRIT#CULPRIT#CULPRIT#CULPRIT#-------------
                 if (Opt<Zstring> volPath = getPathByVolumenName(volname)) //may block for slow USB sticks!
                     return appendSeparator(*volPath) + rest; //successfully replaced pattern
+#endif//TODO_MinFFS -----#####CULPRIT#CULPRIT#CULPRIT#CULPRIT#CULPRIT#-------------
             }
             /*
             error: did not find corresponding volume name:
@@ -553,7 +574,6 @@ Zstring zen::getFormattedDirectoryPath(const Zstring& dirpassPhrase) // throw()
 
     dirpath = expandMacros(dirpath);
     dirpath = expandVolumeName(dirpath); //may block for slow USB sticks!
-
     /*
     need to resolve relative paths:
     WINDOWS:

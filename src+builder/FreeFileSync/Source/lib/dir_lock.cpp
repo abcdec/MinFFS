@@ -3,6 +3,20 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
+// **************************************************************************
+// * This file is modified from its original source file distributed by the *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
+// *                          --EXPERIMENTAL--                              *
+// * This program is experimental and not recommended for general use.      *
+// * Please consider using the original FreeFileSync program unless there   *
+// * are specific needs to use this experimental MinFFS version.            *
+// *                          --EXPERIMENTAL--                              *
+// * This modified program is distributed in the hope that it will be       *
+// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
+// * General Public License for more details.                               *
+// **************************************************************************
 #include "dir_lock.h"
 #include <utility>
 #include <wx/log.h>
@@ -59,7 +73,9 @@ public:
         {
             while (true)
             {
+#ifdef TODO_MinFFS_UI
                 boost::this_thread::sleep(boost::posix_time::seconds(EMIT_LIFE_SIGN_INTERVAL)); //interruption point!
+#endif//TODO_MinFFS_UI
 
                 //actual work
                 emitLifeSign(); //throw ()
@@ -487,7 +503,9 @@ void waitOnDirLock(const Zstring& lockfilepath, DirLockCallback* callback) //thr
             for (size_t i = 0; i < 1000 * POLL_LIFE_SIGN_INTERVAL / GUI_CALLBACK_INTERVAL; ++i)
             {
                 if (callback) callback->requestUiRefresh();
+#ifdef TODO_MinFFS_UI
                 boost::this_thread::sleep(boost::posix_time::milliseconds(GUI_CALLBACK_INTERVAL));
+#endif//TODO_MinFFS_UI
 
                 if (callback)
                 {
@@ -589,13 +607,17 @@ public:
         while (!::tryLock(lockfilepath))             //throw FileError
             ::waitOnDirLock(lockfilepath, callback); //
 
+#ifdef TODO_MinFFS_UI
         threadObj = boost::thread(LifeSigns(lockfilepath));
+#endif//TODO_MinFFS_UI
     }
 
     ~SharedDirLock()
     {
+#ifdef TODO_MinFFS_UI
         threadObj.interrupt(); //thread lifetime is subset of this instances's life
         threadObj.join(); //we assert precondition "threadObj.joinable()"!!!
+#endif//TODO_MinFFS_UI
 
         ::releaseLock(lockfilepath_); //throw ()
     }
@@ -605,7 +627,9 @@ private:
     SharedDirLock& operator=(const DirLock&) = delete;
 
     const Zstring lockfilepath_;
+#ifdef TODO_MinFFS_UI
     boost::thread threadObj;
+#endif//TODO_MinFFS_UI
 };
 
 

@@ -1704,7 +1704,9 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateGuiInt(bool allowYield)
             {
                 wxTheApp->Yield(); //receive UI message that end pause OR forceful termination!
                 //*first* refresh GUI (removing flicker) before sleeping!
+#ifdef TODO_MinFFS_UI
                 boost::this_thread::sleep(boost::posix_time::milliseconds(UI_UPDATE_INTERVAL));
+#endif//TODO_MinFFS_UI
             }
             //if SyncProgressDialogImpl::OnClose() already wxWindow::Destroy() on OS X then this instance is already toast!
             if (wereDead)
