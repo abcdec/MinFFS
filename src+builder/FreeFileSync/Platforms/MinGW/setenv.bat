@@ -1,3 +1,4 @@
 
-set PATH=C:\MinGW\bin;%PATH%
+set MINGW=C:\MinGW
 set WXWIN=C:\wxWidgets
+set PATH=%MINGW%\bin;%PATH%

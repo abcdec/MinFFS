@@ -2751,7 +2751,11 @@ void MainDialog::updateUnsavedCfgStatus()
         std::for_each(activeConfigFiles.begin() + 1, activeConfigFiles.end(), [&](const Zstring& filepath) { title += EM_DASH + xmlAccess::extractJobName(filepath); });
     }
     else
+#ifdef MinFFS
+        title += L"MinFFS (Modified FreeFileSync) - " + _("Folder Comparison and Synchronization");
+#else//MinFFS
         title += L"FreeFileSync - " + _("Folder Comparison and Synchronization");
+#endif//fMinFFS
 
     SetTitle(title);
 }

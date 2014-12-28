@@ -1,2 +1,4 @@
-del FreeFileSyncMod.exe
-build.bat
+
+@IF EXIST bin-debug rmdir bin-debug /S/Q
+
+

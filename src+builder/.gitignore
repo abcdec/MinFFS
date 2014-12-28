@@ -1,0 +1,5 @@
+/bin-debug/
+/bin-release/
+.o
+.exe
+cscope.out

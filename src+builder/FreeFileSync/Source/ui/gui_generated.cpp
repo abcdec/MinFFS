@@ -4,6 +4,20 @@
 //
 // PLEASE DO "NOT" EDIT THIS FILE!
 ///////////////////////////////////////////////////////////////////////////
+// **************************************************************************
+// * This file is modified from its original source file distributed by the *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
+// *                          --EXPERIMENTAL--                              *
+// * This program is experimental and not recommended for general use.      *
+// * Please consider using the original FreeFileSync program unless there   *
+// * are specific needs to use this experimental MinFFS version.            *
+// *                          --EXPERIMENTAL--                              *
+// * This modified program is distributed in the hope that it will be       *
+// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
+// * General Public License for more details.                               *
+// **************************************************************************
 
 #include "folder_history_box.h"
 #include "on_completion_box.h"
@@ -3377,7 +3391,7 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     wxBoxSizer* bSizer186;
     bSizer186 = new wxBoxSizer( wxVERTICAL );
 
-    m_staticText94 = new wxStaticText( m_panel41, wxID_ANY, _("Feedback and suggestions are welcome"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText94 = new wxStaticText( m_panel41, wxID_ANY, _("NO WARRANTY: This program is modified from original FreeFileSync. See:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText94->Wrap( -1 );
     bSizer186->Add( m_staticText94, 0, wxALL, 5 );
 
@@ -3392,7 +3406,7 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
 
     bSizer166->Add( m_bitmap9, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 5 );
 
-    m_hyperlink1 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("FreeFileSync.org"), wxT("http://www.freefilesync.org/"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink1 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("MinFFS @GitHub"), wxT("https://github.com/abcdec/MinFFS"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
     m_hyperlink1->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), 70, 90, 92, true, wxEmptyString ) );
     m_hyperlink1->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 
@@ -3406,7 +3420,7 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
 
     bSizer166->Add( m_bitmap10, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 5 );
 
-    m_hyperlink2 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("zenju@gmx.de"), wxT("mailto:zenju@gmx.de"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
+    m_hyperlink2 = new wxHyperlinkCtrl( m_panel41, wxID_ANY, _("Submit issues @GitHub"), wxT("https://github.com/abcdec/MinFFS/issues"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
     m_hyperlink2->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), 70, 90, 92, true, wxEmptyString ) );
     m_hyperlink2->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 
