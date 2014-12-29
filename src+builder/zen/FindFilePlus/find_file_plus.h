@@ -56,6 +56,21 @@ namespace findplus
 	DWORD dwFileAttributes;
 	DWORD reparseTag;
     };
+
+#ifdef TODO_MinFFS
+    typedef FindHandle (*FunType_openDir)(TODO);
+    typedef FindHandle (*FunType_readDir)(TODO);
+    typedef FindHandle (*FunType_closeDir)(TODO);
+
+    const std::string funName_openDir = "openDir";
+    const std::string funName_readDir = "readDir";
+    const std::string funName_closeDir = "closeDir";
+
+//TODO_MinFFS need real DLL name
+    inline std::wstring getDllName() {
+	return L"TODO.dll";
+    };
+#endif
 }
 
 #endif//DLL_FINDFILEPLUS_FILE_OPFIND_FILE_PLUS_H_INCLUDED
