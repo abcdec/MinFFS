@@ -1,5 +1,6 @@
-/bin-debug/
-/bin-release/
-.o
-.exe
+bin-debug
+bin-release
+*.o
+*.exe
+*.swp
 cscope.out
