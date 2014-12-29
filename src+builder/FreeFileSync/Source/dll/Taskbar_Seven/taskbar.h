@@ -44,9 +44,10 @@ namespace tbseven
     const std::string funName_setProgress = "SetProgress";
 
     inline std::wstring getDllName() {
-	return L"MinFFS_Taskbar.dll";
+	return L"Taskbar7_win32.dll";
+	//return L"Taskbar7_x64.dll";
+	
     };
-
 }
 
 #endif//DLL_TASKBAR_SEVEN_TASKBAR_H_INCLUDED

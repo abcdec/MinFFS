@@ -17,64 +17,32 @@
 // * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
 // * General Public License for more details.                               *
 // **************************************************************************
-
-#ifndef DLL_FINDFILEPLUS_FILE_OPFIND_FILE_PLUS_H_INCLUDED
-#define DLL_FINDFILEPLUS_FILE_OPFIND_FILE_PLUS_H_INCLUDED
+#ifndef DLL_SHADOW_COPY_H_INCLUDED
+#define DLL_SHADOW_COPY_H_INCLUDED
 // The original FreeFileSync source distribution does not come with this
 // file, although it appeared this file is required to build properly.
 // Thus it was recreated from its usage context.
 
-#include "zen/file_id_def.h"
-#include "Zstring.h"
 
-namespace findplus
-{
-    struct FindHandle {
-    public:
-	FindHandle();
-	~FindHandle();
-    };
-    struct DirHandle {
-    public:
-	DirHandle();
-	~DirHandle();
-    };
-    struct FileInformation {
-    public:
-	FileInformation();
-	~FileInformation();
+namespace shadowCopy {
+    typedef void (*FunType_createShadowCopy)();
+    typedef void (*FunType_getLastErrorMessage)();
+    typedef void (*FunType_getShadowVolume)();
+    typedef void (*FunType_releaseShadowCopy)();
 
-        std::uint64_t fileSize;
-        FILETIME lastWriteTime;
-        FILETIME creationTime;
-        wchar_t *shortName;
-	DWORD fileAttributes;
-	std::int16_t fileId;
+    const std::string funName_createShadowCopy = "createShadowCopy";
+    const std::string funName_getLastErrorMessage = "getLastErrorMessage";
+    const std::string funName_getShadowVolume = "getShadowVolume";
+    const std::string funName_releaseShadowCopy = "releaseShadowCopy";
 
-        FILETIME ftLastWriteTime;
-        FILETIME ftCreationTime;
-	std::wstring cFileName;
-	DWORD dwFileAttributes;
-	DWORD reparseTag;
-    };
-
-    typedef DirHandle (*FunType_openDir)(Ztring);
-    typedef vector<FileInformation> (*FunType_readDir)(DirHandle);
-    typedef void (*FunType_closeDir)(DirHandle);
-
-    const std::string funName_openDir = "openDir";
-    const std::string funName_readDir = "readDir";
-    const std::string funName_closeDir = "closeDir";
-
-//TODO_MinFFS need real DLL name
     inline std::wstring getDllName() {
-#ifdef TODO_MinFFS
-	return L"FindFilePlus_Win32.dll";	
-	//return L"FindFilePlus_x64.dll";
-#else//TODO_MinFFS
-	return L"Dummy_FindFilePlus.dll";
-#endif//TODO_MinFFS
+	//return L"Shadow_Server2003_Win32.dll";
+	//return L"Shadow_Server2003_x64.dll";
+	return L"Shadow_Windows7_Win32.dll";
+	//return L"Shadow_Windows7_x64.dll";
+	//return L"Shadow_XP_Win32.dll";
+	//return L"Shadow_XP_x64.dll";
     };
 }
 
-#endif//DLL_FINDFILEPLUS_FILE_OPFIND_FILE_PLUS_H_INCLUDED
+#endif//DLL_SHADOW_COPY_H_INCLUDED

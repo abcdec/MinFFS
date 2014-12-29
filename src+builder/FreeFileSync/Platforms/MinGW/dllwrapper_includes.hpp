@@ -21,6 +21,13 @@
 #define MINFFS_DLLWRAPPER_INCLUDES_HPP_INCLUDED
 
 #include <windows.h>
+#include <string>
+#include <iostream>
+#include "zen/FindFilePlus/find_file_plus.h"
+#include "zen/IFileOperation/file_op.h"
+#include "FreeFileSync/Source/dll/IFileDialog_Vista/ifile_dialog.h"
 #include "FreeFileSync/Source/dll/Taskbar_Seven/taskbar.h"
+#include "FreeFileSync/Source/dll/Thumbnail/thumbnail.h"
+#include "FreeFileSync/Source/dll/ShadowCopy/shadow_copy.h"
 
 #endif//MINFFS_DLLWRAPPER_INCLUDES_HPP_INCLUDED

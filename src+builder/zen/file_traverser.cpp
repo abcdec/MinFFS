@@ -3,20 +3,6 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
-// **************************************************************************
-// * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
-// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
-// *                          --EXPERIMENTAL--                              *
-// * This program is experimental and not recommended for general use.      *
-// * Please consider using the original FreeFileSync program unless there   *
-// * are specific needs to use this experimental MinFFS version.            *
-// *                          --EXPERIMENTAL--                              *
-// * This modified program is distributed in the hope that it will be       *
-// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
-// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
-// * General Public License for more details.                               *
-// **************************************************************************
 
 #include "file_traverser.h"
 #include "sys_error.h"
@@ -154,14 +140,12 @@ DWORD retrieveVolumeSerial(const Zstring& pathName) //returns 0 on error or if s
 }
 
 
-#ifdef TODO_MinFFS
 const bool isXpOrLater = winXpOrLater(); //VS2010 compiled DLLs are not supported on Win 2000: Popup dialog "DecodePointer not found"
 
 #define DEF_DLL_FUN(name) const auto name = isXpOrLater ? DllFun<findplus::FunType_##name>(findplus::getDllName(), findplus::funName_##name) : DllFun<findplus::FunType_##name>();
 DEF_DLL_FUN(openDir);   //
 DEF_DLL_FUN(readDir);   //load at startup: avoid pre C++11 static initialization MT issues
 DEF_DLL_FUN(closeDir);  //
-#endif//TODO_MinFFS
     
 /*
 Common C-style interface for Win32 FindFirstFile(), FindNextFile() and FileFilePlus openDir(), closeDir():
@@ -285,28 +269,17 @@ struct FilePlusTraverser
 
     static DirHandle create(const Zstring& dirpath) //throw FileError
     {
-#ifdef TODO_MinFFS
         const findplus::FindHandle hnd = ::openDir(applyLongPathPrefix(dirpath).c_str());
         if (!hnd)
             throwFileError(replaceCpy(_("Cannot open directory %x."), L"%x", fmtFileName(dirpath)), L"openDir", getLastError());
 
         return DirHandle(hnd);
-#else//TODO_MinFFS
-	const findplus::FindHandle hnd;
-	return DirHandle(hnd);
-#endif//TODO_MinFFS
     }
 
-#ifdef TODO_MinFFS
     static void destroy(DirHandle hnd) { ::closeDir(hnd.searchHandle); } //throw()
-#else//TODO_MinFFS
-    static void destroy(DirHandle hnd) {  } //throw()
-#endif//TODO_MinFFS
-
 
     static bool getEntry(DirHandle hnd, const Zstring& dirpath, FindData& fileInfo) //throw FileError, NeedFallbackToWin32Traverser
     {
-#ifdef TODO_MinFFS
         if (!::readDir(hnd.searchHandle, fileInfo))
         {
             const DWORD lastError = ::GetLastError(); //copy before directly or indirectly making other system calls!
@@ -324,7 +297,6 @@ struct FilePlusTraverser
             //else we have a problem... report it:
             throwFileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtFileName(dirpath)), L"readDir", lastError);
         }
-#endif//TODO_MinfFFS
         return true;
     }
 
@@ -395,7 +367,6 @@ void DirTraverser::traverse<FilePlusTraverser>(const Zstring& dirpath, TraverseC
 inline
 DirTraverser::DirTraverser(const Zstring& baseDirectory, TraverseCallback& sink)
 {
-#ifdef TODO_MinFFS
     try //traversing certain folders with restricted permissions requires this privilege! (but copying these files may still fail)
     {
         activatePrivilege(SE_BACKUP_NAME); //throw FileError
@@ -406,7 +377,6 @@ DirTraverser::DirTraverser(const Zstring& baseDirectory, TraverseCallback& sink)
         traverse<FilePlusTraverser>(baseDirectory, sink, retrieveVolumeSerial(baseDirectory)); //retrieveVolumeSerial returns 0 on error
     else //fallback
         traverse<Win32Traverser>(baseDirectory, sink, 0);
-#endif//TODO_MinFFS
 }
 
 

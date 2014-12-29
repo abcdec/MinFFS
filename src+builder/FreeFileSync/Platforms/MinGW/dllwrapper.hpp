@@ -50,6 +50,41 @@ public:
 	return (functionPtr_ != functionPtrIn);
     };
     
+    // =================================================================================
+    // zen/FindFilePlus/find_file_plus.h
+    inline findplus::DirHandle operator()(Ztring pathNameIn) {
+	return functionPtr_(pathNameIn);
+    };
+    typedef vector<FileInformation> (*FunType_readDir)(DirHandle);
+    typedef void (*FunType_closeDir)(DirHandle);
+
+
+
+    // =================================================================================
+    // zen/IFileOperation/file_op.h
+
+
+    // =================================================================================
+    // FreeFileSync/Source/dll/IFileDialog_Vista/ifile_dialog.h
+
+
+    // =================================================================================
+    // FreeFileSync/Source/dll/Taskbar_Seven/taskbar.h
+
+    // FreeFileSync/Source/dll/Taskbar_Seven/taskbar.h : FunType_setStatus
+    inline void operator()(void* winHandleIn, tbseven::TaskBarStatus taskBarStatusIn) {
+	functionPtr_(winHandleIn, taskBarStatusIn);
+    };
+
+    // FreeFileSync/Source/dll/Taskbar_Seven/taskbar.h : FunType_setProgress
+    inline void operator()(void* winHandleIn, double a, double b) {
+	functionPtr_(winHandleIn, a, b);
+    };
+
+
+    // =================================================================================
+    // FreeFileSync/Source/dll/Thumbnail/thumbnail.h
+    
     // FolderPicker FreeString
     inline void operator()(wchar_t* arg1In) const {
 	functionPtr_(arg1In);
@@ -64,22 +99,18 @@ public:
 		     selectedFolderOut, cancelledOut, errorMsgOut);
     };
 
-    // FreeFileSync/Source/dll/Taskbar_Seven/taskbar.h : FunType_setStatus
-    inline void operator()(void* winHandleIn, tbseven::TaskBarStatus taskBarStatusIn) {
-	functionPtr_(winHandleIn, taskBarStatusIn);
-    };
-
-    // FreeFileSync/Source/dll/Taskbar_Seven/taskbar.h : FunType_setProgress
-    inline void operator()(void* winHandleIn, double a, double b) {
-	functionPtr_(winHandleIn, a, b);
-    };
-
-
     inline typename std::result_of<T> operator()() const {return functionPtr_();};
     
     inline typename std::result_of<T> operator()(unsigned int n) const {return functionPtr_(n);};
     
 
+    // =================================================================================
+    // FreeFileSync/Source/dll/ShadowCopy/shadow_copy.h
+    inline void operator()() {
+	functionPtr_();
+    };
+    
+    
 private:
     T functionPtr_;
     HMODULE moduleHandle_;

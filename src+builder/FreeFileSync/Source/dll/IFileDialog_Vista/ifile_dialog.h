@@ -44,7 +44,8 @@ namespace ifile {
 
 //TODO_MinFFS need real DLL name
     inline std::wstring getDllName() {
-	return L"ifile.dll";
+	return L"IFileDialog_Vista_Win32.dll";
+	//return L"IFileDialog_Vista_x64.dll";
     };
 
 }

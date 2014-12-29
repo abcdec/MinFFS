@@ -50,12 +50,13 @@ namespace thumb {
     typedef wxImage (*FunType_getThumbnail)(size_t userIndex);
     typedef void (*FunType_releaseImageData)(ImageData *ptrIn);
 
-    const std::string funName_getIconByIndex = "GetIconByIndex";
+    const std::string funName_getIconByIndex = "getIconByIndex";
     const std::string funName_getThumbnail = "getThumbnail";
     const std::string funName_releaseImageData = "releaseImageData";
 
     inline std::wstring getDllName() {
-	return L"todo.dll";
+	return L"Thumbnail_Win32.dll";
+	//return L"Thumbnail_x64.dll";
     };
 
 }

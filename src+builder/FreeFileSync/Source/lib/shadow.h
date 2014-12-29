@@ -23,6 +23,8 @@
 // file, although it appeared this file is required to build properly.
 // Thus it was recreated from its usage context.
 
-// TODO_MinFFS
+
+namespace shadow {
+}
 
 #endif//LIB_SHADOW_H_INCLUDED
