@@ -96,11 +96,9 @@ void zen::recycleOrDelete(const std::vector<Zstring>& itempaths, const std::func
 
     if (vistaOrLater()) //new recycle bin usage: available since Vista
     {
-#ifdef TODO_MinFFS
 #define DEF_DLL_FUN(name) const DllFun<fileop::FunType_##name> name(fileop::getDllName(), fileop::funName_##name);
         DEF_DLL_FUN(moveToRecycleBin);
         DEF_DLL_FUN(getLastErrorMessage);
-#undef DEF_DLL_FUN
 
         if (!moveToRecycleBin || !getLastErrorMessage)
             throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtFileName(itempaths[0])),
@@ -122,7 +120,6 @@ void zen::recycleOrDelete(const std::vector<Zstring>& itempaths, const std::func
 
             throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", itempathFmt), getLastErrorMessage()); //already includes details about locking errors!
         }
-#endif//TODO_MinFFS
     }
     else //regular recycle bin usage: available since XP
     {
@@ -251,7 +248,6 @@ bool zen::recycleBinExists(const Zstring& pathName, const std::function<void ()>
 {
     if (vistaOrLater())
     {
-#ifdef TODO_MinFFS
         using namespace fileop;
 	const DllFun<FunType_getRecycleBinStatus> getRecycleBinStatus(getDllName(), funName_getRecycleBinStatus);
         const DllFun<FunType_getLastErrorMessage> getLastErrorMessage(getDllName(), funName_getLastErrorMessage);
@@ -259,13 +255,11 @@ bool zen::recycleBinExists(const Zstring& pathName, const std::function<void ()>
         if (!getRecycleBinStatus || !getLastErrorMessage)
             throw FileError(replaceCpy(_("Checking recycle bin failed for folder %x."), L"%x", fmtFileName(pathName)),
                             replaceCpy(_("Cannot load file %x."), L"%x", fmtFileName(getDllName())));
-#endif//TODO_MinFFS
 	
         bool hasRecycler = false;
-#ifdef TODO_MinFFS
         if (!getRecycleBinStatus(pathName.c_str(), hasRecycler))
             throw FileError(replaceCpy(_("Checking recycle bin failed for folder %x."), L"%x", fmtFileName(pathName)), getLastErrorMessage());
-#endif//TODO_MinFFS
+
         return hasRecycler;
     }
     else

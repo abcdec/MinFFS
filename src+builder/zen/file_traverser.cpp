@@ -269,7 +269,11 @@ struct FilePlusTraverser
 
     static DirHandle create(const Zstring& dirpath) //throw FileError
     {
+#ifdef TODO_MinFFS
         const findplus::FindHandle hnd = ::openDir(applyLongPathPrefix(dirpath).c_str());
+#else//TODO_MinFFS
+        const findplus::FindHandle hnd = ::openDir(applyLongPathPrefix(dirpath));
+#endif//TODO_MinFFS
         if (!hnd)
             throwFileError(replaceCpy(_("Cannot open directory %x."), L"%x", fmtFileName(dirpath)), L"openDir", getLastError());
 
@@ -280,7 +284,7 @@ struct FilePlusTraverser
 
     static bool getEntry(DirHandle hnd, const Zstring& dirpath, FindData& fileInfo) //throw FileError, NeedFallbackToWin32Traverser
     {
-        if (!::readDir(hnd.searchHandle, fileInfo))
+	if (!::readDir(hnd.searchHandle, fileInfo))
         {
             const DWORD lastError = ::GetLastError(); //copy before directly or indirectly making other system calls!
             if (lastError == ERROR_NO_MORE_FILES) //not an error situation
@@ -369,7 +373,9 @@ DirTraverser::DirTraverser(const Zstring& baseDirectory, TraverseCallback& sink)
 {
     try //traversing certain folders with restricted permissions requires this privilege! (but copying these files may still fail)
     {
-        activatePrivilege(SE_BACKUP_NAME); //throw FileError
+#ifdef TODO_MInGW
+    activatePrivilege(SE_BACKUP_NAME); //throw FileError
+#endif
     }
     catch (FileError&) {} //don't cause issues in user mode
 

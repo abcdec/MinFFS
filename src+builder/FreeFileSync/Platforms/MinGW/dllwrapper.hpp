@@ -42,53 +42,60 @@ public:
     
     ~DllFun() {if (moduleHandle_) FreeLibrary(moduleHandle_);};
     
-    inline operator bool() const {
+    inline operator bool () const {
 	return (functionPtr_ != nullptr);
     };
-    
     inline bool operator!=(T functionPtrIn) const {
 	return (functionPtr_ != functionPtrIn);
     };
     
     // =================================================================================
     // zen/FindFilePlus/find_file_plus.h
-    inline findplus::DirHandle operator()(Ztring pathNameIn) {
+
+    // zen/FindFilePlus/find_file_plus.h : openDir
+    inline findplus::FindHandle operator()(Zstring pathNameIn) const {
 	return functionPtr_(pathNameIn);
     };
-    typedef vector<FileInformation> (*FunType_readDir)(DirHandle);
-    typedef void (*FunType_closeDir)(DirHandle);
-
+    // zen/FindFilePlus/find_file_plus.h : readDir
+    inline bool operator()(findplus::FindHandle findHandleIn, findplus::FileInformation& findDataIn) const {
+	return functionPtr_(findHandleIn, findDataIn);
+    };
+    // zen/FindFilePlus/find_file_plus.h : closeDir()
+    inline void operator()(findplus::FindHandle findHandleIn) const {
+	functionPtr_(findHandleIn);
+    };
 
 
     // =================================================================================
     // zen/IFileOperation/file_op.h
 
+    // zen/IFileOperation/file_op.h : freeString
+    // NOTE: Definition conflict with zen/IFileOperation/file_op.h : getLockingProcesses
+    // use fileop::getLastErrorMessage one as it is luckily compatible. (also return
+    // value shoud be void but for now keep wchar_t*)
+    // inline wchar_t* operator()(const wchar_t*) const { return functionPtr_(); };
+
+    // zen/IFileOperation/file_op.h : getLastErrorMessage
+    inline wchar_t* operator()() const { return functionPtr_(); };
+    // zen/IFileOperation/file_op.h : getLockingProcesses
+    inline wchar_t* operator()(const wchar_t*a) const { return functionPtr_(a); };
+    // zen/IFileOperation/file_op.h : getRecycleBinStatus
+    inline bool operator()(const wchar_t *a, bool &b) const { return functionPtr_(a, b); };
+    // zen/IFileOperation/file_op.h : moveToRecycleBin
+    inline bool operator()(const wchar_t**a, std::vector<const wchar_t*>::size_type b,
+			   bool (&c)(const wchar_t*, void *), void *d) const {
+	return functionPtr_(a, b, c, d);
+    };
+
 
     // =================================================================================
     // FreeFileSync/Source/dll/IFileDialog_Vista/ifile_dialog.h
 
-
-    // =================================================================================
-    // FreeFileSync/Source/dll/Taskbar_Seven/taskbar.h
-
-    // FreeFileSync/Source/dll/Taskbar_Seven/taskbar.h : FunType_setStatus
-    inline void operator()(void* winHandleIn, tbseven::TaskBarStatus taskBarStatusIn) {
-	functionPtr_(winHandleIn, taskBarStatusIn);
-    };
-
-    // FreeFileSync/Source/dll/Taskbar_Seven/taskbar.h : FunType_setProgress
-    inline void operator()(void* winHandleIn, double a, double b) {
-	functionPtr_(winHandleIn, a, b);
-    };
-
-
-    // =================================================================================
-    // FreeFileSync/Source/dll/Thumbnail/thumbnail.h
-    
     // FolderPicker FreeString
-    inline void operator()(wchar_t* arg1In) const {
-	functionPtr_(arg1In);
-    };
+    // NOTE: Definition conflict with zen/IFileOperation/file_op.h : getLockingProcesses
+    // use fileop::getLastErrorMessage one as it is luckily compatible. (also return
+    // value shoud be void but for now keep wchar_t*)
+    // inline wchar_t* operator()(const wchar_t*a) const { return functionPtr_(a); };
 
     // FolderPicker FolderPicker
     typedef char GuidProxy[16];
@@ -98,19 +105,37 @@ public:
 	functionPtr_(winHandleIn, defaultDirPathIn, guidIn,
 		     selectedFolderOut, cancelledOut, errorMsgOut);
     };
+    
+    // =================================================================================
+    // FreeFileSync/Source/dll/Taskbar_Seven/taskbar.h
 
-    inline typename std::result_of<T> operator()() const {return functionPtr_();};
-    
-    inline typename std::result_of<T> operator()(unsigned int n) const {return functionPtr_(n);};
-    
+    // FreeFileSync/Source/dll/Taskbar_Seven/taskbar.h : setStatus
+    inline void operator()(void* winHandleIn, tbseven::TaskBarStatus taskBarStatusIn) {
+	functionPtr_(winHandleIn, taskBarStatusIn);
+    };
+
+    // FreeFileSync/Source/dll/Taskbar_Seven/taskbar.h : setProgress
+    inline void operator()(void* winHandleIn, double a, double b) {
+	functionPtr_(winHandleIn, a, b);
+    };
+
 
     // =================================================================================
-    // FreeFileSync/Source/dll/ShadowCopy/shadow_copy.h
-    inline void operator()() {
-	functionPtr_();
+    // FreeFileSync/Source/dll/Thumbnail/thumbnail.h
+
+    // FreeFileSync/Source/dll/Thumbnail/thumbnail.h : getIconByIndex
+    inline thumb::ImageData* operator()(int indexForShellIconIn, thumb::IconSizeType iconSizeTypeIn) const {
+	return functionPtr_(indexForShellIconIn, iconSizeTypeIn);
     };
-    
-    
+    // FreeFileSync/Source/dll/Thumbnail/thumbnail.h : getThumbnail
+    inline thumb::ImageData* operator()(const wchar_t *iconFilePath, int& sizeIn) const {
+	return functionPtr_(iconFilePath, sizeIn);
+    };
+    //  FreeFileSync/Source/dll/Thumbnail/thumbnail.h : releaseImageData
+    inline void operator()(const thumb::ImageData *imgeDataPtrIn) const {
+	functionPtr_(imgeDataPtrIn);
+    };
+
 private:
     T functionPtr_;
     HMODULE moduleHandle_;

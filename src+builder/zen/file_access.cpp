@@ -131,7 +131,6 @@ bool zen::somethingExists(const Zstring& objname)
 
 namespace
 {
-#ifdef ZEN_WIN
 //fast ::GetVolumePathName() clone: let's hope it's not too simple (doesn't honor mount points)
 Zstring getVolumeNameFast(const Zstring& filepath)
 {
@@ -199,7 +198,6 @@ bool isFatDrive(const Zstring& filepath) //throw()
 //(try to) enhance error messages by showing which processes lock the file
 Zstring getLockingProcessNames(const Zstring& filepath) //throw(), empty string if none found or error occurred
 {
-#ifdef TODO_MinFFS
     if (vistaOrLater())
     {
 	using namespace fileop;
@@ -213,10 +211,8 @@ Zstring getLockingProcessNames(const Zstring& filepath) //throw(), empty string 
                 return procList;
             }
     }
-#endif//TODO_MinFFS
     return Zstring();
 }
-#endif
 }
 
 

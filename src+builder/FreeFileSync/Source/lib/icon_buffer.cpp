@@ -85,11 +85,7 @@ public:
     {
         if (handle_ != nullptr)
 #ifdef ZEN_WIN
-#ifdef TODO_MInFFS
 	    releaseImageData(handle_); //should be checked already before creating IconHolder!
-#else//TODO_MinFFS
-	{}
-#endif//TODO_MinFFS
 #elif defined ZEN_LINUX
             ::g_object_unref(handle_); //superseedes "::gdk_pixbuf_unref"!
 #elif defined ZEN_MAC
@@ -200,10 +196,8 @@ IconHolder getIconByAttribute(LPCWSTR pszPath, DWORD dwFileAttributes, IconBuffe
     if (!imgList) //no need to IUnknown::Release() imgList!
         return IconHolder();
 
-#ifdef TODO_MinFFS
     if (getIconByIndex && releaseImageData)
         return IconHolder(getIconByIndex(fileInfo.iIcon, getThumbSizeType(sz)));
-#endif // TODO_MinFFS
 
     return IconHolder();
 }
@@ -275,10 +269,8 @@ bool zen::hasLinkExtension(const Zstring& filepath)
 IconHolder getThumbnailImage(const Zstring& filepath, int requestedSize) //return 0 on failure
 {
 #ifdef ZEN_WIN
-#ifdef TODO_MinFFS
     if (getThumbnail && releaseImageData)
         return IconHolder(getThumbnail(filepath.c_str(), requestedSize));
-#endif // TODO_MinFFS
 
 #elif defined ZEN_LINUX
     gint width  = 0;
@@ -387,11 +379,9 @@ IconHolder getAssociatedIcon(const Zstring& filepath, IconBuffer::IconSize sz)
         //Check for link icon type (= shell links and symlinks): SHGetFileInfo + SHGFI_ATTRIBUTES:
         //const bool isLink = (fileInfo.dwAttributes & SFGAO_LINK) != 0;
 
-#ifdef TODO_MinFFS
         if (getIconByIndex && releaseImageData)
             if (const thumb::ImageData* imgData = getIconByIndex(fileInfo.iIcon, getThumbSizeType(sz)))
                 return IconHolder(imgData);
-#endif//TODO_MinFFS
     }
 
 #elif defined ZEN_LINUX

@@ -3,20 +3,6 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
-// **************************************************************************
-// * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
-// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
-// *                          --EXPERIMENTAL--                              *
-// * This program is experimental and not recommended for general use.      *
-// * Please consider using the original FreeFileSync program unless there   *
-// * are specific needs to use this experimental MinFFS version.            *
-// *                          --EXPERIMENTAL--                              *
-// * This modified program is distributed in the hope that it will be       *
-// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
-// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
-// * General Public License for more details.                               *
-// **************************************************************************
 
 #include "localization.h"
 #include <unordered_map>
@@ -204,23 +190,10 @@ ExistingTranslations::ExistingTranslations()
     //search language files available
     std::vector<Zstring> lngFiles;
 
-#ifdef MinFFS
-    std::wstring langFileDir((zen::getResourceDir() + Zstr("Languages")).c_str());
-    WIN32_FIND_DATA fileData;
-    HANDLE dirHandle = ::FindFirstFile((langFileDir + L"\\*.lng").c_str(), &fileData);
-    if (dirHandle != INVALID_HANDLE_VALUE) {
-	do {
-	    std::wstring fileName(fileData.cFileName);
-	    Zstring filePath(langFileDir + L"\\" + fileName);
-	    lngFiles.push_back(filePath);
-	} while (::FindNextFile(dirHandle, &fileData));
-    }
-#else//MinFFS
     FindLngfiles traverseCallback(lngFiles);
 
     traverseFolder(zen::getResourceDir() +  Zstr("Languages"), //throw();
                    traverseCallback);
-#endif//MinFFS
 
     for (const Zstring& filepath : lngFiles)
     {
