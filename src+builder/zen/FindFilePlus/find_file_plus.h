@@ -25,24 +25,25 @@
 // Thus it was recreated from its usage context.
 
 #include "zen/file_id_def.h"
-#include "Zstring.h"
+#include "zen/Zstring.h"
 
 namespace findplus
 {
     struct FindHandle {
     public:
-	FindHandle();
-	~FindHandle();
-    };
-    struct DirHandle {
-    public:
-	DirHandle();
-	~DirHandle();
+	FindHandle() : handle_(0) {};
+	~FindHandle() {};
+	inline bool operator!() const {
+	    return (handle_ != 0);
+	};
+    private:
+	int handle_;
+	
     };
     struct FileInformation {
     public:
-	FileInformation();
-	~FileInformation();
+	FileInformation() {};
+	~FileInformation() {};
 
         std::uint64_t fileSize;
         FILETIME lastWriteTime;
@@ -58,9 +59,9 @@ namespace findplus
 	DWORD reparseTag;
     };
 
-    typedef DirHandle (*FunType_openDir)(Ztring);
-    typedef vector<FileInformation> (*FunType_readDir)(DirHandle);
-    typedef void (*FunType_closeDir)(DirHandle);
+    typedef FindHandle (*FunType_openDir)(Zstring);
+    typedef bool (*FunType_readDir)(FindHandle, FileInformation&);
+    typedef void (*FunType_closeDir)(FindHandle);
 
     const std::string funName_openDir = "openDir";
     const std::string funName_readDir = "readDir";

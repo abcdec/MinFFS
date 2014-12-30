@@ -46,19 +46,22 @@ namespace thumb {
 	ICON_SIZE_128
     } IconSizeType;
 
-    typedef wxImage (*FunType_getIconByIndex)(size_t userIndex);
-    typedef wxImage (*FunType_getThumbnail)(size_t userIndex);
-    typedef void (*FunType_releaseImageData)(ImageData *ptrIn);
+    typedef ImageData* (*FunType_getIconByIndex)(int indexForShellIconIn, IconSizeType iconSizeTypeIn);
+    typedef ImageData* (*FunType_getThumbnail)(const wchar_t *iconFilePath, int& sizeIn);
+    typedef void (*FunType_releaseImageData)(const ImageData *imgeDataPtrIn);
 
     const std::string funName_getIconByIndex = "getIconByIndex";
     const std::string funName_getThumbnail = "getThumbnail";
     const std::string funName_releaseImageData = "releaseImageData";
 
     inline std::wstring getDllName() {
+#ifdef TODO_MInGW
 	return L"Thumbnail_Win32.dll";
 	//return L"Thumbnail_x64.dll";
+#else//TODO_MinGW
+	return L"Dummy_Thumbnail.dll";
+#endif//TODO_MinGW
     };
-
 }
 
 #endif//DLL_THUMBNAIL_THUMBNAIL_H_INCLUDED

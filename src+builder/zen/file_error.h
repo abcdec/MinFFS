@@ -54,6 +54,7 @@ std::wstring operator+(const std::wstring& lhs, const Zstring& rhs) { return std
 //we musn't put our overloads in namespace std, but namespace zen (+ using directive) is sufficient
 
 
+    
 inline
 std::wstring fmtFileName(const Zstring& filepath)
 {
@@ -63,6 +64,15 @@ std::wstring fmtFileName(const Zstring& filepath)
     output += L'\"';
     return output;
 }
+
+#ifdef MinFFS
+inline
+std::wstring fmtFileName(const std::wstring& filepath)
+{
+    Zstring zstringFilePath(filepath);
+    return fmtFileName(zstringFilePath);
+}    
+#endif
 }
 
 #endif //FILEERROR_H_INCLUDED_839567308565656789

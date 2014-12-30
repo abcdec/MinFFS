@@ -31,21 +31,28 @@ namespace ifile {
 
     typedef char GuidProxy[16];
 
+    // freeString should actually be void, but making it to be the sam as
+    // zen/IFileOperation/file_op.h : getLockingProcesses in order to make
+    // funciton object work. keep this until a better solution is found...
+    typedef wchar_t *(*FunType_freeString)(const wchar_t *freeStringPtr);
     typedef void (*FunType_showFolderPicker)(HWND winHandleIn,
 					     const wchar_t* defaultDirPathIn,
 					     const GuidProxy* guidIn,
 					     wchar_t* &selectedFolderOut,
 					     bool &cancelledOut,
 					     wchar_t* &errorMsgOut);
-    typedef void (*FunType_freeString)(wchar_t *freeStringPtr);
 
-    const std::string funName_showFolderPicker = "ShowFolderPicker";
-    const std::string funName_freeString = "FreeString";
+    const std::string funName_freeString = "freeString";
+    const std::string funName_showFolderPicker = "showFolderPicker";
 
 //TODO_MinFFS need real DLL name
     inline std::wstring getDllName() {
+#ifdef TODO_MinFFS
 	return L"IFileDialog_Vista_Win32.dll";
 	//return L"IFileDialog_Vista_x64.dll";
+#else//TODO_MinFFS
+	return L"Dummy_IFileDialog_Vista.dll";
+#endif//TODO_MinFFS
     };
 
 }

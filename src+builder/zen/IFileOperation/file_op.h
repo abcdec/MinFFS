@@ -24,7 +24,36 @@
 // file, although it appeared this file is required to build properly.
 // Thus it was recreated from its usage context.
 
-// dummy
+namespace fileop
+{
+    // freeString should actually be void, but making it to be the sam as
+    // getLockingProcesses in order to make funciton object work. keep
+    // this until a better solution is found...
+    typedef wchar_t* (*FunType_freeString)(const wchar_t*);
+    typedef wchar_t* (*FunType_getLastErrorMessage)(void);
+    typedef wchar_t* (*FunType_getLockingProcesses)(const wchar_t*);
+    typedef bool (*FunType_getRecycleBinStatus)(const wchar_t *, bool&);
+    typedef bool (*FunType_moveToRecycleBin)(const wchar_t**,
+					     std::vector<const wchar_t*>::size_type,
+					     bool (&)(const wchar_t*, void *),
+					     void *);
+    
+    const std::string funName_freeString = "freeString";
+    const std::string funName_getLastErrorMessage = "getLastErrorMessage";
+    const std::string funName_getLockingProcesses = "getLockingProcesses";
+    const std::string funName_getRecycleBinStatus = "getRecycleBinStatus";
+    const std::string funName_moveToRecycleBin = "moveToRecycleBin";
+	
 
+//TODO_MinFFS need real DLL name
+    inline std::wstring getDllName() {
+#ifdef TODO_MinFFS
+	return L"FileOperation_Win32.dll";	
+	//return L"FileOperation_x64.dll";
+#else//TODO_MinFFS
+	return L"Dummy_FileOperation.dll";
+#endif//TODO_MinFFS
+    };
+}
 
 #endif//DLL_IFILEOPERATION_FILE_OP_H_INCLUDED

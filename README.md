@@ -1,7 +1,7 @@
-MinFFS (experiment branch)
-==========================
+MinFFS
+======
 
-Fake Minimalist's FreeFileSync Modified
+Minor's FreeFileSync Modified
 
 
 Project Goal
