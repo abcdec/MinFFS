@@ -25,9 +25,7 @@
 template <typename T>
 struct DllFun {
 public:
-    DllFun() {
-	functionPtr_ = nullptr;
-    };
+    DllFun() {};
     
     DllFun(std::wstring dllNameIn, std::string functionNameIn)
 	: functionPtr_(nullptr), moduleHandle_(nullptr) {
@@ -141,14 +139,14 @@ private:
     HMODULE moduleHandle_;
 };
 
+
 template <typename T>
 struct SysDllFun {
 public:
-    SysDllFun() {
-	functionPtr_ = nullptr;
-    };
+    SysDllFun() {};
     
-    SysDllFun(std::wstring dllNameIn, std::string functionNameIn) {
+    SysDllFun(std::wstring dllNameIn, std::string functionNameIn)
+	: functionPtr_(nullptr), moduleHandle_(nullptr) {
 	moduleHandle_ = LoadLibraryW(dllNameIn.data());
 	if (moduleHandle_ != NULL) {
 	    FARPROC proc = GetProcAddress(moduleHandle_, functionNameIn.c_str());
@@ -171,6 +169,28 @@ public:
     inline typename std::result_of<T> operator()(int n) const {return functionPtr_(n);};
 
 
+    // =================================================================================
+    // FreeFileSync/Source/application.cpp
+
+    // FreeFileSync/Source/application.cpp : GetProcessUserModeExceptionPolicy
+    inline BOOL operator()(DWORD* dwFlagsPtrIn) const { return functionPtr_(dwFlagsPtrIn); };
+    // FreeFileSync/Source/application.cpp : SetProcessUserModeExceptionPolicy
+    inline BOOL operator()(DWORD dwFlagsIn) const { return functionPtr_(dwFlagsIn); };
+
+
+    // =================================================================================
+    // FreeFileSync/Source/lib/resolve_path.cpp
+
+    // FreeFileSync/Source/lib/resolve_path.cpp : SHGetKnownFolderPath
+    // REFKNOWNFOLDERID is not defined in MinGW headers.
+    // Will define in dllwrapper_include.hpp
+    // See http://msdn.microsoft.com/en-us/library/bb762584.aspx 
+    inline HRESULT operator()(REFKNOWNFOLDERID rfidIn, DWORD dwFlagsIn,
+			      HANDLE hTokenIn, PWSTR* ppszPathIn) const {
+	return functionPtr_(rfidIn, dwFlagsIn, hTokenIn, ppszPathIn);
+    };
+
+
     // CompareStringOrdinal
     inline int operator()(LPCWSTR string1,  //__in  LPCWSTR lpString1,
 			  int size1,        //__in  int cchCount1,
@@ -186,5 +206,6 @@ private:
     T functionPtr_;
     HMODULE moduleHandle_;
 };
+
 
 #endif//MINFFS_DLLWRAPPER_HPP_INCLUDED

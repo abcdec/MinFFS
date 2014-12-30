@@ -135,7 +135,6 @@ private:
 #ifdef __MINGW32__
 #define KF_FLAG_DONT_VERIFY 0x00004000
 #endif
-#ifdef TODO_MinFFS
         typedef HRESULT (STDAPICALLTYPE* SHGetKnownFolderPathFunc)(REFKNOWNFOLDERID rfid, DWORD dwFlags, HANDLE hToken, PWSTR* ppszPath);
         const SysDllFun<SHGetKnownFolderPathFunc> shGetKnownFolderPath(L"Shell32.dll", "SHGetKnownFolderPath");
         auto addFolderId = [&](REFKNOWNFOLDERID rfid, const Zstring& paramName)
@@ -156,7 +155,6 @@ private:
                 }
             }
         };
-#endif//TODO_MInFFS
 
         addCsidl(CSIDL_DESKTOPDIRECTORY,        L"csidl_Desktop");       // C:\Users\<user>\Desktop
         addCsidl(CSIDL_COMMON_DESKTOPDIRECTORY, L"csidl_PublicDesktop"); // C:\Users\All Users\Desktop
@@ -192,13 +190,12 @@ private:
         addCsidl(CSIDL_TEMPLATES,        L"csidl_Templates");       // C:\Users\<user>\AppData\Roaming\Microsoft\Windows\Templates
         addCsidl(CSIDL_COMMON_TEMPLATES, L"csidl_PublicTemplates"); // C:\ProgramData\Microsoft\Windows\Templates
 
-#ifdef TODO_MinFFS2
         //Vista and later:
 	addFolderId(FOLDERID_Downloads,       L"csidl_Downloads");       // C:\Users\<user>\Downloads
         addFolderId(FOLDERID_PublicDownloads, L"csidl_PublicDownloads"); // C:\Users\Public\Downloads
 
         addFolderId(FOLDERID_QuickLaunch,     L"csidl_QuickLaunch");     // C:\Users\<user>\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch
-#endif//TODO_MinFFS
+
         /*
         CSIDL_APPDATA				covered by %AppData%
         CSIDL_LOCAL_APPDATA			covered by %LocalAppData% -> not on XP!

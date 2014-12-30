@@ -80,7 +80,6 @@ std::abort();
 #ifdef ZEN_WIN
 void enableCrashingOnCrashes() //should be needed for 32-bit code only: http://randomascii.wordpress.com/2012/07/05/when-even-crashing-doesnt-work
 {
-#ifdef TODO_MinFFS
     typedef BOOL (WINAPI* GetProcessUserModeExceptionPolicyFun)(LPDWORD lpFlags);
     typedef BOOL (WINAPI* SetProcessUserModeExceptionPolicyFun)(  DWORD dwFlags);
     const DWORD EXCEPTION_SWALLOWING = 0x1;
@@ -93,7 +92,6 @@ void enableCrashingOnCrashes() //should be needed for 32-bit code only: http://r
         if (getProcessUserModeExceptionPolicy(&dwFlags) && (dwFlags & EXCEPTION_SWALLOWING))
             setProcessUserModeExceptionPolicy(dwFlags & ~EXCEPTION_SWALLOWING);
     }
-#endif // TODO_MinFFS
 }
 
 #ifdef _MSC_VER
