@@ -5,16 +5,18 @@ A FreeFileSync modified for MinGW Build
 
 ## Project Goal
 
-- Build binaries of FreeFileSync using MinGW.
-- Optimize FFS for large volume file system, large size binary files, many name changed files.
+- Make it possible to build binaries of FreeFileSync using MinGW.
+- Make it possible to add features that would not be added to original FreeFileSync anytime soon.
+- Implement features like:
+  - Optimize FFS for large volume file system, large size binary files, many name changed files.
+  - Background indexing and resume interrupted comparison/synchronization.
 
+## Source and binary distributions
 
-## Released source and binaries
-
-- The program and sources are distributed under GNU Public License, version 3.0 per original FreeFileSync.
-- You can download binaries and source distribution of MinFFS from GitHub Release page. https://github.com/abcdec/MinFFS/releases
-  - Installer (EXE) and portable (ZIP) binary versions
-  - ZIP and tar.gz source bundles
+- The program binaries and sources of MinFFS are distributed under [GNU General Public License Version 3.0] (http://www.gnu.org/licenses/gpl-3.0) per original FreeFileSync License. 
+- You can download from GitHub Release page. https://github.com/abcdec/MinFFS/releases
+  - Installer (EXE) and portable (ZIP) binary versions are availble. (Built binaries are uploaded.)
+  - ZIP and tar.gz source bundles are avaialble as well (GitHub automatically create one from repo).
 - If you need original FreeFileSync binary and source distribution, please go to http://www.freefilesync.org/
 
 ## How to build
@@ -63,9 +65,9 @@ Using MinGW, build wxWidgets libraries.  The following is the step by step instr
     C:\wxWidgets\build\msw> C:\MinGW\bin\mingw32-make.exe -f makefile.gcc
 ```
 
-NOTE: It is strongly recommended to set WXWIN environment variable when building wxWidgets libraries although some wxWidgets document says to set up the variable is "not necessary".  Some strange run-time exceptions ("Application stopped unexpectedly" due to Segmentation Fault) were observed and fix was to rebuild wxWidget with WXWIN defiend.
+NOTE: It is strongly recommended to set WXWIN environment variable when building wxWidgets libraries although some wxWidgets documents say to set up the variable is "not necessary".  Some strange run-time exceptions ("Application stopped unexpectedly" due to Segmentation Fault) were observed and fix was to rebuild wxWidget with WXWIN defiend.
 
-NOTE: After initail installation, if MinGW toolset version is updated for any reason, it is strongly recommended to rebuild wxWidgets libraries from scratch to avoid unnecessary troubles.
+NOTE: After initial installation, if MinGW toolset version is updated for any reason, it is strongly recommended to rebuild wxWidgets libraries from scratch to avoid unnecessary troubles.
 
 
 ### Installation Step 3. Install Boost
@@ -108,7 +110,7 @@ Once all dependent toolsets have been installed, use the following steps to buil
   - Place source code tree in a tempoary build directory.  In this README, D:\Builds\MinFFS is assumed.
   - Source tree would look like this:
 ```
-     D:\Builds\MinFFS
+    D:\Builds\MinFFS
                    + src+builder
                               + FreeFileSync
                                            + Build
@@ -122,12 +124,10 @@ Once all dependent toolsets have been installed, use the following steps to buil
 ```
   - Chagne directory to src+builder\FreeFileSync\Platforms\MinGW
   - Set up environment variable WXWIN to wxWidget installation directory, and PATH to include MinGW binary path (C:\MinGW\bin)
-
 ```
-**C:\>** set WXWIN=C:\wxWidget
-**C:\>** set PATH=C:\MinGW\bin;%PATH%
+    C:\> set WXWIN=C:\wxWidget
+    C:\> set PATH=C:\MinGW\bin;%PATH%
 ```
-
   - Also adjust Makefile-cmdexe.mk MINGW_ROOT, WXWGT_ROOT, BOOST_ROOT, BOOST_VER, BOOST_MINGW according to your build toolset installation.
     - MINGW_ROOT: MinGW installation directory (C:\MinGW in this README)
     - WXWGT_ROOT: wxWidget installation directory (C:\wxWidgets in this README)
@@ -140,9 +140,8 @@ Once all dependent toolsets have been installed, use the following steps to buil
     - p.bat may need to be modified if Unicode NSIS packager is not in installed in default location.  Update following line if needed.
 
 ```
-"C:\Program Files (x86)\NSIS\Unicode\makensis.exe" MinFFS-Setup.nsi
+    "C:\Program Files (x86)\NSIS\Unicode\makensis.exe" MinFFS-Setup.nsi
 ```
-
   - Run c.bat to clean up build.
 
 
@@ -154,6 +153,13 @@ As of Dec 31, 2014, MinFFS binary distribution is built by the following toolset
   - wxWidgets 3.0.2
   - Boost 1.57
   - Unicode NSIS 2.46.5
+
+
+## Contact
+
+For any questions related to MinFFS ditribution, build questions, bug report, please use MinFFS issues page at GitHub, https://github.com/abcdec/MinFFS/issues.
+
+Please avoid contacting the original author of FreeFileSync for any bugs/issues seen when using MinFFS unless the same problem is reproducible with original FreeFileSync. If a problem is observed in the orginal FreeFileSync, it would be appropriate to contact the original author but only in context of the original FreeFileSync in order to avoid confusion.
 
 
 ## Links
