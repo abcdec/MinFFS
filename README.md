@@ -122,10 +122,10 @@ Once all dependent toolsets have been installed, use the following steps to buil
 ...
   - Chagne directory to src+builder\FreeFileSync\Platforms\MinGW
   - Set up environment variable WXWIN to wxWidget installation directory, and PATH to include MinGW binary path (C:\MinGW\bin)
-...
-    C:\> set WXWIN=C:\wxWidget
-    C:\> set PATH=C:\MinGW\bin;%PATH%
-...
+
+> **C:\>** set WXWIN=C:\wxWidget
+> C:\> set PATH=C:\MinGW\bin;%PATH%
+
   - Also adjust Makefile-cmdexe.mk MINGW_ROOT, WXWGT_ROOT, BOOST_ROOT, BOOST_VER, BOOST_MINGW according to your build toolset installation.
     - MINGW_ROOT: MinGW installation directory (C:\MinGW in this README)
     - WXWGT_ROOT: wxWidget installation directory (C:\wxWidgets in this README)
@@ -136,9 +136,9 @@ Once all dependent toolsets have been installed, use the following steps to buil
   - Run x.bat to run built MinFFS.exe.  It will copy necessary files to bin-debug and launch MinFFS.exe from bin-debug.
   - Run p.bat to create distributable binary package installer
     - p.bat may need to be modified if Unicode NSIS packager is not in installed in default location.  Update following line if needed.
-...
-    "C:\Program Files (x86)\NSIS\Unicode\makensis.exe" MinFFS-Setup.nsi
-...
+
+> "C:\Program Files (x86)\NSIS\Unicode\makensis.exe" MinFFS-Setup.nsi
+
   - Run c.bat to clean up build.
 
 
