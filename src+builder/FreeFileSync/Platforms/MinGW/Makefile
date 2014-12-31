@@ -18,13 +18,12 @@
 # // * General Public License for more details.                               *
 # // **************************************************************************
 
-APPNAME     := FreeFileSyncMod.exe
+APPNAME     := MinFFS.exe
 
 PROJECT_TOP := ../../..
 MINGW_ROOT  := C:/MinGW
 WXWGT_ROOT  := C:/wxWidgets
 BOOST_ROOT  := C:/Boost
-#BOOST_VER   := 1_54
 BOOST_VER   := 1_57
 
   # wxWidgets wx-config --cxxflags
@@ -114,7 +113,7 @@ CXX := g++
 
 # Deebug control
 CXXFLAGS += -DNDEBUG
-CXXFLAGS += -g
+#CXXFLAGS += -g
 #LINKFLAGS += -s
 
 CPP_LIST=

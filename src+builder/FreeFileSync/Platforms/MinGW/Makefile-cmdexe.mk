@@ -18,13 +18,13 @@
 # // * General Public License for more details.                               *
 # // **************************************************************************
 
-APPNAME     := FreeFileSyncMod.exe
+APPNAME     := MinFFS.exe
 
 PROJECT_TOP := ../../..
 MINGW_ROOT  := C:/MinGW
 WXWGT_ROOT  := C:/wxWidgets
 BOOST_ROOT  := C:/Boost
-BOOST_VER   := 1_54
+BOOST_VER   := 1_57
 
   # wxWidgets wx-config --cxxflags
 CXXFLAGS := -mthreads
@@ -52,8 +52,11 @@ CXXFLAGS += -O3
   # WINVER: MinGW is still supporting older version of windows but
   # FreeFileSync supports from Windows 2000 (OS ver 5.0) and onward.
   # Need to adjust WINVER to successfully compile.
-CXXFLAGS += -DWINVER=0x0500
-CXXFLAGS += -DMinFFS
+  # http://msdn.microsoft.com/en-us/library/6sehtctf.aspx
+#CXXFLAGS += -DWINVER=0x0500
+#CXXFLAGS += -DWINVER=0x0501
+CXXFLAGS += -DWINVER=0x0600
+CXXFLAGS += -DMinFFS_PATCH
 
   # UNICODE, _UNICODE: For some reason to make the MinGW compiliation
   # work properly, need to define both UNICODE and _UNICODE.
@@ -69,8 +72,9 @@ CXXFLAGS += -I$(WXWGT_ROOT)/lib/gcc_lib/mswud
 CXXFLAGS += -I$(BOOST_ROOT)/include/boost-$(BOOST_VER)
 
 LINKFLAGS := -L$(BOOST_ROOT)/lib
-LINKFLAGS += -lboost_system-mgw46-mt-$(BOOST_VER)
-LINKFLAGS += -lboost_thread-mgw46-mt-$(BOOST_VER)
+LINKFLAGS += -lboost_system-mgw48-mt-$(BOOST_VER)
+LINKFLAGS += -lboost_thread-mgw48-mt-$(BOOST_VER)
+
 
   # wxWidgets wx-config --libs
 LINKFLAGS += -mthreads
@@ -109,64 +113,65 @@ CXX := g++
 
 # Deebug control
 CXXFLAGS += -DNDEBUG
-CXXFLAGS += -g
+#CXXFLAGS += -g
 #LINKFLAGS += -s
 
 CPP_LIST=
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/application.cpp              #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/algorithm.cpp                #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/comparison.cpp               #!!!!!!!!! CULPRIT   // unmodified but dir_exist_async.h update was needed
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/structures.cpp               #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/synchronization.cpp          #!!!!!!!!! CULPRIT   // unmodified but dir_exist_async.h update was needed
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/file_hierarchy.cpp           #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/custom_grid.cpp           #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/folder_history_box.cpp    #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/on_completion_box.cpp     #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/dir_name.cpp              #!!!!!!!!! CULPRIT  // extensively modified to link!!!! #ifdef out async call
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/batch_config.cpp          #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/batch_status_handler.cpp  #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/check_version.cpp         #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/grid_view.cpp             #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/tree_view.cpp             #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/gui_generated.cpp         #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/gui_status_handler.cpp    #!!!!!!!!! CULPRIT  // modified to link!!!! // #ifdef out boost sleep
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/main_dlg.cpp              #!!!!!!!!! CULPRIT  // modified to link!!!! // #ifdef out boost async GetFirst... etc.
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/progress_indicator.cpp    #!!!!!!!!! CULPRIT  // modified to link!!!! // #ifdef out boost sleep
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/search.cpp                #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/small_dlgs.cpp            #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/sync_cfg.cpp              #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/taskbar.cpp               #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/triple_splitter.cpp       #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/tray_icon.cpp             #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/binary.cpp               #!!!!!!!!! CULPRIT  // modified to link!!!! // zen::filesHaveSameContent faked out. need to rewrite.
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/db_file.cpp              #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/dir_lock.cpp             #!!!!!!!!! CULPRIT  // modified to link!!!! // #ifdef out boost thread...
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/hard_filter.cpp          #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/icon_buffer.cpp          #!!!!!!!!! CULPRIT  // modified to link!!!! // #ifdef out boost thread...
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/localization.cpp         #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/parallel_scan.cpp        #!!!!!!!!! CULPRIT  // modified to link!!!! // #ifdef out boost thread...
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/process_xml.cpp          #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/resolve_path.cpp         #!!!!!!!!! CULPRIT  // modified to link!!!! // Thread addJob() template related
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/perf_check.cpp           #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/status_handler.cpp       #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/versioning.cpp           #OK
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/ffs_paths.cpp            #OK
-CPP_LIST+=$(PROJECT_TOP)/zen/xml_io.cpp                                   #OK
-CPP_LIST+=$(PROJECT_TOP)/zen/recycler.cpp                                 #!!!!!!!!! CULPRIT  // modified to link!!!! // #ifdef out boost async
-CPP_LIST+=$(PROJECT_TOP)/zen/file_access.cpp                              #OK
-CPP_LIST+=$(PROJECT_TOP)/zen/file_io.cpp                                  #OK
-CPP_LIST+=$(PROJECT_TOP)/zen/file_traverser.cpp                           #OK
-CPP_LIST+=$(PROJECT_TOP)/zen/zstring.cpp                                  #OK
-CPP_LIST+=$(PROJECT_TOP)/zen/format_unit.cpp                              #OK
-CPP_LIST+=$(PROJECT_TOP)/zen/process_priority.cpp                         #OK
-CPP_LIST+=$(PROJECT_TOP)/wx+/grid.cpp                                     #OK
-CPP_LIST+=$(PROJECT_TOP)/wx+/image_tools.cpp                              #OK
-CPP_LIST+=$(PROJECT_TOP)/wx+/graph.cpp                                    #OK
-CPP_LIST+=$(PROJECT_TOP)/wx+/tooltip.cpp                                  #OK
-CPP_LIST+=$(PROJECT_TOP)/wx+/image_resources.cpp                          #OK
-CPP_LIST+=$(PROJECT_TOP)/wx+/popup_dlg.cpp                                #OK
-CPP_LIST+=$(PROJECT_TOP)/wx+/popup_dlg_generated.cpp                      #OK
-CPP_LIST+=$(PROJECT_TOP)/wx+/zlib_wrap.cpp                                #OK
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/algorithm.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/application.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/comparison.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/structures.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/synchronization.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/file_hierarchy.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/custom_grid.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/folder_history_box.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/on_completion_box.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/dir_name.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/batch_config.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/batch_status_handler.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/check_version.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/grid_view.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/tree_view.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/gui_generated.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/gui_status_handler.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/main_dlg.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/progress_indicator.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/search.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/small_dlgs.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/sync_cfg.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/taskbar.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/triple_splitter.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/tray_icon.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/binary.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/db_file.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/dir_lock.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/hard_filter.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/icon_buffer.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/localization.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/parallel_scan.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/process_xml.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/resolve_path.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/perf_check.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/status_handler.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/versioning.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/ffs_paths.cpp
+CPP_LIST+=$(PROJECT_TOP)/zen/xml_io.cpp
+CPP_LIST+=$(PROJECT_TOP)/zen/recycler.cpp
+CPP_LIST+=$(PROJECT_TOP)/zen/file_access.cpp
+CPP_LIST+=$(PROJECT_TOP)/zen/file_io.cpp
+CPP_LIST+=$(PROJECT_TOP)/zen/file_traverser.cpp
+CPP_LIST+=$(PROJECT_TOP)/zen/zstring.cpp
+CPP_LIST+=$(PROJECT_TOP)/zen/format_unit.cpp
+CPP_LIST+=$(PROJECT_TOP)/zen/process_priority.cpp
+CPP_LIST+=$(PROJECT_TOP)/wx+/grid.cpp
+CPP_LIST+=$(PROJECT_TOP)/wx+/image_tools.cpp
+CPP_LIST+=$(PROJECT_TOP)/wx+/graph.cpp
+CPP_LIST+=$(PROJECT_TOP)/wx+/tooltip.cpp
+CPP_LIST+=$(PROJECT_TOP)/wx+/image_resources.cpp
+CPP_LIST+=$(PROJECT_TOP)/wx+/popup_dlg.cpp
+CPP_LIST+=$(PROJECT_TOP)/wx+/popup_dlg_generated.cpp
+CPP_LIST+=$(PROJECT_TOP)/wx+/zlib_wrap.cpp
+CPP_LIST+=dllwrapper_constants.cpp
 
 OBJECT_LIST = $(CPP_LIST:%.cpp=%.o)
 

@@ -23,20 +23,21 @@
 @IF NOT EXIST %MINGW% MINGW_NOT_DEFINED
 @IF NOT EXIST %WXWIN% WXWIN_NOT_DEFINED
 
-@IF NOT EXIST "bin-debug" mkdir bin-debug
-@IF NOT EXIST "bin-debug\Bin" mkdir bin-debug\Bin
+@IF NOT EXIST "bin-release" mkdir bin-release
+@IF NOT EXIST "bin-release\Bin" mkdir bin-release\Bin
 
-@xcopy MinFFS.exe bin-debug\Bin\ /Y/Q > NUL
-@xcopy ..\MswCommon\DLLs\* bin-debug\Bin\ /Y/Q > NUL
-@xcopy %MINGW%\bin\libstdc++-6.dll bin-debug\Bin\ /Y/Q > NUL
-@xcopy %MINGW%\bin\libgcc_s_dw2-1.dll bin-debug\Bin\ /Y/Q > NUL
-@xcopy ..\MswCommon\Help\FreeFileSync.chm bin-debug\ /Y/Q > NUL
-@xcopy ..\..\Build\Languages bin-debug\Languages\ /Y/Q/S  > NUL
-@xcopy ..\..\Build\Resources.zip bin-debug\ /Y/Q > NUL
-@xcopy ..\..\Build\Sync_Complete.wav bin-debug\ /Y/Q > NUL
+@xcopy MinFFS.exe bin-release\Bin\ /Y/Q > NUL
+@xcopy License.rtf bin-release\ /Y/Q > NUL
+@xcopy ..\MswCommon\DLLs\* bin-release\Bin\ /Y/Q > NUL
+@xcopy %MINGW%\bin\libstdc++-6.dll bin-release\Bin\ /Y/Q > NUL
+@xcopy %MINGW%\bin\libgcc_s_dw2-1.dll bin-release\Bin\ /Y/Q > NUL
+@xcopy ..\MswCommon\Help\FreeFileSync.chm bin-release\ /Y/Q > NUL
+@xcopy ..\..\Build\Languages bin-release\Languages\ /Y/Q/S  > NUL
+@xcopy ..\..\Build\Resources.zip bin-release\ /Y/Q > NUL
+@xcopy ..\..\Build\Sync_Complete.wav bin-release\ /Y/Q > NUL
 
-@echo Launching MinFFS
-bin-debug\Bin\MinFFS.exe
+@echo Packaging MinFFS
+"C:\Program Files (x86)\NSIS\Unicode\makensis.exe" MinFFS-Setup.nsi
 
 GOTO END
 

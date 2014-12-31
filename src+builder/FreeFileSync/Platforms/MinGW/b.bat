@@ -23,7 +23,7 @@
 @IF NOT EXIST %MINGW% MINGW_NOT_DEFINED
 @IF NOT EXIST %WXWIN% WXWIN_NOT_DEFINED
 
-del FreeFileSyncMod.exe
+del MinFFS.exe
 build.bat
 
 GOTO END
