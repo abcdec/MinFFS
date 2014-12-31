@@ -52,16 +52,16 @@ Using MinGW, build wxWidgets libraries.  The following is the step by step instr
   - Download wxWidget installer https://www.wxwidgets.org/
   - Run installer.  It will place distribution to specified directory.  This README assumes wxWidgets is installed in C:\wxWidgets dirctory. (If not, please substitue all "C:\wxWidget" in this README with absolute path of your actual installation directory.    It is strongly suggested to install wxWidgets in a directory without white space in the path name string. e.g. avoid installing under "C:\Program Files".)
   - Set up environment variable WXWIN to wxWidget installation directory, and PATH to include MinGW binary path (C:\MinGW\bin)
-...
+```
     C:\> set WXWIN=C:\wxWidget
     C:\> set PATH=C:\MinGW\bin;%PATH%
-...
+```
   - Change current directory to wxWidgets build directory and run make.
-...
+```
     D:\> C:
     C:\> cd C:\wxWidgets\build\msw
     C:\wxWidgets\build\msw> C:\MinGW\bin\mingw32-make.exe -f makefile.gcc
-...
+```
 
 NOTE: It is strongly recommended to set WXWIN environment variable when building wxWidgets libraries although some wxWidgets document says to set up the variable is "not necessary".  Some strange run-time exceptions ("Application stopped unexpectedly" due to Segmentation Fault) were observed and fix was to rebuild wxWidget with WXWIN defiend.
 
@@ -77,19 +77,19 @@ Using MinGW, build Boost libraries.  The following is the step by step instructi
   - Create a tempoary build directory and unpack ZIP.  This README assumes the temporary build directory as D:\Builds and unpacked sources are under D:\Builds\boost_1_57_0.  Intallation target directory will be C:\Boost by default. (If changed, please substitue all "C:\Boost" in this README with absolute path of your actual installation directory.    It is strongly suggested to install Boost in a directory without white space in the path name string. e.g. avoid installing under "C:\Program Files".)
     - Expanding zip package also takes quite long time.  Please be patient.
   - If not done yet, set up environment variable PATH to include MinGW binary path (C:\MinGW\bin)
-...
+```
     C:\> set PATH=C:\MinGW\bin;%PATH%
-...
+```
   - Change current directory to boost build directory and run bootstrap.bat.
-...
+```
     C:\> D:
     D:\> cd D:\Builds\boost-1.57.0
     D:\Builds\boost-1.57.0> bootstrap.bat mingw
-...
+```
   - bootstrap.bat will create b2.exe.  Run b2 to build and install package.
-...
+```
     D:\Builds\boost-1.57.0> b2 toolset=gcc variant=release threading=multi --without-mpi --without-python install
-...
+```
     - Building boost libraries also takes quite long time.  Please be patient.
     
 NOTE: If MinGW toolset version is updated for any reason, it is recommended to rebuild Boost libraries from scratch to avoid unnecessary troubles.
@@ -107,7 +107,7 @@ Once all dependent toolsets have been installed, use the following steps to buil
 
   - Place source code tree in a tempoary build directory.  In this README, D:\Builds\MinFFS is assumed.
   - Source tree would look like this:
-...
+```
      D:\Builds\MinFFS
                    + src+builder
                               + FreeFileSync
@@ -119,12 +119,14 @@ Once all dependent toolsets have been installed, use the following steps to buil
                               + wx+
                               + zen
                               + zenXml
-...
+```
   - Chagne directory to src+builder\FreeFileSync\Platforms\MinGW
   - Set up environment variable WXWIN to wxWidget installation directory, and PATH to include MinGW binary path (C:\MinGW\bin)
 
-> **C:\>** set WXWIN=C:\wxWidget
-> C:\> set PATH=C:\MinGW\bin;%PATH%
+```
+**C:\>** set WXWIN=C:\wxWidget
+**C:\>** set PATH=C:\MinGW\bin;%PATH%
+```
 
   - Also adjust Makefile-cmdexe.mk MINGW_ROOT, WXWGT_ROOT, BOOST_ROOT, BOOST_VER, BOOST_MINGW according to your build toolset installation.
     - MINGW_ROOT: MinGW installation directory (C:\MinGW in this README)
@@ -137,7 +139,9 @@ Once all dependent toolsets have been installed, use the following steps to buil
   - Run p.bat to create distributable binary package installer
     - p.bat may need to be modified if Unicode NSIS packager is not in installed in default location.  Update following line if needed.
 
-> "C:\Program Files (x86)\NSIS\Unicode\makensis.exe" MinFFS-Setup.nsi
+```
+"C:\Program Files (x86)\NSIS\Unicode\makensis.exe" MinFFS-Setup.nsi
+```
 
   - Run c.bat to clean up build.
 
