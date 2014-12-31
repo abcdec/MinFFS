@@ -13,7 +13,7 @@ A FreeFileSync modified for MinGW Build
 
 ## Source and binary distributions
 
-- The program binaries and sources of MinFFS are distributed under [GNU General Public License Version 3.0] (http://www.gnu.org/licenses/gpl-3.0) per original FreeFileSync License. 
+- The program binaries and sources of MinFFS are distributed under [GNU General Public License Version 3.0] (http://www.gnu.org/licenses/gpl-3.0.en.html) per original FreeFileSync License. 
 - You can download from GitHub Release page. https://github.com/abcdec/MinFFS/releases
   - Installer (EXE) and portable (ZIP) binary versions are availble. (Built binaries are uploaded.)
   - ZIP and tar.gz source bundles are avaialble as well (GitHub automatically create one from repo).
@@ -24,6 +24,8 @@ A FreeFileSync modified for MinGW Build
 ### Prerequisites
 - A modern PC running Microsoft Windows 7 or 8.1 OS with sufficient diskspace
 - Internet connection to download required build toolsets
+- Some ideas how Windows, MinGW, Boost and other building environment work, and skill set to be able to troubleshoot.
+  - It would be quite frustrating and time consuming experience if something goes wrong.
 
 ### List of dependent toolsets
 
@@ -89,11 +91,11 @@ Using MinGW, build Boost libraries.  The following is the step by step instructi
     D:\Builds\boost-1.57.0> bootstrap.bat mingw
 ```
   - bootstrap.bat will create b2.exe.  Run b2 to build and install package.
+    - Building boost libraries also takes quite long time.  Please be patient.
 ```
     D:\Builds\boost-1.57.0> b2 toolset=gcc variant=release threading=multi --without-mpi --without-python install
 ```
-    - Building boost libraries also takes quite long time.  Please be patient.
-    
+
 NOTE: If MinGW toolset version is updated for any reason, it is recommended to rebuild Boost libraries from scratch to avoid unnecessary troubles.
 
 
