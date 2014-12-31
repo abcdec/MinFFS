@@ -24,7 +24,8 @@ PROJECT_TOP := ../../..
 MINGW_ROOT  := C:/MinGW
 WXWGT_ROOT  := C:/wxWidgets
 BOOST_ROOT  := C:/Boost
-BOOST_VER   := 1_54
+#BOOST_VER   := 1_54
+BOOST_VER   := 1_57
 
   # wxWidgets wx-config --cxxflags
 CXXFLAGS := -mthreads
@@ -52,8 +53,11 @@ CXXFLAGS += -O3
   # WINVER: MinGW is still supporting older version of windows but
   # FreeFileSync supports from Windows 2000 (OS ver 5.0) and onward.
   # Need to adjust WINVER to successfully compile.
-CXXFLAGS += -DWINVER=0x0500
-CXXFLAGS += -DMinFFS
+  # http://msdn.microsoft.com/en-us/library/6sehtctf.aspx
+#CXXFLAGS += -DWINVER=0x0500
+#CXXFLAGS += -DWINVER=0x0501
+CXXFLAGS += -DWINVER=0x0600
+CXXFLAGS += -DMinFFS_PATCH
 
   # UNICODE, _UNICODE: For some reason to make the MinGW compiliation
   # work properly, need to define both UNICODE and _UNICODE.
@@ -69,8 +73,9 @@ CXXFLAGS += -I$(WXWGT_ROOT)/lib/gcc_lib/mswud
 CXXFLAGS += -I$(BOOST_ROOT)/include/boost-$(BOOST_VER)
 
 LINKFLAGS := -L$(BOOST_ROOT)/lib
-LINKFLAGS += -lboost_system-mgw46-mt-$(BOOST_VER)
-LINKFLAGS += -lboost_thread-mgw46-mt-$(BOOST_VER)
+LINKFLAGS += -lboost_system-mgw48-mt-$(BOOST_VER)
+LINKFLAGS += -lboost_thread-mgw48-mt-$(BOOST_VER)
+
 
   # wxWidgets wx-config --libs
 LINKFLAGS += -mthreads
@@ -167,6 +172,7 @@ CPP_LIST+=$(PROJECT_TOP)/wx+/image_resources.cpp
 CPP_LIST+=$(PROJECT_TOP)/wx+/popup_dlg.cpp
 CPP_LIST+=$(PROJECT_TOP)/wx+/popup_dlg_generated.cpp
 CPP_LIST+=$(PROJECT_TOP)/wx+/zlib_wrap.cpp
+CPP_LIST+=dllwrapper_constants.cpp
 
 OBJECT_LIST = $(CPP_LIST:%.cpp=%.o)
 

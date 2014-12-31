@@ -41,32 +41,27 @@ public:
     //	-> doAsync: the usual thread-safety requirements apply!
     //	-> evalOnGui: no thread-safety concerns, but must only reference variables with greater-equal lifetime than the AsyncTask instance!
     {
-#ifdef TODO_MinFFS_UI
         tasks.push_back(zen::async([=]() -> std::function<void()>
         {
             auto result = doAsync();
             return [=]{ evalOnGui(result); };
         }));
-#endif//TODO_MinFFS_UI
     }
 
     template <class Fun, class Fun2>
     void add2(Fun doAsync, Fun2 evalOnGui) //for evalOnGui taking no parameters
     {
-#ifdef TODO_MinFFS_UI
         tasks.push_back(zen::async([=]() -> std::function<void()> { doAsync(); return [=]{ evalOnGui(); }; }));
-#endif//TODO_MinFFS_UI
     }
 
     void evalResults() //call from gui thread repreatedly
     {
-#ifdef TODO_MinFFS_UI
         if (!inRecursion) //prevent implicit recursion, e.g. if we're called from an idle event and spawn another one via the callback below
         {
             inRecursion = true;
             ZEN_ON_SCOPE_EXIT(inRecursion = false);
 
-            tasks.remove_if([](boost::unique_future<std::function<void()>>& ft) -> bool
+	    tasks.remove_if([](boost::unique_future<std::function<void()>>& ft) -> bool
             {
                 if (ft.is_ready())
                 {
@@ -76,20 +71,13 @@ public:
                 return false;
             });
         }
-#endif//TODO_MinFFS_UI
     }
 
-#ifdef TODO_MinFFS_UI
     bool empty() const { return tasks.empty(); }
-#else//TODO_MinFFS_UI
-    bool empty() const { return true; }
-#endif//TODO_MinFFS_UI
 
 private:
     bool inRecursion;
-#ifdef TODO_MinFFS_UI
     std::list<boost::unique_future<std::function<void()>>> tasks;
-#endif//TODO_MinFFS_UI
 };
 }
 

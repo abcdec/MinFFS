@@ -25,7 +25,6 @@
 // Thus it was recreated from its usage context.
 
 #include <string>
-#include "zen/dll.h"
 
 namespace ifile {
 
@@ -45,14 +44,13 @@ namespace ifile {
     const std::string funName_freeString = "freeString";
     const std::string funName_showFolderPicker = "showFolderPicker";
 
-//TODO_MinFFS need real DLL name
     inline std::wstring getDllName() {
-#ifdef TODO_MinFFS
+#ifdef TODO_MinFFS_REAL_DLL_NAME
 	return L"IFileDialog_Vista_Win32.dll";
 	//return L"IFileDialog_Vista_x64.dll";
-#else//TODO_MinFFS
+#else//TODO_MinFFS_REAL_DLL_NAME
 	return L"Dummy_IFileDialog_Vista.dll";
-#endif//TODO_MinFFS
+#endif//TODO_MinFFS_REAL_DLL_NAME
     };
 
 }

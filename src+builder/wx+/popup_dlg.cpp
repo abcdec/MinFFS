@@ -97,9 +97,9 @@ public:
         checkBoxValue_(cfg.checkBoxValue)
     {
 #ifdef ZEN_WIN
-#ifdef TODO_MinFFS
+#ifdef TODO_MinFFS_MouseMoveWindow
         new zen::MouseMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere...; ownership passed to "this"
-#endif//TODO_MinFFS
+#endif//TODO_MinFFSMouseMoveWindow
 #endif
         wxString titleTmp = cfg.title;
         switch (type)

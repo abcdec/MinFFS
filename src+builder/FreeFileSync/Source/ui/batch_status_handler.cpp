@@ -299,9 +299,7 @@ BatchStatusHandler::~BatchStatusHandler()
         while (progressDlg)
         {
             wxTheApp->Yield(); //*first* refresh GUI (removing flicker) before sleeping!
-#ifdef TODO_MinFFS_UI
             boost::this_thread::sleep(boost::posix_time::milliseconds(UI_UPDATE_INTERVAL));
-#endif//TODO_MinFFS_UI
         }
     }
 }
@@ -395,9 +393,7 @@ ProcessCallback::Response BatchStatusHandler::reportError(const std::wstring& er
         {
             reportStatus(_("Error") + L": " + _P("Automatic retry in 1 second...", "Automatic retry in %x seconds...",
                                                  (1000 * automaticRetryDelay_ - i * UI_UPDATE_INTERVAL + 999) / 1000)); //integer round up
-#ifdef TODO_MinFFS_UI
             boost::this_thread::sleep(boost::posix_time::milliseconds(UI_UPDATE_INTERVAL));
-#endif//TODO_MinFFS_UI
         }
         return ProcessCallback::RETRY;
     }

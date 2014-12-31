@@ -73,9 +73,7 @@ public:
         {
             while (true)
             {
-#ifdef TODO_MinFFS_UI
                 boost::this_thread::sleep(boost::posix_time::seconds(EMIT_LIFE_SIGN_INTERVAL)); //interruption point!
-#endif//TODO_MinFFS_UI
 
                 //actual work
                 emitLifeSign(); //throw ()
@@ -503,9 +501,7 @@ void waitOnDirLock(const Zstring& lockfilepath, DirLockCallback* callback) //thr
             for (size_t i = 0; i < 1000 * POLL_LIFE_SIGN_INTERVAL / GUI_CALLBACK_INTERVAL; ++i)
             {
                 if (callback) callback->requestUiRefresh();
-#ifdef TODO_MinFFS_UI
                 boost::this_thread::sleep(boost::posix_time::milliseconds(GUI_CALLBACK_INTERVAL));
-#endif//TODO_MinFFS_UI
 
                 if (callback)
                 {
@@ -607,17 +603,13 @@ public:
         while (!::tryLock(lockfilepath))             //throw FileError
             ::waitOnDirLock(lockfilepath, callback); //
 
-#ifdef TODO_MinFFS_UI
         threadObj = boost::thread(LifeSigns(lockfilepath));
-#endif//TODO_MinFFS_UI
     }
 
     ~SharedDirLock()
     {
-#ifdef TODO_MinFFS_UI
         threadObj.interrupt(); //thread lifetime is subset of this instances's life
         threadObj.join(); //we assert precondition "threadObj.joinable()"!!!
-#endif//TODO_MinFFS_UI
 
         ::releaseLock(lockfilepath_); //throw ()
     }
@@ -627,9 +619,7 @@ private:
     SharedDirLock& operator=(const DirLock&) = delete;
 
     const Zstring lockfilepath_;
-#ifdef TODO_MinFFS_UI
     boost::thread threadObj;
-#endif//TODO_MinFFS_UI
 };
 
 

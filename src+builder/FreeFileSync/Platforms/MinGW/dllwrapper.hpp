@@ -149,8 +149,23 @@ public:
 	: functionPtr_(nullptr), moduleHandle_(nullptr) {
 	moduleHandle_ = LoadLibraryW(dllNameIn.data());
 	if (moduleHandle_ != NULL) {
+	    std::cout << "CTR 1: " << functionNameIn << "\n";
 	    FARPROC proc = GetProcAddress(moduleHandle_, functionNameIn.c_str());
 	    if (proc != NULL) {
+		functionPtr_ = reinterpret_cast<T>(proc);
+	    }
+	}
+    };
+
+    SysDllFun(std::wstring dllNameIn, LPCSTR functionNamePtrIn)
+	: functionPtr_(nullptr), moduleHandle_(nullptr) {
+	std::cout << "CTR 2\n";
+	moduleHandle_ = LoadLibraryW(dllNameIn.data());
+	if (moduleHandle_ != NULL) {
+	    std::cout << "DEBUG\n";
+	    FARPROC proc = GetProcAddress(moduleHandle_, functionNamePtrIn);
+	    if (proc != NULL) {
+		std::cout << "DEBUG2\n";
 		functionPtr_ = reinterpret_cast<T>(proc);
 	    }
 	}
@@ -166,8 +181,6 @@ public:
 	return (functionPtr_ != functionPtrIn);
     };
     
-    inline typename std::result_of<T> operator()(int n) const {return functionPtr_(n);};
-
 
     // =================================================================================
     // FreeFileSync/Source/application.cpp
@@ -191,14 +204,75 @@ public:
     };
 
 
-    // CompareStringOrdinal
-    inline int operator()(LPCWSTR string1,  //__in  LPCWSTR lpString1,
-			  int size1,        //__in  int cchCount1,
-			  LPCWSTR string2,  //__in  LPCWSTR lpString1,
-			  int size2,        //__in  int cchCount2,
-			  BOOL ignoreCase   //__in  BOOL bIgnoreCase
-	) const {
-	return functionPtr_(string1, size1, string2, size2, ignoreCase);
+    // =================================================================================
+    // wx+/font_size.h
+    
+    // wx+/font_size.h : OpenThemeData
+    inline HTHEME operator()(HWND hwndIn, LPCWSTR pszClassListIn) const {
+	return functionPtr_(hwndIn, pszClassListIn);
+    };
+    // wx+/font_size.h : CloseThemeData
+    inline HRESULT operator()(HTHEME hwndIn) const {
+	return functionPtr_(hwndIn);
+    };
+    // wx+/font_size.h : GetThemeColor
+    inline HRESULT operator()(HTHEME hwndIn, int iPartIdIn, int iStateIdIn,
+			     int iPropIdIn, COLORREF *pColorIn) const {
+	return functionPtr_(hwndIn, iPartIdIn, iStateIdIn, iPropIdIn, pColorIn);
+    };
+
+
+    // =================================================================================
+    // zen/symlink_target.h
+
+    // zen/symlink_target.h : GetFinalPathNameByHandleW
+    inline DWORD operator()(HANDLE hFileIn, LPTSTR lpszFilePathIn,
+			    DWORD cchFilePathIn, DWORD dwFlagsIn) const {
+	return functionPtr_(hFileIn, lpszFilePathIn, cchFilePathIn, dwFlagsIn);
+    };
+
+
+    // =================================================================================
+    // zen/win_ver.h
+
+    // zen/win_ver.h : IsWow64Process
+    inline BOOL operator()(HANDLE hProcessIn, PBOOL Wow64ProcessIn) const {
+	return functionPtr_(hProcessIn, Wow64ProcessIn);
+    };
+
+
+    // =================================================================================
+    // zen/zstring.cpp
+
+    // zen/zstring.cpp : CompareStringOrdinal
+    inline int operator()(LPCWSTR string1In, int size1In,
+			  LPCWSTR string2In, int size2In, BOOL ignoreCaseIn) const {
+	return functionPtr_(string1In, size1In, string2In, size2In, ignoreCaseIn);
+    };
+
+
+    // =================================================================================
+    // FreeFileSync/Source/lib/icon_buffer.cpp
+
+    // FreeFileSync/Source/lib/icon_buffer.cpp : FileIconInit
+    // http://msdn.microsoft.com/en-us/library/windows/desktop/bb776418%28v=vs.85%29.aspx
+    inline BOOL operator()(BOOL fRestoreCacheIn) const {
+	return functionPtr_(fRestoreCacheIn);
+    };
+
+
+    // =================================================================================
+    // zen/file_access.cpp
+
+    // zen/file_access.cpp : SetFileInformationByHandle
+    inline BOOL operator()(HANDLE hFileIn, FILE_INFO_BY_HANDLE_CLASS FileInformationClassIn,
+			   LPVOID lpFileInformationIn, DWORD dwBufferSizeIn) const {
+	return functionPtr_(hFileIn, FileInformationClassIn, lpFileInformationIn, dwBufferSizeIn);
+    };
+    // zen/file_access.cpp : CreateSymbolicLinkW
+    inline BOOLEAN operator()(LPCTSTR lpSymlinkFileNameIn, LPCTSTR lpTargetFileNameIn,
+			      DWORD dwFlagsIn) const {
+	return functionPtr_(lpSymlinkFileNameIn, lpTargetFileNameIn, dwFlagsIn);
     };
 
     

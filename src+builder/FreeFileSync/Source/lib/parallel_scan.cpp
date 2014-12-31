@@ -180,35 +180,28 @@ public:
 
     FillBufferCallback::HandleError reportError(const std::wstring& msg, size_t retryNumber) //blocking call: context of worker thread
     {
-#ifdef TODO_MinFFS_UI
         boost::unique_lock<boost::mutex> dummy(lockErrorInfo);
         while (errorInfo.get() || errorResponse.get())
             conditionCanReportError.timed_wait(dummy, boost::posix_time::milliseconds(50)); //interruption point!
-#endif//TODO_MinFFS_UI
 
         errorInfo = make_unique<std::pair<BasicWString, size_t>>(BasicWString(msg), retryNumber);
 
-#ifdef TODO_MinFFS_UI
         while (!errorResponse.get())
             conditionGotResponse.timed_wait(dummy, boost::posix_time::milliseconds(50)); //interruption point!
-#endif//TODO_MinFFS_UI
 
         FillBufferCallback::HandleError rv = *errorResponse;
 
         errorInfo.reset();
         errorResponse.reset();
 
-#ifdef TODO_MinFFS_UI
         dummy.unlock(); //optimization for condition_variable::notify_all()
         conditionCanReportError.notify_all(); //instead of notify_one(); workaround bug: https://svn.boost.org/trac/boost/ticket/7796
-#endif//TODO_MinFFS_UI
 
         return rv;
     }
 
     void processErrors(FillBufferCallback& callback) //context of main thread, call repreatedly
     {
-#ifdef TODO_MinFFS_UI
         boost::unique_lock<boost::mutex> dummy(lockErrorInfo);
         if (errorInfo.get() && !errorResponse.get())
         {
@@ -218,7 +211,6 @@ public:
             dummy.unlock(); //optimization for condition_variable::notify_all()
             conditionGotResponse.notify_all(); //instead of notify_one(); workaround bug: https://svn.boost.org/trac/boost/ticket/7796
         }
-#endif//TODO_MinFFS_UI
     }
 
     void incrementNotifyingThreadId() { ++notifyingThreadID; } //context of main thread
@@ -227,9 +219,7 @@ public:
     {
         if (threadID != notifyingThreadID) return; //only one thread at a time may report status
 
-#ifdef TODO_MinFFS_UI
         boost::lock_guard<boost::mutex> dummy(lockCurrentStatus);
-#endif//TODO_MinFFS_UI
         currentFile = filepath;
         currentStatus.clear();
     }
@@ -238,9 +228,7 @@ public:
     {
         if (threadID != notifyingThreadID) return; //only one thread may report status
 
-#ifdef TODO_MinFFS_UI
         boost::lock_guard<boost::mutex> dummy(lockCurrentStatus);
-#endif//TODO_MinFFS_UI
         currentFile.clear();
         currentStatus = BasicWString(status); //we cannot assume std::wstring to be thread safe (yet)!
     }
@@ -250,9 +238,7 @@ public:
         Zstring filepath;
         std::wstring statusMsg;
         {
-#ifdef TODO_MinFFS_UI
             boost::lock_guard<boost::mutex> dummy(lockCurrentStatus);
-#endif//TODO_MinFFS_UI
             if (!currentFile.empty())
                 filepath = currentFile;
             else if (!currentStatus.empty())
@@ -282,20 +268,16 @@ public:
 
 private:
     //---- error handling ----
-#ifdef TODO_MinFFS_UI
     boost::mutex lockErrorInfo;
     boost::condition_variable conditionCanReportError;
     boost::condition_variable conditionGotResponse;
-#endif//TODO_MinFFS_UI
     std::unique_ptr<std::pair<BasicWString, size_t>> errorInfo; //error message + retry number
     std::unique_ptr<FillBufferCallback::HandleError> errorResponse;
 
     //---- status updates ----
     boost::detail::atomic_count notifyingThreadID;
     //CAVEAT: do NOT use boost::thread::id as long as this showstopper exists: https://svn.boost.org/trac/boost/ticket/5754
-#ifdef TODO_MinFFS_UI
     boost::mutex lockCurrentStatus; //use a different lock for current file: continue traversing while some thread may process an error
-#endif//TODO_MinFFS_UI
     Zstring currentFile;        //only one of these two is filled at a time!
     BasicWString currentStatus; //
 
@@ -362,9 +344,7 @@ private:
 
 void DirCallback::onFile(const Zchar* shortName, const Zstring& filepath, const FileInfo& details)
 {
-#ifdef TODO_MinFFS_UI
     boost::this_thread::interruption_point();
-#endif//TODO_MinFFS_UI
 
     const Zstring fileNameShort(shortName);
 
@@ -400,9 +380,7 @@ void DirCallback::onFile(const Zchar* shortName, const Zstring& filepath, const 
 
 DirCallback::HandleLink DirCallback::onSymlink(const Zchar* shortName, const Zstring& linkpath, const SymlinkInfo& details)
 {
-#ifdef TODO_MinFFS_UI
     boost::this_thread::interruption_point();
-#endif//TODO_MinFFS_UI
     //update status information no matter whether object is excluded or not!
     cfg.acb_.reportCurrentFile(linkpath, cfg.threadID_);
 
@@ -439,9 +417,7 @@ DirCallback::HandleLink DirCallback::onSymlink(const Zchar* shortName, const Zst
 
 TraverseCallback* DirCallback::onDir(const Zchar* shortName, const Zstring& dirpath)
 {
-#ifdef TODO_MinFFS_UI
     boost::this_thread::interruption_point();
-#endif//TODO_MinFFS_UI
 
     //update status information no matter whether object is excluded or not!
     cfg.acb_.reportCurrentFile(dirpath, cfg.threadID_);
@@ -556,19 +532,15 @@ void zen::fillBuffer(const std::set<DirectoryKey>& keysToRead, //in
 {
     buf.clear();
 
-#ifdef TODO_MinFFS_UI
     FixedList<boost::thread> worker; //note: we cannot use std::vector<boost::thread>: compiler error on GCC 4.7, probably a boost screw-up
-#endif//TODO_MinFFS_UI
 
     zen::ScopeGuard guardWorker = zen::makeGuard([&]
     {
-#ifdef TODO_MinFFS_UI
         for (boost::thread& wt : worker)
             wt.interrupt(); //interrupt all at once first, then join
         for (boost::thread& wt : worker)
             if (wt.joinable()) //= precondition of thread::join(), which throws an exception if violated!
                 wt.join();     //in this context it is possible a thread is *not* joinable anymore due to the thread::timed_join() below!
-#endif//TODO_MinFFS_UI
     });
 
     auto acb = std::make_shared<AsyncCallback>();
@@ -579,14 +551,11 @@ void zen::fillBuffer(const std::set<DirectoryKey>& keysToRead, //in
         assert(buf.find(key) == buf.end());
         DirectoryValue& dirOutput = buf[key];
 
-#ifdef TODO_MinFFS_UI
         const long threadId = static_cast<long>(worker.size());
         worker.emplace_back(WorkerThread(threadId, acb, key, dirOutput));
-#endif//TODO_MinFFS_UI
     }
 
     //wait until done
-#ifdef TODO_MinFFS_UI
     for (boost::thread& wt : worker)
     {
         do
@@ -601,7 +570,6 @@ void zen::fillBuffer(const std::set<DirectoryKey>& keysToRead, //in
 
         acb->incrementNotifyingThreadId(); //process info messages of one thread at a time only
     }
-#endif//TODO_MinFFS_UI
 
     guardWorker.dismiss();
 }

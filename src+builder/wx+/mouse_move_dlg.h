@@ -13,10 +13,11 @@
 // * General Public License for more details.                               *
 // **************************************************************************
 
-#ifndef TODO_MinFFS_WXPLUS_MOUSE_MOVE_DLG_H_
-#define TODO_MinFFS_WXPLUS_MOUSE_MOVE_DLG_H_
+#ifndef WXPLUS_MOUSE_MOVE_DLG_H_
+#define WXPLUS_MOUSE_MOVE_DLG_H_
 
-//dummy
+#ifdef TODO_MinFFS_MouseMoveWindow
+#endif//TODO_MinFFS_MouseMoveWindow
 
-#endif
+#endif//WXPLUS_MOUSE_MOVE_DLG_H_
 

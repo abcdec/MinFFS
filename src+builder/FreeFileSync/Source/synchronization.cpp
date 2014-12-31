@@ -804,17 +804,17 @@ public:
                           bool copyFilePermissions,
                           bool transactionalFileCopy,
 #ifdef ZEN_WIN
-#ifdef TODO_MinFFS
+#ifdef TODO_MinFFS_SHADOW_COPY_ENABLE
                           shadow::ShadowCopy* shadowCopyHandler,
-#endif // TODO_MinFFS
-#endif
+#endif//TODO_MinFFS_SHADOW_COPY_ENABLE
                           DeletionHandling& delHandlingLeft,
                           DeletionHandling& delHandlingRight) :
+#endif
         procCallback_(procCallback),
 #ifdef ZEN_WIN
-#ifdef TODO_MinFFS
+#ifdef TODO_MinFFS_SHADOW_COPY_ENABLE
         shadowCopyHandler_(shadowCopyHandler),
-#endif // TODO_MinFFS
+#endif//TODO_MinFFS_SHADOW_COPY_ENABLE
 #endif
         delHandlingLeft_(delHandlingLeft),
         delHandlingRight_(delHandlingRight),
@@ -890,9 +890,9 @@ private:
 
     ProcessCallback& procCallback_;
 #ifdef ZEN_WIN
-#ifdef TODO_MinFFS
+#ifdef TODO_MinFFS_SHADOW_COPY_ENABLE
     shadow::ShadowCopy* shadowCopyHandler_; //optional!
-#endif // TODO_MinFFS
+#endif//TODO_MinFFS_SHADOW_COPY_ENABLE
 #endif
     DeletionHandling& delHandlingLeft_;
     DeletionHandling& delHandlingRight_;
@@ -1820,7 +1820,7 @@ InSyncAttributes SynchronizeFolderPair::copyFileWithCallback(const Zstring& sour
     }
     catch (ErrorFileLocked& e1)
     {
-#ifdef TODO_MinFFS
+#ifdef TODO_MinFFS_SHADOW_COPY_ENABLE
         //if file is locked (try to) use Windows Volume Shadow Copy Service
         if (!shadowCopyHandler_)
             throw;
@@ -1842,9 +1842,9 @@ InSyncAttributes SynchronizeFolderPair::copyFileWithCallback(const Zstring& sour
 
         //now try again
         return copyOperation(shadowSource);
-#else
+#else//TODO_MinFFS_SHADOW_COPY_ENABLE
         return copyOperation(sourceFile);
-#endif // TODO_MinFFS
+#endif//TODO_MinFFS_SHADOW_COPY_ENABLE
     }
 #else
     return copyOperation(sourceFile);
@@ -2295,12 +2295,12 @@ void zen::synchronize(const TimeComp& timeStamp,
     //-------------------end of basic checks------------------------------------------
 
 #ifdef ZEN_WIN
-#ifdef TODO_MinFFS
+#ifdef TODO_MinFFS_SHADOW_COPY_ENABLE
     //shadow copy buffer: per sync-instance, not folder pair
     std::unique_ptr<shadow::ShadowCopy> shadowCopyHandler;
     if (copyLockedFiles)
         shadowCopyHandler = make_unique<shadow::ShadowCopy>();
-#endif // TODO_MinFFS
+#endif//TODO_MinFFS_SHADOW_COPY_ENABLE
 #endif
 
     try
@@ -2389,9 +2389,9 @@ void zen::synchronize(const TimeComp& timeStamp,
 
                 SynchronizeFolderPair syncFP(callback, verifyCopiedFiles, copyPermissionsFp, transactionalFileCopy,
 #ifdef ZEN_WIN
-#ifdef TODO_MinFFS
+#ifdef TODO_MinFFS_SHADOW_COPY_ENABLE
                                              shadowCopyHandler.get(),
-#endif // TODO_MinFFS
+#endif//TODO_MinFFS_SHADOW_COPY_ENABLE
 #endif
                                              delHandlerL, delHandlerR);
                 syncFP.startSync(*j);

@@ -21,7 +21,6 @@
 #ifndef BOOST_THREAD_WRAP_H_78963234
 #define BOOST_THREAD_WRAP_H_78963234
 
-#ifdef TODO_MinFFS_UI
 
 //temporary solution until C++11 thread becomes fully available (considering std::thread's non-interruptibility and std::async craziness, this may be NEVER)
 #include <memory>
@@ -214,9 +213,5 @@ bool GetFirstResult<T>::timedWait(const Duration& duration) const { return async
 template <class T> inline
 std::unique_ptr<T> GetFirstResult<T>::get() const { return asyncResult->getResult(jobsTotal_); }
 }
-#else//TODO_MinFFS_UI
-#include <map>
-#include <list>
-#endif//TODO_MinFFS_UI
 
 #endif //BOOST_THREAD_WRAP_H_78963234

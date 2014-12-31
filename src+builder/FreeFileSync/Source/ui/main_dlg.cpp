@@ -276,7 +276,7 @@ private:
 
 
 #ifdef ZEN_WIN
-#ifdef TODO_MinFFS
+#ifdef TODO_MinFFS_MouseMoveWindow
 class PanelMoveWindow : public MouseMoveWindow
 {
 public:
@@ -300,7 +300,7 @@ public:
 private:
     MainDialog& mainDlg_;
 };
-#endif // TODO_MinFFS
+#endif//TODO_MinFFS_MouseMoveWindow
 #endif
 
 
@@ -403,7 +403,6 @@ void MainDialog::create(const Zstring& globalConfigFile)
 
     //------------------------------------------------------------------------------------------
     //check existence of all files in parallel:
-#ifdef TODO_MinFFS_UI
     GetFirstResult<FalseType> firstMissingDir;
 
     for (const Zstring& filepath : filepaths)
@@ -415,7 +414,6 @@ void MainDialog::create(const Zstring& globalConfigFile)
     if (!allFilesExist)
         filepaths.clear(); //we do NOT want to show an error due to last config file missing on application start!
     //------------------------------------------------------------------------------------------
-#endif//TODO_MinFFS_UI
 
     if (filepaths.empty())
     {
@@ -652,9 +650,9 @@ MainDialog::MainDialog(const Zstring& globalConfigFile,
     cleanedUp = false;
 
 #ifdef ZEN_WIN
-#ifdef TODO_MinFFS
+#ifdef TODO_MinFFS_MouseMoveWindow
     new PanelMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere... //ownership passed to "this"
-#endif // TODO_MinFFS
+#endif//TODO_MinFFS_MouseMoveWindow
 #endif
 
     {
@@ -792,9 +790,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFile,
 
         //------------------------------------------------------------------------------------------
         //check existence of all directories in parallel!
-#ifdef TODO_MinFFS_UI
         GetFirstResult<FalseType> firstMissingDir;
-#endif//TODO_MinFFS_UI
 
         //harmonize checks with comparison.cpp:: checkForIncompleteInput()
         //we're really doing two checks: 1. check directory existence 2. check config validity -> don't mix them!
@@ -811,12 +807,10 @@ MainDialog::MainDialog(const Zstring& globalConfigFile,
             else if (!dirLeft.empty())
                 haveFullPair = true;
 
-#ifdef TODO_MinFFS_UI
             if (!dirLeft.empty())
                 firstMissingDir.addJob([=] { return !dirExists(dirLeft ) ? make_unique<FalseType>() : nullptr; });
             if (!dirRight.empty())
                 firstMissingDir.addJob([=] { return !dirExists(dirRight) ? make_unique<FalseType>() : nullptr; });
-#endif//TODO_MinFFS_UI
         };
 
         addDirCheck(currMainCfg.firstPair);
@@ -826,7 +820,6 @@ MainDialog::MainDialog(const Zstring& globalConfigFile,
         if (havePartialPair != haveFullPair) //either all pairs full or all half-filled -> validity check!
         {
             //potentially slow network access: give all checks 500ms to finish
-#ifdef TODO_MinFFS_UI
             const bool allFilesExist = firstMissingDir.timedWait(boost::posix_time::milliseconds(500)) && //true: have result
                                        !firstMissingDir.get(); //no missing
             if (allFilesExist)
@@ -835,7 +828,6 @@ MainDialog::MainDialog(const Zstring& globalConfigFile,
                     wxCommandEvent dummy2(wxEVT_COMMAND_BUTTON_CLICKED);
                     evtHandler->AddPendingEvent(dummy2); //simulate button click on "compare"
                 }
-#endif//TODO_MinFFS_UI
         }
     }
 }
@@ -1551,10 +1543,8 @@ void MainDialog::flashStatusInformation(const wxString& text)
     m_panelStatusBar->Layout();
     //if (needLayoutUpdate) auiMgr.Update(); -> not needed here, this is called anyway in updateGui()
 
-#ifdef TODO_MinFFS_UI
     processAsync2([] { boost::this_thread::sleep(boost::posix_time::millisec(2500)); },
                   [this] { this->restoreStatusInformation(); });
-#endif//TODO_MinFFS_UI
 }
 
 
@@ -2670,7 +2660,6 @@ void MainDialog::removeObsoleteCfgHistoryItems(const std::vector<Zstring>& filep
 
     auto getMissingFilesAsync = [filepaths]() -> std::vector<Zstring>
     {
-#ifdef TODO_MinFFS_UI
         //boost::this_thread::sleep(boost::posix_time::millisec(5000));
 
         //check existence of all config files in parallel!
@@ -2681,16 +2670,13 @@ void MainDialog::removeObsoleteCfgHistoryItems(const std::vector<Zstring>& filep
 
         //potentially slow network access => limit maximum wait time!
         wait_for_all_timed(fileEx.begin(), fileEx.end(), boost::posix_time::milliseconds(1000));
-#endif//TODO_MinFFS_UI
 
         std::vector<Zstring> missingFiles;
 
-#ifdef TODO_MinFFS_UI
         auto itFut = fileEx.begin();
         for (auto it = filepaths.begin(); it != filepaths.end(); ++it, (void)++itFut) //void: prevent ADL from dragging in boost's ,-overload: "MSVC warning C4913: user defined binary operator ',' exists but no overload could convert all operands"
             if (itFut->is_ready() && !itFut->get()) //remove only files that are confirmed to be non-existent
                 missingFiles.push_back(*it);
-#endif//TODO_MinFFS_UI
 
         return missingFiles;
     };
@@ -2751,11 +2737,11 @@ void MainDialog::updateUnsavedCfgStatus()
         std::for_each(activeConfigFiles.begin() + 1, activeConfigFiles.end(), [&](const Zstring& filepath) { title += EM_DASH + xmlAccess::extractJobName(filepath); });
     }
     else
-#ifdef MinFFS
+#ifdef MinFFS_PATCH // Application Title Change
         title += L"MinFFS (Modified FreeFileSync) - " + _("Folder Comparison and Synchronization");
-#else//MinFFS
+#else//MinFFS_PATCH
         title += L"FreeFileSync - " + _("Folder Comparison and Synchronization");
-#endif//fMinFFS
+#endif//MinFFS_PATCH
 
     SetTitle(title);
 }

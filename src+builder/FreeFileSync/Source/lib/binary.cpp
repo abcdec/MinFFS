@@ -84,7 +84,6 @@ const std::int64_t TICKS_PER_SEC = ticksPerSec();
 
 bool zen::filesHaveSameContent(const Zstring& filepath1, const Zstring& filepath2, const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus)
 {
-#ifdef TODO_MinFFS // -----#####CULPRIT#CULPRIT#CULPRIT#CULPRIT#CULPRIT#-------------
     static boost::thread_specific_ptr<std::vector<char>> cpyBuf1;
     static boost::thread_specific_ptr<std::vector<char>> cpyBuf2;
     if (!cpyBuf1.get())
@@ -145,6 +144,5 @@ bool zen::filesHaveSameContent(const Zstring& filepath1, const Zstring& filepath
     if (!file2.eof()) //highly unlikely, but possible! (but then again, not in this context where both files have same size...)
         return false;
 
-#endif//TODO_MinFFS -----#####CULPRIT#CULPRIT#CULPRIT#CULPRIT#CULPRIT#-------------
     return true;
 }

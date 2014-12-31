@@ -17,50 +17,9 @@
 // * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
 // * General Public License for more details.                               *
 // **************************************************************************
+#ifndef MINFFS_VSSTYLE_H_INCLUDED
+#define MINFFS_VSSTYLE_H_INCLUDED
 
-#ifndef DLL_THUMBNAIL_THUMBNAIL_H_INCLUDED
-#define DLL_THUMBNAIL_THUMBNAIL_H_INCLUDED
-// The original FreeFileSync source distribution does not come with this
-// file, although it appeared this file is required to build properly.
-// Thus it was recreated from its usage context.
+#define TEXT_MAININSTRUCTION 1
 
-#include <string>
-
-namespace thumb {
-
-    struct ImageData {
-    public:
-	int width;
-	int height;
-//	std::string rgb;
-//	std::string alpha;
-	unsigned char *rgb;
-	unsigned char *alpha;
-    };
-    
-    typedef enum {
-	ICON_SIZE_16,
-	ICON_SIZE_32,
-	ICON_SIZE_48,
-	ICON_SIZE_128
-    } IconSizeType;
-
-    typedef ImageData* (*FunType_getIconByIndex)(int indexForShellIconIn, IconSizeType iconSizeTypeIn);
-    typedef ImageData* (*FunType_getThumbnail)(const wchar_t *iconFilePath, int& sizeIn);
-    typedef void (*FunType_releaseImageData)(const ImageData *imgeDataPtrIn);
-
-    const std::string funName_getIconByIndex = "getIconByIndex";
-    const std::string funName_getThumbnail = "getThumbnail";
-    const std::string funName_releaseImageData = "releaseImageData";
-
-    inline std::wstring getDllName() {
-#ifdef TODO_MinFFS_REAL_DLL_NAME
-	return L"Thumbnail_Win32.dll";
-	//return L"Thumbnail_x64.dll";
-#else//TODO_MinFFS_REAL_DLL_NAME
-	return L"Dummy_Thumbnail.dll";
-#endif//TODO_MinFFS_REAL_DLL_NAME
-    };
-}
-
-#endif//DLL_THUMBNAIL_THUMBNAIL_H_INCLUDED
+#endif//MINFFS_VSSTYLE_H_INCLUDED

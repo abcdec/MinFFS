@@ -1158,11 +1158,9 @@ void categorize(const std::set<FileSystemObject*>& rowsIn,
         const std::wstring msg = replaceCpy(_("Checking recycle bin availability for folder %x..."), L"%x", fmtFileName(baseDirPf), false);
 
         bool recExists = false;
-#ifdef TODO_MinFFS
         tryReportingError([&]{
             recExists = recycleBinExists(baseDirPf, [&] { callback.reportStatus(msg); /*may throw*/ }); //throw FileError
         }, callback);
-#endif//TODO_MinFFS
 
         hasRecyclerBuffer.emplace(baseDirPf, recExists);
         return recExists;
@@ -1207,11 +1205,9 @@ struct ItemDeleter : public FSObjectVisitor  //throw FileError, but nothrow cons
     {
         notifyFileDeletion(fileObj.getFullPath<side>());
 
-#ifdef TODO_MinFFS
         if (useRecycleBin_)
             zen::recycleOrDelete(fileObj.getFullPath<side>()); //throw FileError
         else
-#endif//TODO_MinFFS
             zen::removeFile(fileObj.getFullPath<side>()); //throw FileError
     }
 
@@ -1219,11 +1215,9 @@ struct ItemDeleter : public FSObjectVisitor  //throw FileError, but nothrow cons
     {
         notifySymlinkDeletion(linkObj.getFullPath<side>());
 
-#ifdef TODO_MinFFS
         if (useRecycleBin_)
             zen::recycleOrDelete(linkObj.getFullPath<side>()); //throw FileError
         else
-#endif//TODO_MinFFS
         {
             if (dirExists(linkObj.getFullPath<side>())) //dir symlink
                 zen::removeDirectory(linkObj.getFullPath<side>()); //throw FileError
@@ -1236,11 +1230,9 @@ struct ItemDeleter : public FSObjectVisitor  //throw FileError, but nothrow cons
     {
         notifyDirectoryDeletion(dirObj.getFullPath<side>()); //notfied twice; see below -> no big deal
 
-#ifdef TODO_MinFFS
         if (useRecycleBin_)
             zen::recycleOrDelete(dirObj.getFullPath<side>()); //throw FileError
         else
-#endif//TODO_MinFFS
         {
             auto onBeforeFileDeletion = [&](const Zstring& filepath) { this->notifyFileDeletion     (filepath); }; //without "this->" GCC 4.7.2 runtime crash on Debian
             auto onBeforeDirDeletion  = [&](const Zstring& dirpath ) { this->notifyDirectoryDeletion(dirpath ); };

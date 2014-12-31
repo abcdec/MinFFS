@@ -67,14 +67,13 @@ namespace findplus
     const std::string funName_readDir = "readDir";
     const std::string funName_closeDir = "closeDir";
 
-//TODO_MinFFS need real DLL name
     inline std::wstring getDllName() {
-#ifdef TODO_MinFFS
+#ifdef TODO_MinFFS_REAL_DLL_NAME
 	return L"FindFilePlus_Win32.dll";	
 	//return L"FindFilePlus_x64.dll";
-#else//TODO_MinFFS
+#else//TODO_MinFFS_REAL_DLL_NAME
 	return L"Dummy_FindFilePlus.dll";
-#endif//TODO_MinFFS
+#endif//TODO_MinFFS_REAL_DLL_NAME
     };
 }
 

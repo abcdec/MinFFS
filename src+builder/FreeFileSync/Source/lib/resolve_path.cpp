@@ -343,17 +343,13 @@ Opt<Zstring> getPathByVolumenName(const Zstring& volumeName) //return no value o
     if (0 < rv && rv < bufferSize)
     {
         //search for matching path in parallel until first hit
-#ifdef TODO_MinFFS_UI // -----#####CULPRIT#CULPRIT#CULPRIT#CULPRIT#CULPRIT#-------------  WORKS with #ifdef
         GetFirstResult<Zstring> firstMatch;
-#endif//TODO_MinFFS_UI
         for (const wchar_t* it = &buffer[0]; *it != 0; it += strLength(it) + 1) //list terminated by empty c-string
         {
             const Zstring path = it;
 
-#ifdef TODO_MinFFS_UI // -----#####CULPRIT#CULPRIT#CULPRIT#CULPRIT#CULPRIT#-------------  WORKS with #ifdef
             firstMatch.addJob([path, volumeName]() -> std::unique_ptr<Zstring>
             {
-#ifdef TODO_MinFFSINNER // -----#####CULPRIT#CULPRIT#CULPRIT#CULPRIT#CULPRIT#-------------  Does not work.  issue seems to be firstMatch.addJob([path, volumeName]() -> std::unique_ptr<Zstring>
                 UINT type = ::GetDriveType(appendSeparator(path).c_str()); //non-blocking call!
                 if (type == DRIVE_REMOTE || type == DRIVE_CDROM)
                     return nullptr;
@@ -371,15 +367,11 @@ Opt<Zstring> getPathByVolumenName(const Zstring& volumeName) //return no value o
                 0))          //__in       DWORD nFileSystemNameSize
                     if (EqualFilename()(volumeName, Zstring(&volName[0])))
                         return zen::make_unique<Zstring>(path);
-#endif//TODO_MinFFS -----#####CULPRIT#CULPRIT#CULPRIT#CULPRIT#CULPRIT#-------------
                 return nullptr;
             });
-#endif//TODO_MinFFS -----#####CULPRIT#CULPRIT#CULPRIT#CULPRIT#CULPRIT#-------------
         }
-#ifdef TODO_MinFFS_UI
         if (auto result = firstMatch.get()) //blocks until ready
             return *result;
-#endif//TODO_MinFFS_UI
     }
 
     return NoValue();
@@ -434,10 +426,8 @@ Zstring expandVolumeName(const Zstring& text)  // [volname]:\folder       [volna
             //[.*] pattern was found...
             if (!volname.empty())
             {
-#ifndef TODO_MinFFS // -----#####CULPRIT#CULPRIT#CULPRIT#CULPRIT#CULPRIT#-------------
                 if (Opt<Zstring> volPath = getPathByVolumenName(volname)) //may block for slow USB sticks!
                     return appendSeparator(*volPath) + rest; //successfully replaced pattern
-#endif//TODO_MinFFS -----#####CULPRIT#CULPRIT#CULPRIT#CULPRIT#CULPRIT#-------------
             }
             /*
             error: did not find corresponding volume name:

@@ -25,7 +25,6 @@
 // Thus it was recreated from its usage context.
 
 #include <string>
-#include "zen/dll.h"
 
 namespace tbseven
 {
@@ -44,12 +43,12 @@ namespace tbseven
     const std::string funName_setProgress = "SetProgress";
 
     inline std::wstring getDllName() {
-#ifdef TODO_MinFFS
+#ifdef TODO_MinFFS_REAL_DLL_NAME
 	return L"Taskbar7_win32.dll";
 	//return L"Taskbar7_x64.dll";
-#else//TODO_MinFFS
+#else//TODO_MinFFS_REAL_DLL_NAME
 	return L"Dummy_Taskbar7.dll";
-#endif//TODO_MinFFS
+#endif//TODO_MinFFS_REAL_DLL_NAME
     };
 }
 

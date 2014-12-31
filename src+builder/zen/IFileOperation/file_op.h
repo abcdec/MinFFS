@@ -45,14 +45,13 @@ namespace fileop
     const std::string funName_moveToRecycleBin = "moveToRecycleBin";
 	
 
-//TODO_MinFFS need real DLL name
     inline std::wstring getDllName() {
-#ifdef TODO_MinFFS
+#ifdef TODO_MinFFS_REAL_DLL_NAME
 	return L"FileOperation_Win32.dll";	
 	//return L"FileOperation_x64.dll";
-#else//TODO_MinFFS
+#else//TODO_MinFFS_REAL_DLL_NAME
 	return L"Dummy_FileOperation.dll";
-#endif//TODO_MinFFS
+#endif//TODO_MinFFS_REAL_DLL_NAME
     };
 }
 

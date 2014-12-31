@@ -1236,9 +1236,9 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
     pnl.m_bpButtonMinimizeToTray->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(SyncProgressDialogImpl::OnMinimizeToTray), NULL, this);
 
 #ifdef ZEN_WIN
-#ifdef TODO_MinFFS
+#ifdef TODO_MinFFS_MouseMoveWindow
     new MouseMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere...; ownership passed to "this"
-#endif // TODO_MinFFS
+#endif//TODO_MinFFS_MouseMoveWindow
 #endif
 
     assert(pnl.m_buttonClose->GetId() == wxID_OK); //we cannot use wxID_CLOSE else Esc key won't work: yet another wxWidgets bug??
@@ -1704,9 +1704,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateGuiInt(bool allowYield)
             {
                 wxTheApp->Yield(); //receive UI message that end pause OR forceful termination!
                 //*first* refresh GUI (removing flicker) before sleeping!
-#ifdef TODO_MinFFS_UI
                 boost::this_thread::sleep(boost::posix_time::milliseconds(UI_UPDATE_INTERVAL));
-#endif//TODO_MinFFS_UI
             }
             //if SyncProgressDialogImpl::OnClose() already wxWindow::Destroy() on OS X then this instance is already toast!
             if (wereDead)

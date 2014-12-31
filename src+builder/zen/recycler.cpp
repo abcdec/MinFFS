@@ -264,7 +264,6 @@ bool zen::recycleBinExists(const Zstring& pathName, const std::function<void ()>
     }
     else
     {
-#ifdef TODO_MinFFS_UI
        //excessive runtime if recycle bin exists, is full and drive is slow:
         auto ft = async([pathName]()
         {
@@ -279,9 +278,6 @@ bool zen::recycleBinExists(const Zstring& pathName, const std::function<void ()>
                 onUpdateGui(); //may throw!
 
         return ft.get() == S_OK;
-#else//TODO_MinFFS_UI
-	return false;
-#endif//TODO_MinFFS_UI
     }
 
     //1. ::SHQueryRecycleBin() is excessive: traverses whole $Recycle.Bin directory tree each time!!!! But it's safe and correct.

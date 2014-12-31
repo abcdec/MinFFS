@@ -50,7 +50,6 @@ DirectoryStatus getExistingDirsUpdating(const std::set<Zstring, LessFilename>& d
 
     DirectoryStatus output;
 
-#ifdef TODO_MinFFS_UI
     std::list<std::pair<Zstring, boost::unique_future<bool>>> futureInfo;
     for (const Zstring& dirpath : dirpaths)
         if (!dirpath.empty()) //skip empty dirs
@@ -80,7 +79,6 @@ DirectoryStatus getExistingDirsUpdating(const std::set<Zstring, LessFilename>& d
         else
             output.missing.insert(fi.first);
     }
-#endif//TODO_MinFFS_UI
     return output;
 }
 }
