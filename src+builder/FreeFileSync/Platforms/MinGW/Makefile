@@ -25,6 +25,7 @@ MINGW_ROOT  := C:/MinGW
 WXWGT_ROOT  := C:/wxWidgets
 BOOST_ROOT  := C:/Boost
 BOOST_VER   := 1_57
+BOOST_MINGW := mgw48
 
   # wxWidgets wx-config --cxxflags
 CXXFLAGS := -mthreads
@@ -72,8 +73,8 @@ CXXFLAGS += -I$(WXWGT_ROOT)/lib/gcc_lib/mswud
 CXXFLAGS += -I$(BOOST_ROOT)/include/boost-$(BOOST_VER)
 
 LINKFLAGS := -L$(BOOST_ROOT)/lib
-LINKFLAGS += -lboost_system-mgw48-mt-$(BOOST_VER)
-LINKFLAGS += -lboost_thread-mgw48-mt-$(BOOST_VER)
+LINKFLAGS += -lboost_system-${BOOST_MINGW}-mt-$(BOOST_VER)
+LINKFLAGS += -lboost_thread-${BOOST_MINGW}-mt-$(BOOST_VER)
 
 
   # wxWidgets wx-config --libs
