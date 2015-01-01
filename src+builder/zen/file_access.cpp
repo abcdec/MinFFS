@@ -3,6 +3,20 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
+// **************************************************************************
+// * This file is modified from its original source file distributed by the *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
+// *                          --EXPERIMENTAL--                              *
+// * This program is experimental and not recommended for general use.      *
+// * Please consider using the original FreeFileSync program unless there   *
+// * are specific needs to use this experimental MinFFS version.            *
+// *                          --EXPERIMENTAL--                              *
+// * This modified program is distributed in the hope that it will be       *
+// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
+// * General Public License for more details.                               *
+// **************************************************************************
 
 #include "file_access.h"
 #include <map>
@@ -131,7 +145,6 @@ bool zen::somethingExists(const Zstring& objname)
 
 namespace
 {
-#ifdef ZEN_WIN
 //fast ::GetVolumePathName() clone: let's hope it's not too simple (doesn't honor mount points)
 Zstring getVolumeNameFast(const Zstring& filepath)
 {
@@ -201,7 +214,7 @@ Zstring getLockingProcessNames(const Zstring& filepath) //throw(), empty string 
 {
     if (vistaOrLater())
     {
-        using namespace fileop;
+	using namespace fileop;
         const DllFun<FunType_getLockingProcesses> getLockingProcesses(getDllName(), funName_getLockingProcesses);
         const DllFun<FunType_freeString>          freeString         (getDllName(), funName_freeString);
 
@@ -214,7 +227,6 @@ Zstring getLockingProcessNames(const Zstring& filepath) //throw(), empty string 
     }
     return Zstring();
 }
-#endif
 }
 
 
@@ -1031,7 +1043,8 @@ void copyObjectPermissions(const Zstring& source, const Zstring& target, ProcSym
     //setting privileges requires admin rights!
     try
     {
-        //enable privilege: required to read/write SACL information (only)
+#ifdef TODO_MinFFS_activatePrivilege
+	//enable privilege: required to read/write SACL information (only)
         activatePrivilege(SE_SECURITY_NAME); //throw FileError
         //Note: trying to copy SACL (SACL_SECURITY_INFORMATION) may return ERROR_PRIVILEGE_NOT_HELD (1314) on Samba shares. This is not due to missing privileges!
         //However, this is okay, since copying NTFS permissions doesn't make sense in this case anyway
@@ -1041,6 +1054,7 @@ void copyObjectPermissions(const Zstring& source, const Zstring& target, ProcSym
 
         //the following privilege may be required according to http://msdn.microsoft.com/en-us/library/aa364399(VS.85).aspx (although not needed nor active in my tests)
         activatePrivilege(SE_BACKUP_NAME); //throw FileError
+#endif//TODO_MinFFS_activatePrivilege
     }
     catch (const FileError& e)//add some more context description (e.g. user is not an admin)
     {
@@ -1442,6 +1456,7 @@ void zen::copySymlink(const Zstring& sourceLink, const Zstring& targetLink, bool
     if (!createSymbolicLink(targetLink.c_str(), //__in  LPTSTR lpSymlinkFileName, - seems no long path prefix is required...
                             linkPath.c_str(),   //__in  LPTSTR lpTargetFileName,
                             (isDirLink ? SYMBOLIC_LINK_FLAG_DIRECTORY : 0))) //__in  DWORD dwFlags
+
 #elif defined ZEN_LINUX || defined ZEN_MAC
     const wchar_t functionName[] = L"symlink";
     if (::symlink(linkPath.c_str(), targetLink.c_str()) != 0)
@@ -1598,10 +1613,12 @@ void copyFileWindowsSparse(const Zstring& sourceFile,
     assert(canCopyAsSparse(sourceFile, targetFile));
 
     //try to get backup read and write privileges: who knows, maybe this helps solve some obscure "access denied" errors
+#ifdef TODO_MinFFS_activatePrivilege
     try { activatePrivilege(SE_BACKUP_NAME); }
     catch (const FileError&) {}
     try { activatePrivilege(SE_RESTORE_NAME); }
     catch (const FileError&) {}
+#endif//TODO_MinFFS_activatePrivilege
 
     //open sourceFile for reading
     HANDLE hFileSource = ::CreateFile(applyLongPathPrefix(sourceFile).c_str(), //_In_      LPCTSTR lpFileName,
@@ -1975,10 +1992,12 @@ void copyFileWindowsDefault(const Zstring& sourceFile,
                             InSyncAttributes* newAttrib) //throw FileError, ErrorTargetExisting, ErrorFileLocked, ErrorShouldCopyAsSparse
 {
     //try to get backup read and write privileges: who knows, maybe this helps solve some obscure "access denied" errors
+#ifdef TODO_MinFFS_activatePrivilege
     try { activatePrivilege(SE_BACKUP_NAME); }
     catch (const FileError&) {}
     try { activatePrivilege(SE_RESTORE_NAME); }
     catch (const FileError&) {}
+#endif//TODO_MinFFS_activatePrivilege
 
     zen::ScopeGuard guardTarget = zen::makeGuard([&] { try { removeFile(targetFile); } catch (FileError&) {} });
     //transactional behavior: guard just before starting copy, we don't trust ::CopyFileEx(), do we? ;)

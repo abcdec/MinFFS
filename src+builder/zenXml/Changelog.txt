@@ -1,0 +1,87 @@
+===========
+|Changelog|
+===========
+
+zen::Xml 2.1
+------------
+zen library update
+More C++11 improvements
+
+
+zen::Xml 2.0
+------------
+zen library update
+Skip XML comments while parsing
+Added move constructor for XmlDoc
+zen::parse and zen::load directly return XmlDoc
+New macros to specify platform: ZEN_WIN, ZEN_LINUX, ZEN_MAC
+Support serializing all integer limits (INT_MIN, INT_MAX, ect.)
+Moved license from Boost Software License 1.0 to GPL v3
+
+
+zen::Xml 1.9
+------------
+Mark failed UTF conversions with replacement character
+zen library update
+revised documentation
+
+
+zen::Xml 1.8
+------------
+Allow element values to contain non-escaped quotation marks
+Respect Linux/Mac/Window line endings when calculating parsing error location
+Map all end-of-line characters (Win/Linux/Mac) to \n
+
+
+zen::Xml 1.7
+------------
+zen library update
+revised documentation
+
+
+zen::Xml 1.6
+------------
+Fixed header file circular dependency
+Improved performance of FILE* based I/O
+Updated zen libraries
+
+
+zen::Xml 1.5
+------------
+Replaced sscanf/sprintf hex conversions: speedup of factors 3000 and 3 for large inputs
+MinGW: Improved char-based string to floating point conversion by factor 10
+Fixed crash in UTF8 conversion when processing corrupted data
+Fixed MSVC security warnings
+
+
+zen::Xml 1.4
+------------
+Added missing include
+
+
+zen::Xml 1.3
+------------
+Improved template metaprogramming implementation
+Support unusual string classes: Glib::ustring, wxString (wxWidgets >= 2.9)
+A number of documentation fixes
+
+
+zen::Xml 1.2
+------------
+Design improvements and minor refactoring
+Removed Loki dependency
+
+
+zen::Xml 1.1
+------------
+A few minor fixes
+
+
+zen::Xml 1.0
+------------
+Initial release:
+- straightforward XML serialization
+- automatic UTF-8 conversion
+- convert all string-like types
+- convert all built-in numbers
+- support STL containers

@@ -3,6 +3,20 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
+// **************************************************************************
+// * This file is modified from its original source file distributed by the *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
+// *                          --EXPERIMENTAL--                              *
+// * This program is experimental and not recommended for general use.      *
+// * Please consider using the original FreeFileSync program unless there   *
+// * are specific needs to use this experimental MinFFS version.            *
+// *                          --EXPERIMENTAL--                              *
+// * This modified program is distributed in the hope that it will be       *
+// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
+// * General Public License for more details.                               *
+// **************************************************************************
 
 #include "small_dlgs.h"
 #include <wx/wupdlock.h>
@@ -80,7 +94,9 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     fgSizerTranslators->Fit(m_scrolledWindowTranslators);
 
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS_MouseMoveWindow
     new zen::MouseMoveWindow(*this); //-> put *after* creating credits
+#endif//TODO_MinFFS_MouseMoveWindow
 #endif
 
     //build information
@@ -98,12 +114,21 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     //generate logo: put *after* first Fit()
     Layout(); //make sure m_panelLogo has final width (required by wxGTK)
 
+#ifdef MinFFS_PATCH // Information Dialog Box Title Change
+    wxImage appnameImg = createImageFromText(wxString(L"MinFFS (Modified FreeFileSync)"),
+                                             wxFont(wxNORMAL_FONT->GetPointSize() * 1.8, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, L"Tahoma"),
+                                             *wxBLACK); //accessibility: align foreground/background colors!
+    wxImage buildImg = createImageFromText(replaceCpy(_("Build: %x") + L" [Based on FreeFileSync " + zen::currentVersion + L"]", L"%x", build),
+                                           *wxNORMAL_FONT,
+                                           *wxBLACK);
+#else//MinFFS_PATCH
     wxImage appnameImg = createImageFromText(wxString(L"FreeFileSync ") + zen::currentVersion,
                                              wxFont(wxNORMAL_FONT->GetPointSize() * 1.8, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, L"Tahoma"),
                                              *wxBLACK); //accessibility: align foreground/background colors!
     wxImage buildImg = createImageFromText(replaceCpy(_("Build: %x"), L"%x", build),
                                            *wxNORMAL_FONT,
                                            *wxBLACK);
+#endif//MinFFS_PATCH
     wxImage versionImage = stackImages(appnameImg, buildImg, ImageStackLayout::VERTICAL, ImageStackAlignment::CENTER, 0);
 
     const int BORDER_SIZE = 5;
@@ -176,7 +201,9 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
     tickCountStartup(getTicks())
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS_MouseMoveWindow
     new zen::MouseMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere...; ownership passed to "this"
+#endif//TODO_MinFFS_MouseMoveWindow
 #endif
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOK).setCancel(m_buttonCancel));
 
@@ -300,7 +327,9 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
     m_dontShowAgain(dontShowAgain)
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS_MouseMoveWindow
     new zen::MouseMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere...; ownership passed to "this"
+#endif//TODO_MinFFS_MouseMoveWindow
 #endif
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonStartSync).setCancel(m_buttonCancel));
 
@@ -400,7 +429,9 @@ OptionsDlg::OptionsDlg(wxWindow* parent, xmlAccess::XmlGlobalSettings& globalSet
     settings(globalSettings)
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS_MouseMoveWindow
     new zen::MouseMoveWindow(*this); //allow moving dialog by clicking (nearly) anywhere...; ownership passed to "this"
+#endif//TODO_MinFFS_MouseMoveWindow
 #endif
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
@@ -662,7 +693,9 @@ SelectTimespanDlg::SelectTimespanDlg(wxWindow* parent, std::int64_t& timeFrom, s
     timeTo_(timeTo)
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS_MouseMoveWindow
     new zen::MouseMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere...; ownership passed to "this"
+#endif//TODO_MinFFS_MouseMoveWindow
 #endif
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 

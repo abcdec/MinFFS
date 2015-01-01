@@ -3,6 +3,20 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
+// **************************************************************************
+// * This file is modified from its original source file distributed by the *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
+// *                          --EXPERIMENTAL--                              *
+// * This program is experimental and not recommended for general use.      *
+// * Please consider using the original FreeFileSync program unless there   *
+// * are specific needs to use this experimental MinFFS version.            *
+// *                          --EXPERIMENTAL--                              *
+// * This modified program is distributed in the hope that it will be       *
+// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
+// * General Public License for more details.                               *
+// **************************************************************************
 
 #include "file_traverser.h"
 #include "sys_error.h"
@@ -146,7 +160,7 @@ const bool isXpOrLater = winXpOrLater(); //VS2010 compiled DLLs are not supporte
 DEF_DLL_FUN(openDir);   //
 DEF_DLL_FUN(readDir);   //load at startup: avoid pre C++11 static initialization MT issues
 DEF_DLL_FUN(closeDir);  //
-
+    
 /*
 Common C-style interface for Win32 FindFirstFile(), FindNextFile() and FileFilePlus openDir(), closeDir():
 struct TraverserPolicy //see "policy based design"
@@ -269,7 +283,11 @@ struct FilePlusTraverser
 
     static DirHandle create(const Zstring& dirpath) //throw FileError
     {
+#ifdef TODO_MinFFS_openDir_DLL_PROTO
         const findplus::FindHandle hnd = ::openDir(applyLongPathPrefix(dirpath).c_str());
+#else//TODO_MinFFS_openDir_DLL_PROTO
+        const findplus::FindHandle hnd = ::openDir(applyLongPathPrefix(dirpath));
+#endif//TODO_MinFFS_openDir_DLL_PROTO
         if (!hnd)
             throwFileError(replaceCpy(_("Cannot open directory %x."), L"%x", fmtFileName(dirpath)), L"openDir", getLastError());
 
@@ -280,7 +298,7 @@ struct FilePlusTraverser
 
     static bool getEntry(DirHandle hnd, const Zstring& dirpath, FindData& fileInfo) //throw FileError, NeedFallbackToWin32Traverser
     {
-        if (!::readDir(hnd.searchHandle, fileInfo))
+	if (!::readDir(hnd.searchHandle, fileInfo))
         {
             const DWORD lastError = ::GetLastError(); //copy before directly or indirectly making other system calls!
             if (lastError == ERROR_NO_MORE_FILES) //not an error situation
@@ -297,7 +315,6 @@ struct FilePlusTraverser
             //else we have a problem... report it:
             throwFileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtFileName(dirpath)), L"readDir", lastError);
         }
-
         return true;
     }
 
@@ -370,7 +387,9 @@ DirTraverser::DirTraverser(const Zstring& baseDirectory, TraverseCallback& sink)
 {
     try //traversing certain folders with restricted permissions requires this privilege! (but copying these files may still fail)
     {
-        activatePrivilege(SE_BACKUP_NAME); //throw FileError
+#ifdef TODO_MinFFS_activatePrivate
+    activatePrivilege(SE_BACKUP_NAME); //throw FileError
+#endif//TODO_MinFFS_activatePrivate
     }
     catch (FileError&) {} //don't cause issues in user mode
 

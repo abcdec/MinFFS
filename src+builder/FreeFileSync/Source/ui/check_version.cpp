@@ -3,6 +3,20 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
+// **************************************************************************
+// * This file is modified from its original source file distributed by the *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
+// *                          --EXPERIMENTAL--                              *
+// * This program is experimental and not recommended for general use.      *
+// * Please consider using the original FreeFileSync program unless there   *
+// * are specific needs to use this experimental MinFFS version.            *
+// *                          --EXPERIMENTAL--                              *
+// * This modified program is distributed in the hope that it will be       *
+// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
+// * General Public License for more details.                               *
+// **************************************************************************
 
 #include "check_version.h"
 #include <zen/string_tools.h>
@@ -56,6 +70,7 @@ class WinInetAccess //1. uses IE proxy settings! :) 2. follows HTTP redirects by
 public:
     WinInetAccess(const wchar_t* url) //throw InternetConnectionError (if url cannot be reached; no need to also call readBytes())
     {
+#ifdef TODO_MinFFS_InternetVersion
         //::InternetAttemptConnect(0) -> not working as expected: succeeds even when there is no internet connection!
 
         hInternet = ::InternetOpen(getUserAgentName().c_str(), //_In_  LPCTSTR lpszAgent,
@@ -91,17 +106,21 @@ public:
 
         guardRequest .dismiss();
         guardInternet.dismiss();
+#endif//TODO_MinFFS_InternetVersion
     }
 
     ~WinInetAccess()
     {
+#ifdef TODO_MinFFS_InternetVersion
         ::InternetCloseHandle(hRequest);
         ::InternetCloseHandle(hInternet);
+#endif//TODO_MinFFS_InternetVersion
     }
 
     template <class OutputIterator>
     OutputIterator readBytes(OutputIterator result) //throw InternetConnectionError
     {
+#ifdef TODO_MinFFS_InternetVersion
         //internet says "HttpQueryInfo() + HTTP_QUERY_CONTENT_LENGTH" not supported by all http servers...
         const DWORD bufferSize = 64 * 1024;
         std::vector<char> buffer(bufferSize);
@@ -118,6 +137,7 @@ public:
 
             result = std::copy(buffer.begin(), buffer.begin() + bytesRead, result);
         }
+#endif//TODO_MinFFS_InternetVersion
     }
 
 private:
@@ -138,11 +158,13 @@ bool canAccessUrl(const wchar_t* url) //throw ()
 }
 
 
+#ifdef TODO_MinFFS_InternetVersion
 template <class OutputIterator> inline
 OutputIterator readBytesUrl(const wchar_t* url, OutputIterator result) //throw InternetConnectionError
 {
     return WinInetAccess(url).readBytes(result); //throw InternetConnectionError
 }
+#endif//TODO_MinFFS_InternetVersion
 
 #else
 bool getStringFromUrl(const wxString& server, const wxString& page, int timeout, wxString* output, int level = 0) //true on successful connection
@@ -207,6 +229,7 @@ enum GetVerResult
 GetVerResult getOnlineVersion(wxString& version) //empty string on error;
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS_InternetVersion
     //internet access supporting proxy connections
     std::vector<char> output;
     try
@@ -221,6 +244,9 @@ GetVerResult getOnlineVersion(wxString& version) //empty string on error;
     output.push_back('\0');
     version = utfCvrtTo<wxString>(&output[0]);
     return GET_VER_SUCCESS;
+#else//TODO_MinFFS_InternetVersion
+    return GET_VER_NO_CONNECTION;
+#endif//TODO_MinFFS_InternetVersion
 
 #elif defined ZEN_LINUX || defined ZEN_MAC
     wxWindowDisabler dummy;

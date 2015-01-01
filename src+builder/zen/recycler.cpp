@@ -3,6 +3,20 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
+// **************************************************************************
+// * This file is modified from its original source file distributed by the *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
+// *                          --EXPERIMENTAL--                              *
+// * This program is experimental and not recommended for general use.      *
+// * Please consider using the original FreeFileSync program unless there   *
+// * are specific needs to use this experimental MinFFS version.            *
+// *                          --EXPERIMENTAL--                              *
+// * This modified program is distributed in the hope that it will be       *
+// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
+// * General Public License for more details.                               *
+// **************************************************************************
 
 #include "recycler.h"
 #include "file_access.h"
@@ -85,12 +99,11 @@ void zen::recycleOrDelete(const std::vector<Zstring>& itempaths, const std::func
 #define DEF_DLL_FUN(name) const DllFun<fileop::FunType_##name> name(fileop::getDllName(), fileop::funName_##name);
         DEF_DLL_FUN(moveToRecycleBin);
         DEF_DLL_FUN(getLastErrorMessage);
-#undef DEF_DLL_FUN
 
         if (!moveToRecycleBin || !getLastErrorMessage)
             throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtFileName(itempaths[0])),
                             replaceCpy(_("Cannot load file %x."), L"%x", fmtFileName(fileop::getDllName())));
-
+	
         std::vector<const wchar_t*> cNames;
         for (auto it = itempaths.begin(); it != itempaths.end(); ++it) //CAUTION: do not create temporary strings here!!
             cNames.push_back(it->c_str());
@@ -236,13 +249,13 @@ bool zen::recycleBinExists(const Zstring& pathName, const std::function<void ()>
     if (vistaOrLater())
     {
         using namespace fileop;
-        const DllFun<FunType_getRecycleBinStatus> getRecycleBinStatus(getDllName(), funName_getRecycleBinStatus);
+	const DllFun<FunType_getRecycleBinStatus> getRecycleBinStatus(getDllName(), funName_getRecycleBinStatus);
         const DllFun<FunType_getLastErrorMessage> getLastErrorMessage(getDllName(), funName_getLastErrorMessage);
 
         if (!getRecycleBinStatus || !getLastErrorMessage)
             throw FileError(replaceCpy(_("Checking recycle bin failed for folder %x."), L"%x", fmtFileName(pathName)),
                             replaceCpy(_("Cannot load file %x."), L"%x", fmtFileName(getDllName())));
-
+	
         bool hasRecycler = false;
         if (!getRecycleBinStatus(pathName.c_str(), hasRecycler))
             throw FileError(replaceCpy(_("Checking recycle bin failed for folder %x."), L"%x", fmtFileName(pathName)), getLastErrorMessage());
@@ -251,7 +264,7 @@ bool zen::recycleBinExists(const Zstring& pathName, const std::function<void ()>
     }
     else
     {
-        //excessive runtime if recycle bin exists, is full and drive is slow:
+       //excessive runtime if recycle bin exists, is full and drive is slow:
         auto ft = async([pathName]()
         {
             SHQUERYRBINFO recInfo = {};

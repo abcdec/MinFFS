@@ -189,6 +189,7 @@ ExistingTranslations::ExistingTranslations()
 
     //search language files available
     std::vector<Zstring> lngFiles;
+
     FindLngfiles traverseCallback(lngFiles);
 
     traverseFolder(zen::getResourceDir() +  Zstr("Languages"), //throw();

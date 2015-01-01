@@ -3,6 +3,20 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
+// **************************************************************************
+// * This file is modified from its original source file distributed by the *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
+// *                          --EXPERIMENTAL--                              *
+// * This program is experimental and not recommended for general use.      *
+// * Please consider using the original FreeFileSync program unless there   *
+// * are specific needs to use this experimental MinFFS version.            *
+// *                          --EXPERIMENTAL--                              *
+// * This modified program is distributed in the hope that it will be       *
+// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
+// * General Public License for more details.                               *
+// **************************************************************************
 
 #include "main_dlg.h"
 #include <zen/format_unit.h>
@@ -262,6 +276,7 @@ private:
 
 
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS_MouseMoveWindow
 class PanelMoveWindow : public MouseMoveWindow
 {
 public:
@@ -285,6 +300,7 @@ public:
 private:
     MainDialog& mainDlg_;
 };
+#endif//TODO_MinFFS_MouseMoveWindow
 #endif
 
 
@@ -634,7 +650,9 @@ MainDialog::MainDialog(const Zstring& globalConfigFile,
     cleanedUp = false;
 
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS_MouseMoveWindow
     new PanelMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere... //ownership passed to "this"
+#endif//TODO_MinFFS_MouseMoveWindow
 #endif
 
     {
@@ -2719,7 +2737,11 @@ void MainDialog::updateUnsavedCfgStatus()
         std::for_each(activeConfigFiles.begin() + 1, activeConfigFiles.end(), [&](const Zstring& filepath) { title += EM_DASH + xmlAccess::extractJobName(filepath); });
     }
     else
+#ifdef MinFFS_PATCH // Application Title Change
+        title += L"MinFFS (Modified FreeFileSync) - " + _("Folder Comparison and Synchronization");
+#else//MinFFS_PATCH
         title += L"FreeFileSync - " + _("Folder Comparison and Synchronization");
+#endif//MinFFS_PATCH
 
     SetTitle(title);
 }

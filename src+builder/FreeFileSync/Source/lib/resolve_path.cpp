@@ -1,3 +1,17 @@
+// **************************************************************************
+// * This file is modified from its original source file distributed by the *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
+// *                          --EXPERIMENTAL--                              *
+// * This program is experimental and not recommended for general use.      *
+// * Please consider using the original FreeFileSync program unless there   *
+// * are specific needs to use this experimental MinFFS version.            *
+// *                          --EXPERIMENTAL--                              *
+// * This modified program is distributed in the hope that it will be       *
+// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
+// * General Public License for more details.                               *
+// **************************************************************************
 #include "resolve_path.h"
 #include <set> //not necessarily included by <map>!
 #include <map>
@@ -123,10 +137,9 @@ private:
 #endif
         typedef HRESULT (STDAPICALLTYPE* SHGetKnownFolderPathFunc)(REFKNOWNFOLDERID rfid, DWORD dwFlags, HANDLE hToken, PWSTR* ppszPath);
         const SysDllFun<SHGetKnownFolderPathFunc> shGetKnownFolderPath(L"Shell32.dll", "SHGetKnownFolderPath");
-
         auto addFolderId = [&](REFKNOWNFOLDERID rfid, const Zstring& paramName)
         {
-            if (shGetKnownFolderPath != nullptr) //[!] avoid bogus MSVC "performance warning"
+	    if (shGetKnownFolderPath != nullptr) //[!] avoid bogus MSVC "performance warning"
             {
                 PWSTR path = nullptr;
                 if (SUCCEEDED(shGetKnownFolderPath(rfid,                //_In_      REFKNOWNFOLDERID rfid,
@@ -178,7 +191,7 @@ private:
         addCsidl(CSIDL_COMMON_TEMPLATES, L"csidl_PublicTemplates"); // C:\ProgramData\Microsoft\Windows\Templates
 
         //Vista and later:
-        addFolderId(FOLDERID_Downloads,       L"csidl_Downloads");       // C:\Users\<user>\Downloads
+	addFolderId(FOLDERID_Downloads,       L"csidl_Downloads");       // C:\Users\<user>\Downloads
         addFolderId(FOLDERID_PublicDownloads, L"csidl_PublicDownloads"); // C:\Users\Public\Downloads
 
         addFolderId(FOLDERID_QuickLaunch,     L"csidl_QuickLaunch");     // C:\Users\<user>\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch
@@ -223,7 +236,6 @@ std::unique_ptr<Zstring> getEnvironmentVar(const Zstring& envName) //return null
         endsWith  (value, L"\"") &&
         value.length() >= 2)
         value = wxString(value.c_str() + 1, value.length() - 2);
-
     return zen::make_unique<Zstring>(utfCvrtTo<Zstring>(value));
 }
 
@@ -332,7 +344,6 @@ Opt<Zstring> getPathByVolumenName(const Zstring& volumeName) //return no value o
     {
         //search for matching path in parallel until first hit
         GetFirstResult<Zstring> firstMatch;
-
         for (const wchar_t* it = &buffer[0]; *it != 0; it += strLength(it) + 1) //list terminated by empty c-string
         {
             const Zstring path = it;
@@ -395,7 +406,6 @@ Zstring getVolumeName(const Zstring& volumePath) //return empty string on error
 Zstring expandVolumeName(const Zstring& text)  // [volname]:\folder       [volname]\folder       [volname]folder     -> C:\folder
 {
     //this would be a nice job for a C++11 regex...
-
     //we only expect the [.*] pattern at the beginning => do not touch dir names like "C:\somedir\[stuff]"
     Zstring textTmp = text;
     trim(textTmp, true, false);
@@ -551,7 +561,6 @@ Zstring zen::getFormattedDirectoryPath(const Zstring& dirpassPhrase) // throw()
 
     dirpath = expandMacros(dirpath);
     dirpath = expandVolumeName(dirpath); //may block for slow USB sticks!
-
     /*
     need to resolve relative paths:
     WINDOWS:

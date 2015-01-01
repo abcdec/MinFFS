@@ -1,0 +1,31 @@
+100            ICON                    "minffs.ico"
+
+1 VERSIONINFO
+FILEVERSION 1,0,0,1
+PRODUCTVERSION 1,0,0,1
+FILEFLAGSMASK 0x3fL
+FILEFLAGS 0x0L
+FILEOS 0x4L
+FILETYPE 0x1L
+FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "CompanyName", "MinFFS"
+            VALUE "FileDescription", "MinFFS"
+            VALUE "FileVersion", "1.6.12.1"
+            VALUE "InternalName", "MinFFS.exe"
+            VALUE "LegalCopyright", "See Lincense."
+            VALUE "OriginalFilename", "MinFFS"
+            VALUE "ProductName", "MinFFS"
+            VALUE "ProductVersion", "1.6.12.1"
+        END
+    END
+
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1252
+    END
+END

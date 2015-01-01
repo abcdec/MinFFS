@@ -3,6 +3,20 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
+// **************************************************************************
+// * This file is modified from its original source file distributed by the *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
+// *                          --EXPERIMENTAL--                              *
+// * This program is experimental and not recommended for general use.      *
+// * Please consider using the original FreeFileSync program unless there   *
+// * are specific needs to use this experimental MinFFS version.            *
+// *                          --EXPERIMENTAL--                              *
+// * This modified program is distributed in the hope that it will be       *
+// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
+// * General Public License for more details.                               *
+// **************************************************************************
 
 #ifndef SYMLINK_80178347019835748321473214
 #define SYMLINK_80178347019835748321473214
@@ -15,7 +29,9 @@
     #include "privilege.h"
     #include "long_path_prefix.h"
     #include "dll.h"
-
+#ifdef MinFFS_PATCH // Include winioctl.h for FSCTL_GET_REPARSE_POINT
+    #include "winioctl.h"
+#endif//MinFFS_PATCH
 #elif defined ZEN_LINUX || defined ZEN_MAC
     #include <unistd.h>
     #include <stdlib.h> //realpath
@@ -43,6 +59,9 @@ Zstring getSymlinkTargetRaw(const Zstring& linkPath); //throw FileError
 
 //################################ implementation ################################
 #ifdef ZEN_WIN
+#ifdef MinFFS_PATCH // Skip defining struct _REPARSE_DATA_BUFFER
+// MinGW defineis this struct in winnt.h so just exclude
+#else//MinFFS_PATCH
 //I don't have Windows Driver Kit at hands right now, so unfortunately we need to redefine this structure and cross fingers...
 typedef struct _REPARSE_DATA_BUFFER //from ntifs.h
 {
@@ -75,6 +94,7 @@ typedef struct _REPARSE_DATA_BUFFER //from ntifs.h
     };
 } REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
 #define REPARSE_DATA_BUFFER_HEADER_SIZE   FIELD_OFFSET(REPARSE_DATA_BUFFER, GenericReparseBuffer)
+#endif//MinFFS_PATCH
 #endif
 
 namespace
@@ -87,9 +107,11 @@ Zstring getSymlinkRawTargetString_impl(const Zstring& linkPath) //throw FileErro
     //FSCTL_GET_REPARSE_POINT: http://msdn.microsoft.com/en-us/library/aa364571(VS.85).aspx
 
     //reading certain symlinks/junctions requires admin rights!
+#ifdef TODO_MinFFS_activatePrivilege
     try
     { activatePrivilege(SE_BACKUP_NAME); } //throw FileError
     catch (FileError&) {} //This shall not cause an error in user mode!
+#endif//TODO_MinFFS_activatePrivilege
 
     const HANDLE hLink = ::CreateFile(applyLongPathPrefix(linkPath).c_str(), //_In_      LPCTSTR lpFileName,
                                       //it seems we do not even need GENERIC_READ!
@@ -162,7 +184,6 @@ Zstring getResolvedFilePath_impl(const Zstring& linkPath) //throw FileError
     const SysDllFun<GetFinalPathNameByHandleWFunc> getFinalPathNameByHandle(L"kernel32.dll", "GetFinalPathNameByHandleW");
     if (!getFinalPathNameByHandle)
         throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtFileName(linkPath)), replaceCpy(_("Cannot find system function %x."), L"%x", L"\"GetFinalPathNameByHandleW\""));
-
 
     const HANDLE hDir = ::CreateFile(applyLongPathPrefix(linkPath).c_str(),                  //_In_      LPCTSTR lpFileName,
                                      0,                                                      //_In_      DWORD dwDesiredAccess,

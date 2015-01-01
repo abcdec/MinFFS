@@ -62,7 +62,7 @@ void setMainInstructionFont(wxWindow& control)
         if (HTHEME hTheme = openThemeData(NULL,          //__in  HWND hwnd,
                                           L"TEXTSTYLE")) //__in  LPCWSTR pszClassList
         {
-            ZEN_ON_SCOPE_EXIT(closeThemeData(hTheme));
+	    ZEN_ON_SCOPE_EXIT(closeThemeData(hTheme));
 
             COLORREF cr = {};
             if (getThemeColor(hTheme,               //_In_   HTHEME hTheme,
