@@ -15,7 +15,9 @@ A FreeFileSync modified for MinGW Build
 
 - The program binaries and sources of MinFFS are distributed under [GNU General Public License Version 3.0] (http://www.gnu.org/licenses/gpl-3.0.en.html) per original FreeFileSync License. 
 - You can download from GitHub Release page. https://github.com/abcdec/MinFFS/releases
-  - Installer (EXE) and portable (ZIP) binary versions are availble. (Built binaries are uploaded.)
+  - Windows installer (MinFFS-Setup.exe) and Portable (MinFFS-Portable.exe) binary versions are availble. (Built binaries are uploaded.)
+    - Windows installer will require admin privilege and will update Windows Registry to tell Windows that a uninstaller is available.
+    - Portable installer will not require admin priviledge and by default it will install on Desktop\MinFFS-Portable. Remove directory to uninstall.
   - ZIP and tar.gz source bundles are avaialble as well (GitHub automatically create one from repo).
 - If you need original FreeFileSync binary and source distribution, please go to http://www.freefilesync.org/
 
@@ -44,7 +46,7 @@ MinGW must be installed first because it will be used to build wxWidgets and Boo
   - Download MinGW installer mingw-get-setup.exe from http://www.mingw.org/
     - Latest mingw-get-setup.exe should be found at http://sourceforge.net/projects/mingw/files/Installer/
   - Run mingw-get-setup.exe and follow instructions to download and install actual MinGW Software packages. This README assumes MinGW is installed in C:\MinGW directory. (If not, please substitue all "C:\MinGW" in this README with absolute path of your actual installation directory.  It is strongly suggested to install MinGW in a directory without white space in the path name string. e.g. avoid installing under "C:\Program Files".)
-    - MinFFS build requies only the MinGW base package.  For example, it does not require MSYS. No need to download and install MSYS and other optional packages.
+    - MinFFS build requies only the MinGW base and binutil packages.  (Base includes compiler and linkers, binutils includes tools like windres.exe.)   For example, it does not require MSYS. No need to download and install MSYS and optional packages other than base binaries and binutils.
 
 NOTE: If MinGW has been installed already on your PC, please check the MinGW version.  The original FreeFileSync uses C++11 features thus MinFFS follow the same. Your version of MinGW g++.exe needs to support C++11 option to build MinFFS successfully.  See Toolset Versions section for versions used for successful builds.
 
@@ -101,7 +103,7 @@ NOTE: If MinGW toolset version is updated for any reason, it is recommended to r
 
 ### Installation Step 4. Install Unicode NSIS
 
-Installing Unicode NSIS is relatively strait forward.  Just install from normal installer, and place distribution to default location ("C:\Program Files (x86)\NSIS\Unicode" as of version 2.46.5.  Unicode NSIS can be downlaoded from http://www.scratchpaper.com/.
+Installing Unicode NSIS is relatively strait forward.  Just install from normal installer, and place distribution to default location ("C:\Program Files (x86)\NSIS\Unicode" as of version 2.46.5).  Unicode NSIS can be downlaoded from http://www.scratchpaper.com/.
 
 
 ### Build MinFFS

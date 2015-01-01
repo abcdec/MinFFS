@@ -20,15 +20,18 @@
 
 @echo off
 
-@IF NOT EXIST %MINGW% MINGW_NOT_DEFINED
-@IF NOT EXIST %WXWIN% WXWIN_NOT_DEFINED
+@IF NOT DEFINED MINGW ( GOTO MINGW_NOT_DEFINED )
+@IF NOT DEFINED WXWIN ( GOTO WXWIN_NOT_DEFINED )
+
+@IF NOT EXIST %MINGW% ( GOTO MINGW_NOT_DEFINED )
+@IF NOT EXIST %WXWIN% ( GOTO WXWIN_NOT_DEFINED )
 
 @IF NOT EXIST "bin-release" mkdir bin-release
 @IF NOT EXIST "bin-release\Bin" mkdir bin-release\Bin
 
 @xcopy MinFFS.exe bin-release\Bin\ /Y/Q > NUL
 @xcopy License.rtf bin-release\ /Y/Q > NUL
-@xcopy ..\MswCommon\DLLs\* bin-release\Bin\ /Y/Q > NUL
+@REM xcopy ..\MswCommon\DLLs\* bin-release\Bin\ /Y/Q > NUL
 @xcopy %MINGW%\bin\libstdc++-6.dll bin-release\Bin\ /Y/Q > NUL
 @xcopy %MINGW%\bin\libgcc_s_dw2-1.dll bin-release\Bin\ /Y/Q > NUL
 @xcopy ..\MswCommon\Help\FreeFileSync.chm bin-release\ /Y/Q > NUL
@@ -38,15 +41,16 @@
 
 @echo Packaging MinFFS
 "C:\Program Files (x86)\NSIS\Unicode\makensis.exe" MinFFS-Setup.nsi
+"C:\Program Files (x86)\NSIS\Unicode\makensis.exe" MinFFS-Portable.nsi
 
 GOTO END
 
 :MINGW_NOT_DEFINED
-%MINGW% echo Please set MINGW environment variable properly. Exit.
+echo MINGW environment variable is not defined properly.  Please check setenv.bat and run it before running this batch file.
 GOTO END
 
 :WXWIN_NOT_DEFINED
-%MINGW% echo Please set WXWIN environment variable properly. Exit.
+echo WXWIN environment variable is not defined properly.  Please check setenv.bat and run it before running this batch file.
 GOTO END
 
 :END

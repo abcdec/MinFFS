@@ -149,7 +149,6 @@ public:
 	: functionPtr_(nullptr), moduleHandle_(nullptr) {
 	moduleHandle_ = LoadLibraryW(dllNameIn.data());
 	if (moduleHandle_ != NULL) {
-	    std::cout << "CTR 1: " << functionNameIn << "\n";
 	    FARPROC proc = GetProcAddress(moduleHandle_, functionNameIn.c_str());
 	    if (proc != NULL) {
 		functionPtr_ = reinterpret_cast<T>(proc);
@@ -159,13 +158,10 @@ public:
 
     SysDllFun(std::wstring dllNameIn, LPCSTR functionNamePtrIn)
 	: functionPtr_(nullptr), moduleHandle_(nullptr) {
-	std::cout << "CTR 2\n";
 	moduleHandle_ = LoadLibraryW(dllNameIn.data());
 	if (moduleHandle_ != NULL) {
-	    std::cout << "DEBUG\n";
 	    FARPROC proc = GetProcAddress(moduleHandle_, functionNamePtrIn);
 	    if (proc != NULL) {
-		std::cout << "DEBUG2\n";
 		functionPtr_ = reinterpret_cast<T>(proc);
 	    }
 	}

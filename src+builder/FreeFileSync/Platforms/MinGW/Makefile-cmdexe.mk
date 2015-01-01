@@ -27,6 +27,8 @@ BOOST_ROOT  := C:/Boost
 BOOST_VER   := 1_57
 BOOST_MINGW := mgw48
 
+.SUFFIXES:	.rc
+
   # wxWidgets wx-config --cxxflags
 CXXFLAGS := -mthreads
 CXXFLAGS += -DHAVE_W32API_H
@@ -76,6 +78,8 @@ LINKFLAGS := -L$(BOOST_ROOT)/lib
 LINKFLAGS += -lboost_system-${BOOST_MINGW}-mt-$(BOOST_VER)
 LINKFLAGS += -lboost_thread-${BOOST_MINGW}-mt-$(BOOST_VER)
 
+  # console control
+LINKFLAGS += -mwindows
 
   # wxWidgets wx-config --libs
 LINKFLAGS += -mthreads
@@ -174,7 +178,7 @@ CPP_LIST+=$(PROJECT_TOP)/wx+/popup_dlg_generated.cpp
 CPP_LIST+=$(PROJECT_TOP)/wx+/zlib_wrap.cpp
 CPP_LIST+=dllwrapper_constants.cpp
 
-OBJECT_LIST = $(CPP_LIST:%.cpp=%.o)
+OBJECT_LIST = $(CPP_LIST:%.cpp=%.o) res.o
 
 
 all: FreeFileSync
@@ -182,6 +186,10 @@ all: FreeFileSync
 .cpp.o:
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+.rc.o:
+	windres $< $@
+
+res.o:	res.rc
 
 FreeFileSync:	$(APPNAME)
 

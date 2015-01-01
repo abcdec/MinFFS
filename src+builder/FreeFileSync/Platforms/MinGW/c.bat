@@ -20,20 +20,23 @@
 
 @echo off
 
-@IF NOT EXIST %MINGW% MINGW_NOT_DEFINED
-@IF NOT EXIST %WXWIN% WXWIN_NOT_DEFINED
+@IF NOT DEFINED MINGW ( GOTO MINGW_NOT_DEFINED )
+@IF NOT DEFINED WXWIN ( GOTO WXWIN_NOT_DEFINED )
 
+@IF NOT EXIST %MINGW% ( GOTO MINGW_NOT_DEFINED )
+@IF NOT EXIST %WXWIN% ( GOTO WXWIN_NOT_DEFINED )
 
 @IF EXIST bin-debug rmdir bin-debug /S/Q
+@IF EXIST bin-release rmdir bin-release /S/Q
 
 GOTO END
 
 :MINGW_NOT_DEFINED
-%MINGW% echo Please set MINGW environment variable properly. Exit.
+echo MINGW environment variable is not defined properly.  Please check setenv.bat and run it before running this batch file.
 GOTO END
 
 :WXWIN_NOT_DEFINED
-%MINGW% echo Please set WXWIN environment variable properly. Exit.
+echo WXWIN environment variable is not defined properly.  Please check setenv.bat and run it before running this batch file.
 GOTO END
 
 :END

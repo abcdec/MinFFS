@@ -20,14 +20,14 @@
 
 @echo off
 
-@IF NOT EXIST %MINGW% MINGW_NOT_DEFINED
-@IF NOT EXIST %WXWIN% WXWIN_NOT_DEFINED
+@IF NOT DEFINED MINGW ( GOTO MINGW_NOT_DEFINED )
+@IF NOT DEFINED WXWIN ( GOTO WXWIN_NOT_DEFINED )
 
-@IF NOT EXIST "bin-debug" mkdir bin-debug
-@IF NOT EXIST "bin-debug\Bin" mkdir bin-debug\Bin
+@IF NOT EXIST %MINGW% ( GOTO MINGW_NOT_DEFINED )
+@IF NOT EXIST %WXWIN% ( GOTO WXWIN_NOT_DEFINED )
 
 @xcopy MinFFS.exe bin-debug\Bin\ /Y/Q > NUL
-@xcopy ..\MswCommon\DLLs\* bin-debug\Bin\ /Y/Q > NUL
+@REM xcopy ..\MswCommon\DLLs\* bin-debug\Bin\ /Y/Q > NUL
 @xcopy %MINGW%\bin\libstdc++-6.dll bin-debug\Bin\ /Y/Q > NUL
 @xcopy %MINGW%\bin\libgcc_s_dw2-1.dll bin-debug\Bin\ /Y/Q > NUL
 @xcopy ..\MswCommon\Help\FreeFileSync.chm bin-debug\ /Y/Q > NUL
@@ -41,11 +41,11 @@ bin-debug\Bin\MinFFS.exe
 GOTO END
 
 :MINGW_NOT_DEFINED
-%MINGW% echo Please set MINGW environment variable properly. Exit.
+echo MINGW environment variable is not defined properly.  Please check setenv.bat and run it before running this batch file.
 GOTO END
 
 :WXWIN_NOT_DEFINED
-%MINGW% echo Please set WXWIN environment variable properly. Exit.
+echo WXWIN environment variable is not defined properly.  Please check setenv.bat and run it before running this batch file.
 GOTO END
 
 :END
