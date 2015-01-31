@@ -50,7 +50,7 @@ public:
             dirpaths_.resize(maxSize_);
     }
 
-    void delItem(const Zstring& dirpath) { zen::vector_remove_if(dirpaths_, [&](const Zstring& entry) { return ::EqualFilename()(entry, dirpath); }); }
+    void delItem(const Zstring& dirpath) { zen::vector_remove_if(dirpaths_, [&](const Zstring& item) { return ::EqualFilename()(item, dirpath); }); }
 
 private:
     size_t maxSize_;

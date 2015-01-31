@@ -22,7 +22,7 @@
 
 #ifdef ZEN_WIN
     #include <zen/win_ver.h>
-#include <zen/dll.h>
+    #include <zen/dll.h>
     #include "../lib/app_user_mode_id.h"
 
 #elif defined ZEN_LINUX
@@ -136,7 +136,7 @@ void Application::onEnterEventLoop(wxEvent& event)
                 filepath += Zstr(".ffs_batch");
             else
             {
-                showNotificationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().setMainInstructions(replaceCpy(_("Cannot open file %x."), L"%x", fmtFileName(filepath))));
+                showNotificationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().setMainInstructions(replaceCpy(_("Cannot find file %x."), L"%x", fmtFileName(filepath))));
                 return;
             }
         }

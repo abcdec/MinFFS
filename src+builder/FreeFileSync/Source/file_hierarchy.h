@@ -396,7 +396,7 @@ public:
 
     //for use during init in "CompareProcess" only:
     template <CompareFilesResult res> void setCategory();
-    void setCategoryConflict(const std::wstring& description);
+    void setCategoryConflict    (const std::wstring& description);
     void setCategoryDiffMetadata(const std::wstring& description);
 
 protected:
@@ -436,11 +436,10 @@ private:
 
     bool selectedForSynchronization;
 
+    //Note: we model *four* states with following two variables => "syncDirectionConflict is empty or syncDir == NONE" is a class invariant!!!
     SyncDirection syncDir_; //1 byte: optimize memory layout!
-    std::unique_ptr<std::wstring> syncDirConflict; //non-empty if we have a conflict setting sync-direction
+    std::unique_ptr<std::wstring> syncDirectionConflict; //non-empty if we have a conflict setting sync-direction
     //get rid of std::wstring small string optimization (consumes 32/48 byte on VS2010 x86/x64!)
-
-    //Note: we model *four* states with last two variables => "syncDirConflict is empty or syncDir == NONE" is a class invariant!!!
 
     Zstring shortNameLeft_;  //slightly redundant under linux, but on windows the "same" filepaths can differ in case
     Zstring shortNameRight_; //use as indicator: an empty name means: not existing!
@@ -634,7 +633,9 @@ inline
 std::wstring FileSystemObject::getCatExtraDescription() const
 {
     assert(getCategory() == FILE_CONFLICT || getCategory() == FILE_DIFFERENT_METADATA);
-    return cmpResultDescr ? *cmpResultDescr : std::wstring();
+    if (cmpResultDescr) //avoid ternary-WTF!
+        return *cmpResultDescr;
+    return std::wstring();
 }
 
 
@@ -649,7 +650,7 @@ inline
 void FileSystemObject::setSyncDir(SyncDirection newDir)
 {
     syncDir_ = newDir;
-    syncDirConflict.reset();
+    syncDirectionConflict.reset();
 
     notifySyncCfgChanged();
 }
@@ -659,7 +660,7 @@ inline
 void FileSystemObject::setSyncDirConflict(const std::wstring& description)
 {
     syncDir_ = SyncDirection::NONE;
-    syncDirConflict = zen::make_unique<std::wstring>(description);
+    syncDirectionConflict = zen::make_unique<std::wstring>(description);
 
     notifySyncCfgChanged();
 }
@@ -669,7 +670,9 @@ inline
 std::wstring FileSystemObject::getSyncOpConflict() const
 {
     assert(getSyncOperation() == SO_UNRESOLVED_CONFLICT);
-    return syncDirConflict ? *syncDirConflict : std::wstring();
+    if (syncDirectionConflict) //avoid ternary-WTF!
+        return *syncDirectionConflict;
+    return std::wstring();
 }
 
 
@@ -712,7 +715,9 @@ const Zstring& FileSystemObject::getItemName() const
 template <SelectedSide side> inline
 Zstring FileSystemObject::getRelativePath() const
 {
-    return isEmpty<side>() ? Zstring() : parent_.getPairRelativePathPf() + getItemName<side>();
+    if (isEmpty<side>()) //avoid ternary-WTF!
+        return Zstring();
+    return parent_.getPairRelativePathPf() + getItemName<side>();
 }
 
 
@@ -733,7 +738,9 @@ Zstring FileSystemObject::getPairShortName() const
 template <SelectedSide side> inline
 Zstring FileSystemObject::getFullPath() const
 {
-    return isEmpty<side>() ? Zstring() : getBaseDirPf<side>() + parent_.getPairRelativePathPf() + getItemName<side>();
+    if (isEmpty<side>()) //avoid ternary-WTF!
+        return Zstring();
+    return getBaseDirPf<side>() + parent_.getPairRelativePathPf() + getItemName<side>();
 }
 
 
@@ -819,7 +826,7 @@ void FileSystemObject::flip()
         case FILE_RIGHT_NEWER:
             cmpResult = FILE_LEFT_NEWER;
             break;
-        case FILE_DIFFERENT:
+        case FILE_DIFFERENT_CONTENT:
         case FILE_EQUAL:
         case FILE_DIFFERENT_METADATA:
         case FILE_CONFLICT:
@@ -897,12 +904,11 @@ FilePair& HierarchyObject::addSubFile<RIGHT_SIDE>(const Zstring& shortName, cons
 
 
 inline
-SymlinkPair& HierarchyObject::addSubLink(
-    const Zstring&        shortNameLeft,
-    const LinkDescriptor& left,  //link exists on both sides
-    CompareSymlinkResult  defaultCmpResult,
-    const Zstring&        shortNameRight,
-    const LinkDescriptor& right)
+SymlinkPair& HierarchyObject::addSubLink(const Zstring&        shortNameLeft,
+                                         const LinkDescriptor& left,  //link exists on both sides
+                                         CompareSymlinkResult  defaultCmpResult,
+                                         const Zstring&        shortNameRight,
+                                         const LinkDescriptor& right)
 {
     subLinks.emplace_back(shortNameLeft, left, defaultCmpResult, shortNameRight, right, *this);
     return subLinks.back();

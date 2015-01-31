@@ -63,10 +63,10 @@ private:
 };
 
 
-void limitLogfileCount(const Zstring& logdir, const std::wstring& jobname, size_t maxCount, const std::function<void()>& onUpdateStatus) //throw()
+void limitLogfileCount(const Zstring& logdir, const std::wstring& jobname, size_t maxCount, const std::function<void()>& onUpdateStatus) //noexcept
 {
     std::vector<Zstring> logFiles;
-    FindLogfiles traverseCallback(utfCvrtTo<Zstring>(jobname), logFiles, onUpdateStatus); //throw()!
+    FindLogfiles traverseCallback(utfCvrtTo<Zstring>(jobname), logFiles, onUpdateStatus); //noexcept
     traverseFolder(logdir, traverseCallback);
 
     if (logFiles.size() <= maxCount)
@@ -142,19 +142,21 @@ BatchStatusHandler::BatchStatusHandler(bool showProgress,
             jobName_(jobName),
             startTime_(wxGetUTCTimeMillis().GetValue())
 {
+    //ATTENTION: "progressDlg" is an unmanaged resource!!! Anyway, at this point we already consider construction complete! =>
+    ScopeGuard guardConstructor = zen::makeGuard([&] { this->~BatchStatusHandler(); });
+
     if (logfilesCountLimit != 0)
     {
         zen::Opt<std::wstring> errMsg = tryReportingError([&] { logFile = prepareNewLogfile(logfileDirectory, jobName, timeStamp); }, //throw FileError; return value always bound!
-                                                          *this);
+                                                          *this); //throw X?
         if (errMsg)
-        {
-            raiseReturnCode(returnCode_, FFS_RC_ABORTED);
-            throw BatchAbortProcess();
-        }
+            abortProcessNow(); //throw BatchAbortProcess
     }
 
     //if (logFile)
     //	::wxSetEnv(L"logfile", utfCvrtTo<wxString>(logFile->getFilename()));
+
+    guardConstructor.dismiss();
 }
 
 
@@ -188,9 +190,9 @@ BatchStatusHandler::~BatchStatusHandler()
                 else
                     try
                     {
-                        //use EXEC_TYPE_ASYNC until there is reason no to: https://sourceforge.net/p/freefilesync/discussion/help/thread/828dca52
-                        tryReportingError([&] { shellExecute(expandMacros(finalCommand), EXEC_TYPE_ASYNC); }, //throw FileError, throw X?
-                                          *this);
+                        //use EXEC_TYPE_ASYNC until there is reason not to: https://sourceforge.net/p/freefilesync/discussion/help/thread/828dca52
+                        tryReportingError([&] { shellExecute(expandMacros(finalCommand), EXEC_TYPE_ASYNC); }, //throw FileError
+                                          *this); //throw X?
                     }
                     catch (...) {}
             }
@@ -241,13 +243,13 @@ BatchStatusHandler::~BatchStatusHandler()
     };
 
     //----------------- write results into user-specified logfile ------------------------
-    if (logFile.get())
+    if (logFile.get()) //can be null if BatchStatusHandler constructor throws!
     {
         if (logfilesCountLimit_ > 0)
         {
             try { reportStatus(_("Cleaning up old log files...")); }
             catch (...) {}
-            limitLogfileCount(beforeLast(logFile->getFilename(), FILE_NAME_SEPARATOR), jobName_, logfilesCountLimit_, [&] { try { requestUiRefresh(); } catch (...) {} }); //throw()
+            limitLogfileCount(beforeLast(logFile->getFilename(), FILE_NAME_SEPARATOR), jobName_, logfilesCountLimit_, [&] { try { requestUiRefresh(); } catch (...) {} }); //noexcept
         }
 
         try

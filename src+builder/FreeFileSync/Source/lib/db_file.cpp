@@ -471,6 +471,7 @@ private:
     void process(const HierarchyObject::SubFileVec& currentFiles, const Zstring& parentRelativeNamePf, InSyncDir::FileList& dbFiles)
     {
         std::unordered_set<const InSyncFile*> toPreserve; //referencing fixed-in-memory std::map elements
+
         for (const FilePair& fileObj : currentFiles)
             if (!fileObj.isEmpty())
             {
@@ -500,7 +501,6 @@ private:
                 }
             }
 
-        warn_static("consider temporarily excluded items due to traveral error just like a fixed file filter here!?")
         //delete removed items (= "in-sync") from database
         map_remove_if(dbFiles, [&](const InSyncDir::FileList::value_type& v) -> bool
         {
@@ -509,12 +509,14 @@ private:
             //all items not existing in "currentFiles" have either been deleted meanwhile or been excluded via filter:
             const Zstring& shortName = v.first;
             return filter_.passFileFilter(parentRelativeNamePf + shortName);
+            //note: items subject to traveral errors are also excluded by this file filter here! see comparison.cpp, modified file filter for read errors
         });
     }
 
     void process(const HierarchyObject::SubLinkVec& currentLinks, const Zstring& parentRelativeNamePf, InSyncDir::LinkList& dbLinks)
     {
         std::unordered_set<const InSyncSymlink*> toPreserve;
+
         for (const SymlinkPair& linkObj : currentLinks)
             if (!linkObj.isEmpty())
             {
@@ -551,6 +553,7 @@ private:
     void process(const HierarchyObject::SubDirVec& currentDirs, const Zstring& parentRelativeNamePf, InSyncDir::DirList& dbDirs)
     {
         std::unordered_set<const InSyncDir*> toPreserve;
+
         for (const DirPair& dirObj : currentDirs)
             if (!dirObj.isEmpty())
                 switch (dirObj.getDirCategory())
@@ -580,6 +583,7 @@ private:
                     }
                     break;
 
+                    case DIR_CONFLICT:
                     case DIR_DIFFERENT_METADATA:
                         //if DIR_DIFFERENT_METADATA and no old database entry yet: we have to insert a placeholder database entry:
                         //we cannot simply skip the whole directory, since sub-items might be in sync!
@@ -588,7 +592,7 @@ private:
                         //reuse last "in-sync" if available or insert strawman entry (do not try to update and thereby remove child elements!!!)
                         InSyncDir& dir = dbDirs.emplace(dirObj.getPairShortName(), InSyncDir(InSyncDir::DIR_STATUS_STRAW_MAN)).first->second;
                         toPreserve.insert(&dir);
-                        recurse(dirObj, dir);
+                        recurse(dirObj, dir); //unconditional recursion without filter check! => no problem since "subObjMightMatch" is optional!!!
                     }
                     break;
 
@@ -614,9 +618,11 @@ private:
             const Zstring& shortName = v.first;
             return filter_.passDirFilter(parentRelativeNamePf + shortName, nullptr);
             //if directory is not included in "currentDirs", it is either not existing anymore, in which case it should be deleted from database
-            //or it was excluded via filter, in which case the database entry should be preserved:
-            //=> all child db elements are also preserved since they are not recursed in the loop above!!!
-            //=> no problem with filter logic of excluding complete directory subtrees, if top folder is excluded directly!
+            //or it was excluded via filter and the database entry should be preserved
+
+            warn_static("insufficient for *.txt-include filters! -> e.g. 1. *.txt-include, both sides in sync, txt-fiels in subfolder")
+				warn_static("2. delete all subfolders externally ")
+				warn_static("3. sync => db should be updated == entries removed for .txt; mabye even for deleted subfolders!?!")
         });
     }
 

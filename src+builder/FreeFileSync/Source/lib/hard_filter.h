@@ -34,24 +34,20 @@ public:
     virtual ~HardFilter() {}
 
     //filtering
-    virtual bool passFileFilter(const Zstring& relFilename) const = 0;
-    virtual bool passDirFilter (const Zstring& relDirname, bool* subObjMightMatch) const = 0;
+    virtual bool passFileFilter(const Zstring& relFilePath) const = 0;
+    virtual bool passDirFilter (const Zstring& relDirPath, bool* subObjMightMatch) const = 0;
     //subObjMightMatch: file/dir in subdirectories could(!) match
-    //note: variable is only set if passDirFilter returns false!
+    //note: this hint is only set if passDirFilter returns false!
 
     virtual bool isNull() const = 0; //filter is equivalent to NullFilter, but may be technically slower
 
     typedef std::shared_ptr<const HardFilter> FilterRef; //always bound by design!
 
-    //serialization
-    //    void saveFilter(ZstreamOut& stream) const; //serialize derived object
-    //    static FilterRef loadFilter(ZstreamIn& stream); //throw UnexpectedEndOfStreamError; CAVEAT!!! adapt this method for each new derivation!!!
+    virtual FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const = 0;
 
 private:
     friend bool operator<(const HardFilter& lhs, const HardFilter& rhs);
 
-    //    virtual void save(ZstreamOut& stream) const = 0; //serialization
-    virtual std::string uniqueClassIdentifier() const = 0;   //get identifier, used for serialization
     virtual bool cmpLessSameType(const HardFilter& other) const = 0; //typeid(*this) == typeid(other) in this context!
 };
 
@@ -67,15 +63,12 @@ HardFilter::FilterRef combineFilters(const HardFilter::FilterRef& first,
 class NullFilter : public HardFilter  //no filtering at all
 {
 public:
-    bool passFileFilter(const Zstring& relFilename) const override;
-    bool passDirFilter(const Zstring& relDirname, bool* subObjMightMatch) const override;
-    bool isNull() const override;
+    bool passFileFilter(const Zstring& relFilePath) const override { return true; }
+    bool passDirFilter(const Zstring& relDirPath, bool* subObjMightMatch) const override;
+    bool isNull() const override { return true; }
+    FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const override;
 
 private:
-    friend class HardFilter;
-    //    void save(ZstreamOut& stream) const override {}
-    std::string uniqueClassIdentifier() const override { return "NullFilter"; }
-    //    static FilterRef load(ZstreamIn& stream); //throw UnexpectedEndOfStreamError
     bool cmpLessSameType(const HardFilter& other) const override;
 };
 
@@ -83,49 +76,42 @@ private:
 class NameFilter : public HardFilter  //standard filter by filepath
 {
 public:
-    NameFilter(const Zstring& includeFilter, const Zstring& excludeFilter);
+    NameFilter(const Zstring& includePhrase, const Zstring& excludePhrase);
 
-    bool passFileFilter(const Zstring& relFilename) const override;
-    bool passDirFilter(const Zstring& relDirname, bool* subObjMightMatch) const override;
+    void addExclusion(const Zstring& excludePhrase);
+
+    bool passFileFilter(const Zstring& relFilePath) const override;
+    bool passDirFilter(const Zstring& relDirPath, bool* subObjMightMatch) const override;
 
     bool isNull() const override;
-    static bool isNull(const Zstring& includeFilter, const Zstring& excludeFilter); //*fast* check without expensively constructing NameFilter instance!
+    static bool isNull(const Zstring& includePhrase, const Zstring& excludePhrase); //*fast* check without expensive NameFilter construction!
+    FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const override;
 
 private:
-    friend class HardFilter;
-    //    void save(ZstreamOut& stream) const override;
-    std::string uniqueClassIdentifier() const override { return "NameFilter"; }
-    //    static FilterRef load(ZstreamIn& stream); //throw UnexpectedEndOfStreamError
     bool cmpLessSameType(const HardFilter& other) const override;
 
-    std::vector<Zstring> filterFileIn;   //
-    std::vector<Zstring> filterFolderIn; //upper case (windows) + unique items by construction
-    std::vector<Zstring> filterFileEx;   //
-    std::vector<Zstring> filterFolderEx; //
-
-    const Zstring includeFilterTmp; //save constructor arguments for serialization
-    const Zstring excludeFilterTmp; //
+    std::vector<Zstring> includeMasksFileFolder; //
+    std::vector<Zstring> includeMasksFolder;     //upper case (windows) + unique items by construction
+    std::vector<Zstring> excludeMasksFileFolder; //
+    std::vector<Zstring> excludeMasksFolder;     //
 };
 
 
 class CombinedFilter : public HardFilter  //combine two filters to match if and only if both match
 {
 public:
-    CombinedFilter(const FilterRef& first, const FilterRef& second) : first_(first), second_(second) {}
+    CombinedFilter(const NameFilter& first, const NameFilter& second) : first_(first), second_(second) { assert(!first.isNull() && !second.isNull()); } //if either is null, then wy use CombinedFilter?
 
-    bool passFileFilter(const Zstring& relFilename) const override;
-    bool passDirFilter(const Zstring& relDirname, bool* subObjMightMatch) const override;
+    bool passFileFilter(const Zstring& relFilePath) const override;
+    bool passDirFilter(const Zstring& relDirPath, bool* subObjMightMatch) const override;
     bool isNull() const override;
+    FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const override;
 
 private:
-    friend class HardFilter;
-    //    void save(ZstreamOut& stream) const override;
-    std::string uniqueClassIdentifier() const override { return "CombinedFilter"; }
-    //    static FilterRef load(ZstreamIn& stream); //throw UnexpectedEndOfStreamError
     bool cmpLessSameType(const HardFilter& other) const override;
 
-    const FilterRef first_;
-    const FilterRef second_;
+    const NameFilter first_;
+    const NameFilter second_;
 };
 
 
@@ -133,44 +119,11 @@ private:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-//---------------Inline Implementation---------------------------------------------------
-//inline
-//HardFilter::FilterRef NullFilter::load(ZstreamIn& stream)
-//{
-//    return FilterRef(new NullFilter);
-//}
-
-
+//--------------- inline implementation ---------------------------------------
 inline
-bool NullFilter::passFileFilter(const Zstring& relFilename) const
-{
-    return true;
-}
-
-
-inline
-bool NullFilter::passDirFilter(const Zstring& relDirname, bool* subObjMightMatch) const
+bool NullFilter::passDirFilter(const Zstring& relDirPath, bool* subObjMightMatch) const
 {
     assert(!subObjMightMatch || *subObjMightMatch == true); //check correct usage
-    return true;
-}
-
-
-inline
-bool NullFilter::isNull() const
-{
     return true;
 }
 
@@ -184,22 +137,41 @@ bool NullFilter::cmpLessSameType(const HardFilter& other) const
 
 
 inline
-bool CombinedFilter::passFileFilter(const Zstring& relFilename) const
+HardFilter::FilterRef NullFilter::copyFilterAddingExclusion(const Zstring& excludePhrase) const
 {
-    return first_ ->passFileFilter(relFilename) && //short-circuit behavior
-           second_->passFileFilter(relFilename);
+    auto filter = std::make_shared<NameFilter>(Zstr("*"), excludePhrase);
+    if (filter->isNull())
+        return std::make_shared<NullFilter>();
+    return filter;
 }
 
 
 inline
-bool CombinedFilter::passDirFilter(const Zstring& relDirname, bool* subObjMightMatch) const
+HardFilter::FilterRef NameFilter::copyFilterAddingExclusion(const Zstring& excludePhrase) const
 {
-    if (first_->passDirFilter(relDirname, subObjMightMatch))
-        return second_->passDirFilter(relDirname, subObjMightMatch);
+    auto tmp = std::make_shared<NameFilter>(*this);
+    tmp->addExclusion(excludePhrase);
+    return tmp;
+}
+
+
+inline
+bool CombinedFilter::passFileFilter(const Zstring& relFilePath) const
+{
+    return first_ .passFileFilter(relFilePath) && //short-circuit behavior
+           second_.passFileFilter(relFilePath);
+}
+
+
+inline
+bool CombinedFilter::passDirFilter(const Zstring& relDirPath, bool* subObjMightMatch) const
+{
+    if (first_.passDirFilter(relDirPath, subObjMightMatch))
+        return second_.passDirFilter(relDirPath, subObjMightMatch);
     else
     {
         if (subObjMightMatch && *subObjMightMatch)
-            second_->passDirFilter(relDirname, subObjMightMatch);
+            second_.passDirFilter(relDirPath, subObjMightMatch);
         return false;
     }
 }
@@ -208,7 +180,17 @@ bool CombinedFilter::passDirFilter(const Zstring& relDirname, bool* subObjMightM
 inline
 bool CombinedFilter::isNull() const
 {
-    return first_->isNull() && second_->isNull();
+    return first_.isNull() && second_.isNull();
+}
+
+
+inline
+HardFilter::FilterRef CombinedFilter::copyFilterAddingExclusion(const Zstring& excludePhrase) const
+{
+    NameFilter tmp(first_);
+    tmp.addExclusion(excludePhrase);
+
+    return std::make_shared<CombinedFilter>(tmp, second_);
 }
 
 
@@ -219,51 +201,39 @@ bool CombinedFilter::cmpLessSameType(const HardFilter& other) const
 
     const CombinedFilter& otherCombFilt = static_cast<const CombinedFilter&>(other);
 
-    if (*first_ != *otherCombFilt.first_)
-        return *first_ < *otherCombFilt.first_;
+    if (first_ != otherCombFilt.first_)
+        return first_ < otherCombFilt.first_;
 
-    return *second_ < *otherCombFilt.second_;
+    return second_ < otherCombFilt.second_;
 }
-
-
-//inline
-//void CombinedFilter::save(ZstreamOut& stream) const
-//{
-//    first_ ->saveFilter(stream);
-//    second_->saveFilter(stream);
-//}
-
-
-//inline
-//HardFilter::FilterRef CombinedFilter::load(ZstreamIn& stream) //throw UnexpectedEndOfStreamError
-//{
-//    FilterRef first  = loadFilter(stream); //throw UnexpectedEndOfStreamError
-//    FilterRef second = loadFilter(stream); //
-//
-//    return combineFilters(first, second);
-//}
 
 
 inline
-HardFilter::FilterRef combineFilters(const HardFilter::FilterRef& first,
-                                     const HardFilter::FilterRef& second)
+HardFilter::FilterRef constructFilter(const Zstring& includePhrase,
+                                      const Zstring& excludePhrase,
+                                      const Zstring& includePhrase2,
+                                      const Zstring& excludePhrase2)
 {
-    if (first->isNull())
-    {
-        if (second->isNull())
-            return std::make_shared<NullFilter>();
-        else
-            return second;
-    }
+    std::shared_ptr<HardFilter> filterTmp;
+
+    if (NameFilter::isNull(includePhrase, Zstring()))
+        filterTmp = std::make_shared<NameFilter>(includePhrase2, excludePhrase + Zstr("\n") + excludePhrase2);
     else
     {
-        if (second->isNull())
-            return first;
+        if (NameFilter::isNull(includePhrase2, Zstring()))
+            filterTmp = std::make_shared<NameFilter>(includePhrase, excludePhrase + Zstr("\n") + excludePhrase2);
         else
-            return std::make_shared<CombinedFilter>(first, second);
+            return std::make_shared<CombinedFilter>(NameFilter(includePhrase, excludePhrase + Zstr("\n") + excludePhrase2), NameFilter(includePhrase2, Zstring()));
     }
-}
+
+    if (filterTmp->isNull())
+        return std::make_shared<NullFilter>();
+
+    return filterTmp;
 }
 
+
+std::vector<Zstring> splitByDelimiter(const Zstring& filterString); //keep external linkage for unit test
+}
 
 #endif //HARD_FILTER_H_825780275842758345

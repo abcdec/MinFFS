@@ -1164,7 +1164,7 @@ private:
                 case FILE_RIGHT_NEWER:
                     return COLOR_SYNC_GREEN; //COLOR_CMP_GREEN;
 
-                case FILE_DIFFERENT:
+                case FILE_DIFFERENT_CONTENT:
                     return COLOR_CMP_RED;
                 case FILE_EQUAL:
                     break; //usually white
@@ -1297,7 +1297,7 @@ private:
                             return L"cat_left_newer";
                         case FILE_RIGHT_NEWER:
                             return L"cat_right_newer";
-                        case FILE_DIFFERENT:
+                        case FILE_DIFFERENT_CONTENT:
                             return L"cat_different";
                         case FILE_EQUAL:
                         case FILE_DIFFERENT_METADATA: //= sub-category of equal
@@ -1860,7 +1860,7 @@ wxBitmap zen::getCmpResultImage(CompareFilesResult cmpResult)
             return getResourceImage(L"cat_left_newer_small");
         case FILE_RIGHT_NEWER:
             return getResourceImage(L"cat_right_newer_small");
-        case FILE_DIFFERENT:
+        case FILE_DIFFERENT_CONTENT:
             return getResourceImage(L"cat_different_small");
         case FILE_EQUAL:
         case FILE_DIFFERENT_METADATA: //= sub-category of equal
