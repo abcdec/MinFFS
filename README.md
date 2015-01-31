@@ -1,7 +1,7 @@
 MinFFS
 ======
 
-Fake Minimalist's FreeFileSync Modified
+A FreeFileSync modified for MinGW Build
 
 
 Follower Branch
