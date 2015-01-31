@@ -28,20 +28,29 @@ void HierarchyObject::removeEmptyRec()
     refSubDirs ().remove_if(isEmpty);
 
     if (emptyExisting) //notify if actual deletion happened
-        notifySyncCfgChanged(); //mustn't call this in ~FileSystemObject(), since parent, usually a DirPair, is already partially destroyed and existing as a pure HierarchyObject!
+        notifySyncCfgChanged(); //mustn't call this in ~FileSystemObject(), since parent, usually a DirPair, may already be partially destroyed and existing as a pure HierarchyObject!
 
     for (DirPair& subDir : refSubDirs())
         subDir.removeEmptyRec(); //recurse
 }
 
+
 namespace
 {
-SyncOperation getIsolatedSyncOperation(CompareFilesResult cmpResult,
+SyncOperation getIsolatedSyncOperation(bool itemExistsLeft,
+                                       bool itemExistsRight,
+                                       CompareFilesResult cmpResult,
                                        bool selectedForSynchronization,
                                        SyncDirection syncDir,
-                                       bool hasDirConflict) //perf: std::wstring was wasteful here
+                                       bool hasDirectionConflict) //perf: std::wstring was wasteful here
 {
-    assert(!hasDirConflict || syncDir == SyncDirection::NONE);
+    assert(( itemExistsLeft &&   itemExistsRight && cmpResult != FILE_LEFT_SIDE_ONLY && cmpResult != FILE_RIGHT_SIDE_ONLY) ||
+           ( itemExistsLeft &&  !itemExistsRight && cmpResult == FILE_LEFT_SIDE_ONLY ) ||
+           (!itemExistsLeft &&   itemExistsRight && cmpResult == FILE_RIGHT_SIDE_ONLY) ||
+           (!itemExistsLeft &&  !itemExistsRight && cmpResult == FILE_EQUAL && syncDir == SyncDirection::NONE && !hasDirectionConflict) ||
+           cmpResult == FILE_CONFLICT);
+
+    assert(!hasDirectionConflict || syncDir == SyncDirection::NONE);
 
     if (!selectedForSynchronization)
         return cmpResult == FILE_EQUAL ?
@@ -50,6 +59,10 @@ SyncOperation getIsolatedSyncOperation(CompareFilesResult cmpResult,
 
     switch (cmpResult)
     {
+        case FILE_EQUAL:
+            assert(syncDir == SyncDirection::NONE);
+            return SO_EQUAL;
+
         case FILE_LEFT_SIDE_ONLY:
             switch (syncDir)
             {
@@ -58,7 +71,7 @@ SyncOperation getIsolatedSyncOperation(CompareFilesResult cmpResult,
                 case SyncDirection::RIGHT:
                     return SO_CREATE_NEW_RIGHT; //copy files to right
                 case SyncDirection::NONE:
-                    return hasDirConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
+                    return hasDirectionConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
             }
             break;
 
@@ -70,14 +83,13 @@ SyncOperation getIsolatedSyncOperation(CompareFilesResult cmpResult,
                 case SyncDirection::RIGHT:
                     return SO_DELETE_RIGHT; //delete files on right
                 case SyncDirection::NONE:
-                    return hasDirConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
+                    return hasDirectionConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
             }
             break;
 
         case FILE_LEFT_NEWER:
         case FILE_RIGHT_NEWER:
-        case FILE_DIFFERENT:
-        case FILE_CONFLICT:
+        case FILE_DIFFERENT_CONTENT:
             switch (syncDir)
             {
                 case SyncDirection::LEFT:
@@ -85,7 +97,7 @@ SyncOperation getIsolatedSyncOperation(CompareFilesResult cmpResult,
                 case SyncDirection::RIGHT:
                     return SO_OVERWRITE_RIGHT; //copy from left to right
                 case SyncDirection::NONE:
-                    return hasDirConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
+                    return hasDirectionConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
             }
             break;
 
@@ -97,13 +109,21 @@ SyncOperation getIsolatedSyncOperation(CompareFilesResult cmpResult,
                 case SyncDirection::RIGHT:
                     return SO_COPY_METADATA_TO_RIGHT;
                 case SyncDirection::NONE:
-                    return hasDirConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
+                    return hasDirectionConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
             }
             break;
 
-        case FILE_EQUAL:
-            assert(syncDir == SyncDirection::NONE);
-            return SO_EQUAL;
+        case FILE_CONFLICT:
+            switch (syncDir)
+            {
+                case SyncDirection::LEFT:
+                    return itemExistsLeft && itemExistsRight ? SO_OVERWRITE_LEFT : itemExistsLeft ? SO_DELETE_LEFT: SO_CREATE_NEW_LEFT;
+                case SyncDirection::RIGHT:
+                    return itemExistsLeft && itemExistsRight ? SO_OVERWRITE_RIGHT : itemExistsLeft ? SO_CREATE_NEW_RIGHT : SO_DELETE_RIGHT;
+                case SyncDirection::NONE:
+                    return hasDirectionConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
+            }
+            break;
     }
 
     assert(false);
@@ -123,14 +143,14 @@ bool hasDirectChild(const HierarchyObject& hierObj, Predicate p)
 
 SyncOperation FileSystemObject::testSyncOperation(SyncDirection testSyncDir) const //semantics: "what if"! assumes "active, no conflict, no recursion (directory)!
 {
-    return getIsolatedSyncOperation(getCategory(), true, testSyncDir, false);
+    return getIsolatedSyncOperation(!isEmpty<LEFT_SIDE>(), !isEmpty<RIGHT_SIDE>(), getCategory(), true, testSyncDir, false);
 }
 
 
 SyncOperation FileSystemObject::getSyncOperation() const
 {
-    return getIsolatedSyncOperation(getCategory(), selectedForSynchronization, getSyncDir(), syncDirConflict.get() != nullptr);
-    //no *not* make a virtual call to testSyncOperation()! See FilePair::testSyncOperation()! <- better not implement one in terms of the other!!!
+    return getIsolatedSyncOperation(!isEmpty<LEFT_SIDE>(), !isEmpty<RIGHT_SIDE>(), getCategory(), selectedForSynchronization, getSyncDir(), syncDirectionConflict.get() != nullptr);
+    //do *not* make a virtual call to testSyncOperation()! See FilePair::testSyncOperation()! <- better not implement one in terms of the other!!!
 }
 
 
@@ -150,8 +170,6 @@ SyncOperation DirPair::getSyncOperation() const
         //action for child elements may occassionally have to overwrite parent task:
         switch (syncOpBuffered)
         {
-            case SO_OVERWRITE_LEFT:
-            case SO_OVERWRITE_RIGHT:
             case SO_MOVE_LEFT_SOURCE:
             case SO_MOVE_LEFT_TARGET:
             case SO_MOVE_RIGHT_SOURCE:
@@ -159,6 +177,8 @@ SyncOperation DirPair::getSyncOperation() const
                 assert(false);
             case SO_CREATE_NEW_LEFT:
             case SO_CREATE_NEW_RIGHT:
+            case SO_OVERWRITE_LEFT:
+            case SO_OVERWRITE_RIGHT:
             case SO_COPY_METADATA_TO_LEFT:
             case SO_COPY_METADATA_TO_RIGHT:
             case SO_EQUAL:
@@ -170,8 +190,7 @@ SyncOperation DirPair::getSyncOperation() const
                 if (isEmpty<LEFT_SIDE>())
                 {
                     //1. if at least one child-element is to be created, make sure parent folder is created also
-                    //note: this automatically fulfills "create parent folders even if excluded";
-                    //see http://sourceforge.net/tracker/index.php?func=detail&aid=2628943&group_id=234430&atid=1093080
+                    //note: this automatically fulfills "create parent folders even if excluded"
                     if (hasDirectChild(*this,
                                        [](const FileSystemObject& fsObj) -> bool
                 {
@@ -275,7 +294,7 @@ std::wstring zen::getCategoryDescription(CompareFilesResult cmpRes)
             return _("Left side is newer");
         case FILE_RIGHT_NEWER:
             return _("Right side is newer");
-        case FILE_DIFFERENT:
+        case FILE_DIFFERENT_CONTENT:
             return _("Items have different content");
         case FILE_EQUAL:
             return _("Both sides are equal");

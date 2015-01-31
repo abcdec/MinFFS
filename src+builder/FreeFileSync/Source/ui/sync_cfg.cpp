@@ -5,7 +5,7 @@
 // **************************************************************************
 // **************************************************************************
 // * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.13        *
 // * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
 // *                          --EXPERIMENTAL--                              *
 // * This program is experimental and not recommended for general use.      *
@@ -530,7 +530,7 @@ void ConfigDialog::updateFilterGui()
         else
             staticBmp.SetBitmap(greyScale(getResourceImage(bmpName)));
     };
-    setStatusBitmap(*m_bitmapInclude,    L"filter_include", !NameFilter::isNull(activeCfg.includeFilter, FilterConfig().excludeFilter));
+    setStatusBitmap(*m_bitmapInclude,    L"filter_include", !NameFilter::isNull(activeCfg.includeFilter, Zstring()));
     setStatusBitmap(*m_bitmapExclude,    L"filter_exclude", !NameFilter::isNull(FilterConfig().includeFilter, activeCfg.excludeFilter));
     setStatusBitmap(*m_bitmapFilterDate, L"clock", activeCfg.unitTimeSpan != UTIME_NONE);
     setStatusBitmap(*m_bitmapFilterSize, L"size",  activeCfg.unitSizeMin  != USIZE_NONE || activeCfg.unitSizeMax != USIZE_NONE);

@@ -75,7 +75,7 @@ private:
             case FILE_LEFT_NEWER:
                 fileObj.setSyncDir(dirCfg.leftNewer);
                 break;
-            case FILE_DIFFERENT:
+            case FILE_DIFFERENT_CONTENT:
                 fileObj.setSyncDir(dirCfg.different);
                 break;
             case FILE_CONFLICT:
@@ -114,7 +114,7 @@ private:
                 else
                     linkObj.setSyncDir(dirCfg.conflict);
                 break;
-            case SYMLINK_DIFFERENT:
+            case SYMLINK_DIFFERENT_CONTENT:
                 linkObj.setSyncDir(dirCfg.different);
                 break;
             case SYMLINK_EQUAL:
@@ -145,6 +145,7 @@ private:
             case DIR_EQUAL:
                 dirObj.setSyncDir(SyncDirection::NONE);
                 break;
+            case DIR_CONFLICT:
             case DIR_DIFFERENT_METADATA: //use setting from "conflict/cannot categorize"
                 if (dirCfg.conflict == SyncDirection::NONE)
                     dirObj.setSyncDirConflict(dirObj.getCatExtraDescription()); //take over category conflict
@@ -801,8 +802,8 @@ namespace
 enum FilterStrategy
 {
     STRATEGY_SET,
-    STRATEGY_AND,
-    STRATEGY_OR
+    STRATEGY_AND
+    //STRATEGY_OR ->  usage of inOrExcludeAllRows doesn't allow for strategy "or"
 };
 
 template <FilterStrategy strategy> struct Eval;
@@ -811,21 +812,14 @@ template <>
 struct Eval<STRATEGY_SET> //process all elements
 {
     template <class T>
-    bool process(const T& obj) const { return true; }
+    static bool process(const T& obj) { return true; }
 };
 
 template <>
 struct Eval<STRATEGY_AND>
 {
     template <class T>
-    bool process(const T& obj) const { return obj.isActive(); }
-};
-
-template <>
-struct Eval<STRATEGY_OR>
-{
-    template <class T>
-    bool process(const T& obj) const { return !obj.isActive(); }
+    static bool process(const T& obj) { return obj.isActive(); }
 };
 
 
@@ -850,13 +844,13 @@ private:
 
     void processFile(FilePair& fileObj) const
     {
-        if (Eval<strategy>().process(fileObj))
+        if (Eval<strategy>::process(fileObj))
             fileObj.setActive(filterProc.passFileFilter(fileObj.getPairRelativePath()));
     }
 
     void processLink(SymlinkPair& linkObj) const
     {
-        if (Eval<strategy>().process(linkObj))
+        if (Eval<strategy>::process(linkObj))
             linkObj.setActive(filterProc.passFileFilter(linkObj.getPairRelativePath()));
     }
 
@@ -865,12 +859,12 @@ private:
         bool subObjMightMatch = true;
         const bool filterPassed = filterProc.passDirFilter(dirObj.getPairRelativePath(), &subObjMightMatch);
 
-        if (Eval<strategy>().process(dirObj))
+        if (Eval<strategy>::process(dirObj))
             dirObj.setActive(filterPassed);
 
         if (!subObjMightMatch) //use same logic like directory traversing here: evaluate filter in subdirs only if objects could match
         {
-            inOrExcludeAllRows<false>(dirObj); //exclude all files dirs in subfolders
+            inOrExcludeAllRows<false>(dirObj); //exclude all files dirs in subfolders => incompatible with STRATEGY_OR!
             return;
         }
 
@@ -879,9 +873,6 @@ private:
 
     const HardFilter& filterProc;
 };
-
-template <>
-class ApplyHardFilter<STRATEGY_OR>; //usage of InOrExcludeAllRows doesn't allow for strategy "or"
 
 
 template <FilterStrategy strategy>
@@ -905,7 +896,7 @@ private:
 
     void processFile(FilePair& fileObj) const
     {
-        if (Eval<strategy>().process(fileObj))
+        if (Eval<strategy>::process(fileObj))
         {
             if (fileObj.isEmpty<LEFT_SIDE>())
                 fileObj.setActive(matchSize<RIGHT_SIDE>(fileObj) &&
@@ -920,16 +911,16 @@ private:
                 /*
                                ST S T -       ST := match size and time
                                ---------       S := match size only
-                            ST |X|X|X|X|       T := match time only
+                            ST |I|I|I|I|       T := match time only
                             ------------       - := no match
-                             S |X|O|?|O|
-                            ------------       X := include row
-                             T |X|?|O|O|       O := exclude row
+                             S |I|E|?|E|
+                            ------------       I := include row
+                             T |I|?|E|E|       E := exclude row
                             ------------       ? := unclear
-                             - |X|O|O|O|
+                             - |I|E|E|E|
                             ------------
                 */
-                //let's set ? := O
+                //let's set ? := E
                 fileObj.setActive((matchSize<RIGHT_SIDE>(fileObj) &&
                                    matchTime<RIGHT_SIDE>(fileObj)) ||
                                   (matchSize<LEFT_SIDE>(fileObj) &&
@@ -940,7 +931,7 @@ private:
 
     void processLink(SymlinkPair& linkObj) const
     {
-        if (Eval<strategy>().process(linkObj))
+        if (Eval<strategy>::process(linkObj))
         {
             if (linkObj.isEmpty<LEFT_SIDE>())
                 linkObj.setActive(matchTime<RIGHT_SIDE>(linkObj));
@@ -954,7 +945,7 @@ private:
 
     void processDir(DirPair& dirObj) const
     {
-        if (Eval<strategy>().process(dirObj))
+        if (Eval<strategy>::process(dirObj))
             dirObj.setActive(timeSizeFilter_.matchFolder()); //if date filter is active we deactivate all folders: effectively gets rid of empty folders!
 
         recurse(dirObj);
@@ -1049,7 +1040,7 @@ private:
             fileObj.setActive(matchTime<LEFT_SIDE>(fileObj));
         else
             fileObj.setActive(matchTime<RIGHT_SIDE>(fileObj) ||
-                              matchTime<LEFT_SIDE>(fileObj));
+                              matchTime<LEFT_SIDE >(fileObj));
     }
 
     void processLink(SymlinkPair& linkObj) const
@@ -1116,7 +1107,7 @@ std::pair<Zstring, int> zen::deleteFromGridAndHDPreview(const std::vector<FileSy
 namespace
 {
 template <typename Function> inline
-bool tryReportingError(Function cmd, DeleteFilesHandler& handler) //return "true" on success, "false" if error was ignored
+bool tryReportingError(Function cmd, DeleteFilesHandler& handler) //throw X?; return "true" on success, "false" if error was ignored
 {
     for (;;)
         try
@@ -1126,7 +1117,7 @@ bool tryReportingError(Function cmd, DeleteFilesHandler& handler) //return "true
         }
         catch (FileError& error)
         {
-            switch (handler.reportError(error.toString())) //may throw!
+            switch (handler.reportError(error.toString())) //throw X?
             {
                 case DeleteFilesHandler::IGNORE_ERROR:
                     return false;
@@ -1160,7 +1151,7 @@ void categorize(const std::set<FileSystemObject*>& rowsIn,
         bool recExists = false;
         tryReportingError([&]{
             recExists = recycleBinExists(baseDirPf, [&] { callback.reportStatus(msg); /*may throw*/ }); //throw FileError
-        }, callback);
+        }, callback); //throw X?
 
         hasRecyclerBuffer.emplace(baseDirPf, recExists);
         return recExists;
@@ -1273,7 +1264,7 @@ void deleteFromGridAndHDOneSide(std::vector<FileSystemObject*>& ptrList,
         {
             fsObj->accept(deleter); //throw FileError
             fsObj->removeObject<side>(); //if directory: removes recursively!
-        }, handler);
+        }, handler); //throw X?
 }
 }
 

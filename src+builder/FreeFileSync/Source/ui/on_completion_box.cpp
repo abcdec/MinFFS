@@ -33,30 +33,27 @@ std::vector<std::pair<std::wstring, Zstring>> getDefaultCommands() //(gui name/c
 #ifdef ZEN_WIN
     if (zen::vistaOrLater())
     {
-        addEntry(_("Standby"  ), Zstr("rundll32.exe powrprof.dll,SetSuspendState Sleep")); //suspend/Suspend to RAM/sleep
         addEntry(_("Log off"  ), Zstr("shutdown /l"));
+        addEntry(_("Standby"  ), Zstr("rundll32.exe powrprof.dll,SetSuspendState Sleep")); //suspend/Suspend to RAM/sleep
         addEntry(_("Shut down"), Zstr("shutdown /s /t 60"));
-        //addEntry(_"Hibernate", L"shutdown /h"); //Suspend to disk -> Standby is better anyway
     }
     else //XP
     {
-        addEntry(_("Standby"  ), Zstr("rundll32.exe powrprof.dll,SetSuspendState")); //this triggers standby OR hibernate, depending on whether hibernate setting is active!
         addEntry(_("Log off"  ), Zstr("shutdown -l"));
+        addEntry(_("Standby"  ), Zstr("rundll32.exe powrprof.dll,SetSuspendState")); //this triggers standby OR hibernate, depending on whether hibernate setting is active!
         addEntry(_("Shut down"), Zstr("shutdown -s -t 60"));
         //no suspend on XP?
     }
 
 #elif defined ZEN_LINUX
-    addEntry(_("Standby"  ), Zstr("sudo pm-suspend"));
     addEntry(_("Log off"  ), Zstr("gnome-session-quit")); //alternative requiring admin: sudo killall Xorg
+    addEntry(_("Standby"  ), Zstr("sudo pm-suspend"));
     addEntry(_("Shut down"), Zstr("dbus-send --print-reply --dest=org.gnome.SessionManager /org/gnome/SessionManager org.gnome.SessionManager.RequestShutdown"));
     //alternative requiring admin: sudo shutdown -h 1
-    //addEntry(_("Hibernate"), L"sudo pm-hibernate");
-    //alternative: "pmi action suspend" and "pmi action hibernate", require "sudo apt-get install powermanagement-interaface"
 
 #elif defined ZEN_MAC
-    addEntry(_("Standby"  ), Zstr("osascript -e \'tell application \"System Events\" to sleep\'"));
     addEntry(_("Log off"  ), Zstr("osascript -e \'tell application \"System Events\" to log out\'"));
+    addEntry(_("Standby"  ), Zstr("osascript -e \'tell application \"System Events\" to sleep\'"));
     addEntry(_("Shut down"), Zstr("osascript -e \'tell application \"System Events\" to shut down\'"));
 #endif
     return output;

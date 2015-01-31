@@ -5,7 +5,7 @@
 // **************************************************************************
 // **************************************************************************
 // * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.13        *
 // * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
 // *                          --EXPERIMENTAL--                              *
 // * This program is experimental and not recommended for general use.      *
@@ -246,16 +246,16 @@ void SyncStatistics::processDir(const DirPair& dirObj)
             conflictMsgs.emplace_back(dirObj.getPairRelativePath(), dirObj.getSyncOpConflict());
             break;
 
+        case SO_OVERWRITE_LEFT:
         case SO_COPY_METADATA_TO_LEFT:
             ++updateLeft;
             break;
 
+        case SO_OVERWRITE_RIGHT:
         case SO_COPY_METADATA_TO_RIGHT:
             ++updateRight;
             break;
 
-        case SO_OVERWRITE_LEFT:
-        case SO_OVERWRITE_RIGHT:
         case SO_MOVE_LEFT_SOURCE:
         case SO_MOVE_RIGHT_SOURCE:
         case SO_MOVE_LEFT_TARGET:
@@ -1106,7 +1106,7 @@ void SynchronizeFolderPair::runZeroPass(HierarchyObject& hierObj)
                             this->manageFileMove<LEFT_SIDE>(*sourceObj, *targetObj); //throw FileError
                         else
                             this->manageFileMove<RIGHT_SIDE>(*sourceObj, *targetObj); //
-                    }, procCallback_);
+                    }, procCallback_); //throw X?
 
                     if (errMsg)
                     {
@@ -1240,12 +1240,12 @@ SynchronizeFolderPair::PassId SynchronizeFolderPair::getPass(const DirPair& dirO
 
         case SO_CREATE_NEW_LEFT:
         case SO_CREATE_NEW_RIGHT:
+        case SO_OVERWRITE_LEFT:
+        case SO_OVERWRITE_RIGHT:
         case SO_COPY_METADATA_TO_LEFT:
         case SO_COPY_METADATA_TO_RIGHT:
             return PASS_TWO;
 
-        case SO_OVERWRITE_LEFT:
-        case SO_OVERWRITE_RIGHT:
         case SO_MOVE_LEFT_SOURCE:
         case SO_MOVE_RIGHT_SOURCE:
         case SO_MOVE_LEFT_TARGET:
@@ -1267,18 +1267,18 @@ void SynchronizeFolderPair::runPass(HierarchyObject& hierObj)
     //synchronize files:
     for (FilePair& fileObj : hierObj.refSubFiles())
         if (pass == this->getPass(fileObj)) //"this->" required by two-pass lookup as enforced by GCC 4.7
-            tryReportingError([&] { synchronizeFile(fileObj); }, procCallback_);
+            tryReportingError([&] { synchronizeFile(fileObj); }, procCallback_); //throw X?
 
     //synchronize symbolic links:
     for (SymlinkPair& linkObj : hierObj.refSubLinks())
         if (pass == this->getPass(linkObj))
-            tryReportingError([&] { synchronizeLink(linkObj); }, procCallback_);
+            tryReportingError([&] { synchronizeLink(linkObj); }, procCallback_); //throw X?
 
     //synchronize folders:
     for (DirPair& dirObj : hierObj.refSubDirs())
     {
         if (pass == this->getPass(dirObj))
-            tryReportingError([&] { synchronizeFolder(dirObj); }, procCallback_);
+            tryReportingError([&] { synchronizeFolder(dirObj); }, procCallback_); //throw X?
 
         this->runPass<pass>(dirObj); //recurse
     }
@@ -1396,6 +1396,8 @@ void SynchronizeFolderPair::synchronizeFileInt(FilePair& fileObj, SyncOperation 
                 auto onNotifyFileCopy     = [&](std::int64_t bytesDelta) { statReporter.reportDelta(0, bytesDelta); };
 
                 getDelHandling<sideTrg>().removeFileWithCallback(fileObj.getFullPath<sideTrg>(), fileObj.getPairRelativePath(), onNotifyItemDeletion, onNotifyFileCopy); //throw FileError
+
+                warn_static("what if item not found? still an error if base dir is missing; externally deleted otherwise!")
 
                 fileObj.removeObject<sideTrg>(); //update FilePair
 
@@ -1750,6 +1752,8 @@ void SynchronizeFolderPair::synchronizeFolderInt(DirPair& dirObj, SyncOperation 
             }
             break;
 
+        case SO_OVERWRITE_LEFT:  //possible: e.g. manually-resolved dir-traversal conflict
+        case SO_OVERWRITE_RIGHT: //
         case SO_COPY_METADATA_TO_LEFT:
         case SO_COPY_METADATA_TO_RIGHT:
             reportInfo(txtWritingAttributes, dirObj.getFullPath<sideTrg>());
@@ -1765,8 +1769,6 @@ void SynchronizeFolderPair::synchronizeFolderInt(DirPair& dirObj, SyncOperation 
             procCallback_.updateProcessedData(1, 0);
             break;
 
-        case SO_OVERWRITE_LEFT:
-        case SO_OVERWRITE_RIGHT:
         case SO_MOVE_LEFT_SOURCE:
         case SO_MOVE_RIGHT_SOURCE:
         case SO_MOVE_LEFT_TARGET:
@@ -1929,7 +1931,7 @@ bool createBaseDirectory(BaseDirPair& baseDirObj, ProcessCallback& callback) //n
                 //	2. deletion handling: versioning     -> "
                 //	3. log file creates containing folder -> no, log only created in batch mode, and only *before* comparison
             }
-        }, callback); //may throw in error-callback!
+        }, callback); //throw X?
         return !errMsg && !temporaryNetworkDrop;
     }
 
@@ -2011,7 +2013,7 @@ void zen::synchronize(const TimeComp& timeStamp,
         {
             if (!dirExistsUpdating(baseDirPf, false, callback))
                     throw FileError(replaceCpy(_("Cannot find folder %x."), L"%x", fmtFileName(baseDirPf))); //should be logged as a "fatal error" if ignored by the user...
-            }, callback)) //may throw in error-callback!
+            }, callback)) //throw X?
         return true;
 
         return false;
@@ -2205,7 +2207,7 @@ void zen::synchronize(const TimeComp& timeStamp,
                     tryReportingError([&]
                     {
                         recExists = recycleBinExists(baseDirPf, [&] { callback.requestUiRefresh(); /*may throw*/ }); //throw FileError
-                    }, callback); //show error dialog if necessary
+                    }, callback); //throw X?
 
                     baseDirHasRecycler[baseDirPf] = recExists;
                 }
@@ -2354,7 +2356,7 @@ void zen::synchronize(const TimeComp& timeStamp,
                     !j->getBaseDirPf<RIGHT_SIDE>().empty() && //
                     supportsPermissions(beforeLast(j->getBaseDirPf<LEFT_SIDE >(), FILE_NAME_SEPARATOR)) && //throw FileError
                     supportsPermissions(beforeLast(j->getBaseDirPf<RIGHT_SIDE>(), FILE_NAME_SEPARATOR));
-                }, callback); //show error dialog if necessary
+                }, callback); //throw X?
 
 
                 auto getEffectiveDeletionPolicy = [&](const Zstring& baseDirPf) -> DeletionPolicy
@@ -2397,8 +2399,8 @@ void zen::synchronize(const TimeComp& timeStamp,
                 syncFP.startSync(*j);
 
                 //(try to gracefully) cleanup temporary Recycle bin folders and versioning -> will be done in ~DeletionHandling anyway...
-                tryReportingError([&] { delHandlerL.tryCleanup(); /*throw FileError*/}, callback); //show error dialog if necessary
-                tryReportingError([&] { delHandlerR.tryCleanup(); /*throw FileError*/}, callback); //
+                tryReportingError([&] { delHandlerL.tryCleanup(); /*throw FileError*/}, callback); //throw X?
+                tryReportingError([&] { delHandlerR.tryCleanup(); /*throw FileError*/}, callback); //throw X?
             }
 
             //(try to gracefully) write database file
@@ -2407,7 +2409,7 @@ void zen::synchronize(const TimeComp& timeStamp,
                 callback.reportStatus(_("Generating database..."));
                 callback.forceUiRefresh();
 
-                tryReportingError([&] { zen::saveLastSynchronousState(*j); /*throw FileError*/ }, callback);
+                tryReportingError([&] { zen::saveLastSynchronousState(*j); /*throw FileError*/ }, callback); //throw X?
                 guardUpdateDb.dismiss();
             }
         }

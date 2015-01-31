@@ -5,7 +5,7 @@
 // **************************************************************************
 // **************************************************************************
 // * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.13        *
 // * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
 // *                          --EXPERIMENTAL--                              *
 // * This program is experimental and not recommended for general use.      *
@@ -553,10 +553,27 @@ MainDialog::MainDialog(const Zstring& globalConfigFile,
     auiMgr.AddPane(m_panelCenter,
                    wxAuiPaneInfo().Name(L"PanelCenter").CenterPane().PaneBorder(false));
 
-    auiMgr.AddPane(m_panelDirectoryPairs,
-                   wxAuiPaneInfo().Name(L"PanelFolders").Layer(2).Top().Caption(_("Folder Pairs")).CaptionVisible(false).PaneBorder(false).Gripper());
+	{
+    //set comparison button label tentatively for m_panelTopButtons to receive final height:
+    updateTopButton(*m_buttonCompare, getResourceImage(L"compare"), L"Dummy", false);
+    m_panelTopButtons->GetSizer()->SetSizeHints(m_panelTopButtons); //~=Fit() + SetMinSize()
 
-    auiMgr.AddPane(m_panelSearch,
+    setBitmapTextLabel(*m_buttonCancel, wxImage(), m_buttonCancel->GetLabel()); //we can't use a wxButton for cancel: it's rendered smaller on OS X than a wxBitmapButton!
+    m_buttonCancel->SetMinSize(wxSize(std::max(m_buttonCancel->GetSize().x, TOP_BUTTON_OPTIMAL_WIDTH),
+                                      std::max(m_buttonCancel->GetSize().y, m_buttonCompare->GetSize().y)));
+
+    auiMgr.AddPane(m_panelTopButtons,
+                   wxAuiPaneInfo().Name(L"PanelTop").Layer(2).Top().Row(1).Caption(_("Main Bar")).CaptionVisible(false).PaneBorder(false).Gripper().MinSize(TOP_BUTTON_OPTIMAL_WIDTH, m_panelTopButtons->GetSize().GetHeight()));
+    //note: min height is calculated incorrectly by wxAuiManager if panes with and without caption are in the same row => use smaller min-size
+
+    auiMgr.AddPane(compareStatus->getAsWindow(),
+                   wxAuiPaneInfo().Name(L"PanelProgress").Layer(2).Top().Row(2).CaptionVisible(false).PaneBorder(false).Hide());
+	}
+
+    auiMgr.AddPane(m_panelDirectoryPairs,
+                   wxAuiPaneInfo().Name(L"PanelFolders").Layer(2).Top().Row(3).Caption(_("Folder Pairs")).CaptionVisible(false).PaneBorder(false).Gripper());
+
+	auiMgr.AddPane(m_panelSearch,
                    wxAuiPaneInfo().Name(L"PanelFind").Layer(2).Bottom().Row(2).Caption(_("Find")).CaptionVisible(false).PaneBorder(false).Gripper().MinSize(200, m_bpButtonHideSearch->GetSize().GetHeight()).Hide());
 
     auiMgr.AddPane(m_panelViewFilter,
@@ -567,21 +584,6 @@ MainDialog::MainDialog(const Zstring& globalConfigFile,
 
     auiMgr.AddPane(m_gridNavi,
                    wxAuiPaneInfo().Name(L"PanelOverview").Layer(3).Left().Position(2).Caption(_("Overview")).MinSize(300, m_gridNavi->GetSize().GetHeight())); //MinSize(): just default size, see comment below
-
-    //set comparison button label tentatively for m_panelTopButtons to receive final height:
-    updateTopButton(*m_buttonCompare, getResourceImage(L"compare"), L"Dummy", false);
-    m_panelTopButtons->GetSizer()->SetSizeHints(m_panelTopButtons); //~=Fit() + SetMinSize()
-
-    setBitmapTextLabel(*m_buttonCancel, wxImage(), m_buttonCancel->GetLabel()); //we can't use a wxButton for cancel: it's rendered smaller on OS X than a wxBitmapButton!
-    m_buttonCancel->SetMinSize(wxSize(std::max(m_buttonCancel->GetSize().x, TOP_BUTTON_OPTIMAL_WIDTH),
-                                      std::max(m_buttonCancel->GetSize().y, m_buttonCompare->GetSize().y)));
-
-    auiMgr.AddPane(m_panelTopButtons,
-                   wxAuiPaneInfo().Name(L"PanelTop").Layer(4).Top().Row(1).Caption(_("Main Bar")).CaptionVisible(false).PaneBorder(false).Gripper().MinSize(TOP_BUTTON_OPTIMAL_WIDTH, m_panelTopButtons->GetSize().GetHeight()));
-    //note: min height is calculated incorrectly by wxAuiManager if panes with and without caption are in the same row => use smaller min-size
-
-    auiMgr.AddPane(compareStatus->getAsWindow(),
-                   wxAuiPaneInfo().Name(L"PanelProgress").Layer(4).Top().Row(2).CaptionVisible(false).PaneBorder(false).Hide());
 
     auiMgr.Update();
 
@@ -1715,11 +1717,8 @@ void MainDialog::OnResizeLeftFolderWidth(wxEvent& event)
 {
     //adapt left-shift display distortion caused by scrollbars for multiple folder pairs
     const int width = m_panelTopLeft->GetSize().GetWidth();
-    std::for_each(additionalFolderPairs.begin(), additionalFolderPairs.end(),
-                  [&](FolderPairPanel* panel)
-    {
+    for (FolderPairPanel* panel : additionalFolderPairs)
         panel->m_panelLeft->SetMinSize(wxSize(width, -1));
-    });
 
     event.Skip();
 }
@@ -1745,8 +1744,8 @@ void MainDialog::onTreeButtonEvent(wxKeyEvent& event)
         {
             case 'C':
             case WXK_INSERT: //CTRL + C || CTRL + INS
-               copySelectionToClipboard({ m_gridNavi });
-            return;
+                copySelectionToClipboard({ m_gridNavi });
+                return;
         }
     else if (event.AltDown())
         switch (keyCode)
@@ -1826,8 +1825,8 @@ void MainDialog::onGridButtonEvent(wxKeyEvent& event, Grid& grid, bool leftSide)
         {
             case 'C':
             case WXK_INSERT: //CTRL + C || CTRL + INS
-				copySelectionToClipboard({ m_gridMainL, m_gridMainR} );
-            return; // -> swallow event! don't allow default grid commands!
+                copySelectionToClipboard({ m_gridMainL, m_gridMainR} );
+                return; // -> swallow event! don't allow default grid commands!
         }
 
     else if (event.AltDown())
@@ -2088,13 +2087,13 @@ void MainDialog::onNaviGridContext(GridClickEvent& event)
             //by short name
             Zstring labelShort = Zstring(Zstr("*")) + FILE_NAME_SEPARATOR + selection[0]->getPairShortName();
             if (isDir)
-                labelShort += FILE_NAME_SEPARATOR + Zstring(Zstr("*"));
+                labelShort += FILE_NAME_SEPARATOR;
             submenu.addItem(utfCvrtTo<wxString>(labelShort), [this, &selection, include] { filterShortname(*selection[0], include); });
 
             //by relative path
             Zstring labelRel = FILE_NAME_SEPARATOR + selection[0]->getPairRelativePath();
             if (isDir)
-                labelRel += FILE_NAME_SEPARATOR + Zstring(Zstr("*"));
+                labelRel += FILE_NAME_SEPARATOR;
             submenu.addItem(utfCvrtTo<wxString>(labelRel), [this, &selection, include] { filterItems(selection, include); });
 
             menu.addSubmenu(label, submenu, &getResourceImage(iconName));
@@ -2216,13 +2215,13 @@ void MainDialog::onMainGridContextRim(bool leftSide)
             //by short name
             Zstring labelShort = Zstring(Zstr("*")) + FILE_NAME_SEPARATOR + selection[0]->getPairShortName();
             if (isDir)
-                labelShort += FILE_NAME_SEPARATOR + Zstring(Zstr("*"));
+                labelShort += FILE_NAME_SEPARATOR;
             submenu.addItem(utfCvrtTo<wxString>(labelShort), [this, &selection, include] { filterShortname(*selection[0], include); });
 
             //by relative path
             Zstring labelRel = FILE_NAME_SEPARATOR + selection[0]->getPairRelativePath();
             if (isDir)
-                labelRel += FILE_NAME_SEPARATOR + Zstring(Zstr("*"));
+                labelRel += FILE_NAME_SEPARATOR;
             submenu.addItem(utfCvrtTo<wxString>(labelRel), [this, &selection, include] { filterItems(selection, include); });
 
             menu.addSubmenu(label, submenu, &getResourceImage(iconName));
@@ -2296,7 +2295,7 @@ void MainDialog::filterPhrase(const Zstring& phrase, bool include, bool addNewLi
         if (include)
         {
             Zstring& includeFilter = currentCfg.mainCfg.globalFilter.includeFilter;
-            if (NameFilter::isNull(includeFilter, FilterConfig().excludeFilter)) //fancy way of checking for "*" include
+            if (NameFilter::isNull(includeFilter, Zstring())) //fancy way of checking for "*" include
                 includeFilter.clear();
             return includeFilter;
         }
@@ -2340,7 +2339,7 @@ void MainDialog::filterShortname(const FileSystemObject& fsObj, bool include)
     Zstring phrase = Zstring(Zstr("*")) + FILE_NAME_SEPARATOR + fsObj.getPairShortName();
     const bool isDir = dynamic_cast<const DirPair*>(&fsObj) != nullptr;
     if (isDir)
-        phrase += FILE_NAME_SEPARATOR + Zstring(Zstr("*")); //include filter: * required; exclude filter: * optional, but let's still apply it!
+        phrase += FILE_NAME_SEPARATOR;
 
     filterPhrase(phrase, include, true);
 }
@@ -2363,7 +2362,7 @@ void MainDialog::filterItems(const std::vector<FileSystemObject*>& selection, bo
 
             const bool isDir = dynamic_cast<const DirPair*>(fsObj) != nullptr;
             if (isDir)
-                phrase += FILE_NAME_SEPARATOR + Zstring(Zstr("*")); //include filter: * required; exclude filter: * optional, but let's still apply it!
+                phrase += FILE_NAME_SEPARATOR;
         }
         filterPhrase(phrase, include, true);
     }
@@ -2717,7 +2716,6 @@ void MainDialog::updateUnsavedCfgStatus()
         brighten(img, 80);
         return img;
     };
-    //setImage(*m_bpButtonSave, greyScale(getResourceImage(L"save")));
 
     setImage(*m_bpButtonSave, allowSave ? getResourceImage(L"save") : makeBrightGrey(getResourceImage(L"save")));
     m_bpButtonSave->Enable(allowSave);

@@ -17,8 +17,8 @@ void swapGrids(const MainConfiguration& config, FolderComparison& folderCmp);
 
 std::vector<DirectionConfig> extractDirectionCfg(const MainConfiguration& mainCfg);
 
-void redetermineSyncDirection(const DirectionConfig& directConfig, BaseDirPair& baseDirectory, std::function<void(const std::wstring& msg)> reportWarning);
-void redetermineSyncDirection(const MainConfiguration& mainCfg,    FolderComparison& folderCmp,   std::function<void(const std::wstring& msg)> reportWarning);
+void redetermineSyncDirection(const DirectionConfig& directConfig, BaseDirPair& baseDirectory,  std::function<void(const std::wstring& msg)> reportWarning);
+void redetermineSyncDirection(const MainConfiguration& mainCfg,    FolderComparison& folderCmp, std::function<void(const std::wstring& msg)> reportWarning);
 
 void setSyncDirectionRec(SyncDirection newDirection, FileSystemObject& fsObj); //set new direction (recursively)
 

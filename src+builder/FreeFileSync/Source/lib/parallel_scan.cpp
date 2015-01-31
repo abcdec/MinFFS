@@ -5,7 +5,7 @@
 // **************************************************************************
 // **************************************************************************
 // * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.13        *
 // * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
 // *                          --EXPERIMENTAL--                              *
 // * This program is experimental and not recommended for general use.      *
@@ -172,8 +172,7 @@ typedef Zbase<wchar_t, StorageRefCountThreadSafe> BasicWString; //thread-safe st
 class AsyncCallback //actor pattern
 {
 public:
-    AsyncCallback() :
-        notifyingThreadID(0),
+    AsyncCallback() : notifyingThreadID(0),
         textScanning(_("Scanning:")),
         itemsScanned(0),
         activeWorker(0) {}
@@ -296,12 +295,12 @@ public:
     TraverserShared(long threadID,
                     SymLinkHandling handleSymlinks,
                     const HardFilter::FilterRef& filter,
-                    std::set<Zstring>& failedDirReads,
-                    std::set<Zstring>& failedItemReads,
+                    std::map<Zstring, std::wstring, LessFilename>& failedDirReads,
+                    std::map<Zstring, std::wstring, LessFilename>& failedItemReads,
                     AsyncCallback& acb) :
         handleSymlinks_(handleSymlinks),
         filterInstance(filter),
-        failedDirReads_(failedDirReads),
+        failedDirReads_ (failedDirReads),
         failedItemReads_(failedItemReads),
         acb_(acb),
         threadID_(threadID) {}
@@ -309,8 +308,8 @@ public:
     const SymLinkHandling handleSymlinks_;
     const HardFilter::FilterRef filterInstance; //always bound!
 
-    std::set<Zstring>& failedDirReads_;
-    std::set<Zstring>& failedItemReads_;
+    std::map<Zstring, std::wstring, LessFilename>& failedDirReads_;
+    std::map<Zstring, std::wstring, LessFilename>& failedItemReads_;
 
     AsyncCallback& acb_;
     const long threadID_;
@@ -442,7 +441,7 @@ TraverseCallback* DirCallback::onDir(const Zchar* shortName, const Zstring& dirp
 
 void DirCallback::releaseDirTraverser(TraverseCallback* trav)
 {
-    TraverseCallback::releaseDirTraverser(trav); //no-op, introduce compile-time coupling
+    TraverseCallback::releaseDirTraverser(trav); //no-op; introduce compile-time coupling
     delete trav;
 }
 
@@ -453,7 +452,7 @@ DirCallback::HandleError DirCallback::reportDirError(const std::wstring& msg, si
     switch (cfg.acb_.reportError(msg, retryNumber))
     {
         case FillBufferCallback::ON_ERROR_IGNORE:
-            cfg.failedDirReads_.insert(relNameParentPf_);
+            cfg.failedDirReads_[beforeLast(relNameParentPf_, FILE_NAME_SEPARATOR)] = msg;
             return ON_ERROR_IGNORE;
 
         case FillBufferCallback::ON_ERROR_RETRY:
@@ -470,7 +469,7 @@ DirCallback::HandleError DirCallback::reportItemError(const std::wstring& msg, s
     switch (cfg.acb_.reportError(msg, retryNumber))
     {
         case FillBufferCallback::ON_ERROR_IGNORE:
-            cfg.failedItemReads_.insert(relNameParentPf_ + shortName);
+            cfg.failedItemReads_[relNameParentPf_ + shortName] =  msg;
             return ON_ERROR_IGNORE;
 
         case FillBufferCallback::ON_ERROR_RETRY:

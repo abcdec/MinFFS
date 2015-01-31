@@ -5,7 +5,7 @@
 // **************************************************************************
 // **************************************************************************
 // * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.13        *
 // * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
 // *                          --EXPERIMENTAL--                              *
 // * This program is experimental and not recommended for general use.      *
@@ -1433,7 +1433,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::notifyProgressChange() //noexcept!
         switch (syncStat_->currentPhase())
         {
             case ProcessCallback::PHASE_NONE:
-                assert(false);
+            //assert(false); -> can happen: e.g. batch run, log file creation failed, throw in BatchStatusHandler constructor
             case ProcessCallback::PHASE_SCANNING:
                 break;
             case ProcessCallback::PHASE_COMPARING_CONTENT:
@@ -1462,7 +1462,7 @@ enum Zorder
 
 Zorder evaluateZorder(const wxWindow& top, const wxWindow& bottom)
 {
-    HWND hTop    = static_cast<HWND>(top.GetHWND());
+    HWND hTop    = static_cast<HWND>(top   .GetHWND());
     HWND hBottom = static_cast<HWND>(bottom.GetHWND());
     assert(hTop && hBottom);
 
@@ -1671,7 +1671,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateGuiInt(bool allowYield)
 
 #ifdef ZEN_WIN
     //workaround Windows 7 bug messing up z-order after temporary application hangs: https://sourceforge.net/tracker/index.php?func=detail&aid=3376523&group_id=234430&atid=1093080
-    //This is still needed no matter if wxDialog or wxPanel is used! (2013-07)
+    //2013-07: This is still needed no matter if wxDialog or wxPanel is used!
     if (parentFrame_)
         if (evaluateZorder(*this, *parentFrame_) == ZORDER_WRONG)
         {
@@ -1680,6 +1680,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateGuiInt(bool allowYield)
             {
                 ::ShowWindow(hProgress, SW_HIDE); //make Windows recalculate z-order
                 ::ShowWindow(hProgress, SW_SHOW); //
+                //::BringWindowToTop(hProgress); -> untested: better alternative?
             }
         }
 #endif
@@ -1706,7 +1707,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateGuiInt(bool allowYield)
                 //*first* refresh GUI (removing flicker) before sleeping!
                 boost::this_thread::sleep(boost::posix_time::milliseconds(UI_UPDATE_INTERVAL));
             }
-            //if SyncProgressDialogImpl::OnClose() already wxWindow::Destroy() on OS X then this instance is already toast!
+            //after SyncProgressDialogImpl::OnClose() called wxWindow::Destroy() on OS X this instance is instantly toast!
             if (wereDead)
                 return; //GTFO and don't call this->resumeTimer()
 
@@ -2037,7 +2038,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::OnClose(wxCloseEvent& event)
     paused_ = false; //[!] we could be pausing here!
 
     //now that we notified window termination prematurely, and since processHasFinished()/closeWindowDirectly() won't be called, make sure we don't call back, too!
-    //e.g. the second notifyWindowTerminate_() in ~SyncProgressDialogImpl()!!!
+    //e.g. a second notifyWindowTerminate_() in ~SyncProgressDialogImpl()!!!
     syncStat_ = nullptr;
     abortCb_  = nullptr;
 
@@ -2099,8 +2100,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::minimizeToTray()
         //hide dock icon: else user is able to forcefully show the hidden main dialog by clicking on the icon!!
         ProcessSerialNumber psn = { 0, kCurrentProcess };
         ::TransformProcessType(&psn, kProcessTransformToUIElementApplication);
-        wxTheApp->Yield(); //required to complete TransformProcessType: else a subsequent modal dialog will be erroneously hidden!
-        //-> Yield probably not needed here since we continue the event loop afterwards!
+        wxTheApp->Yield(true /*onlyIfNeeded -> avoid recursive yield*/); //required to complete TransformProcessType: else a subsequent modal dialog will be erroneously hidden!
+        //-> Yield not needed here since we continue the event loop afterwards!
 #endif
     }
 }

@@ -5,7 +5,7 @@
 // **************************************************************************
 // **************************************************************************
 // * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.12        *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.13        *
 // * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
 // *                          --EXPERIMENTAL--                              *
 // * This program is experimental and not recommended for general use.      *
@@ -285,8 +285,8 @@ SyncStatusHandler::~SyncStatusHandler()
                     try
                     {
                         //use EXEC_TYPE_ASYNC until there is reason not to: https://sourceforge.net/p/freefilesync/discussion/help/thread/828dca52
-                        tryReportingError([&] { shellExecute(expandMacros(finalCommand), EXEC_TYPE_ASYNC); }, //throw FileError, throw X?
-                                          *this);
+                        tryReportingError([&] { shellExecute(expandMacros(finalCommand), EXEC_TYPE_ASYNC); }, //throw FileError
+                                          *this); //throw X?
                     }
                     catch (...) {}
             }

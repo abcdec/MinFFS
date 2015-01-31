@@ -44,7 +44,7 @@ enum CompareFilesResult
     FILE_RIGHT_SIDE_ONLY,
     FILE_LEFT_NEWER,  //CMP_BY_TIME_SIZE only!
     FILE_RIGHT_NEWER, //
-    FILE_DIFFERENT, //CMP_BY_CONTENT only!
+    FILE_DIFFERENT_CONTENT, //CMP_BY_CONTENT only!
     FILE_DIFFERENT_METADATA, //both sides equal, but different metadata only: short name case, modification time
     FILE_CONFLICT
 };
@@ -54,7 +54,8 @@ enum CompareDirResult
     DIR_EQUAL              = FILE_EQUAL,
     DIR_LEFT_SIDE_ONLY     = FILE_LEFT_SIDE_ONLY,
     DIR_RIGHT_SIDE_ONLY    = FILE_RIGHT_SIDE_ONLY,
-    DIR_DIFFERENT_METADATA = FILE_DIFFERENT_METADATA //both sides equal, but different metadata only: short name case
+    DIR_DIFFERENT_METADATA = FILE_DIFFERENT_METADATA, //both sides equal, but different metadata only: short name case
+    DIR_CONFLICT           = FILE_CONFLICT
 };
 
 enum CompareSymlinkResult
@@ -64,7 +65,7 @@ enum CompareSymlinkResult
     SYMLINK_RIGHT_SIDE_ONLY = FILE_RIGHT_SIDE_ONLY,
     SYMLINK_LEFT_NEWER      = FILE_LEFT_NEWER,
     SYMLINK_RIGHT_NEWER     = FILE_RIGHT_NEWER,
-    SYMLINK_DIFFERENT       = FILE_DIFFERENT,
+    SYMLINK_DIFFERENT_CONTENT  = FILE_DIFFERENT_CONTENT,
     SYMLINK_DIFFERENT_METADATA = FILE_DIFFERENT_METADATA, //both sides equal, but different metadata only: short name case
     SYMLINK_CONFLICT        = FILE_CONFLICT
 };
@@ -91,8 +92,8 @@ enum SyncOperation
     SO_COPY_METADATA_TO_LEFT,  //objects are already equal: transfer metadata only - optimization
     SO_COPY_METADATA_TO_RIGHT, //
 
-    SO_DO_NOTHING, //= both sides differ, but nothing will be synced
-    SO_EQUAL,      //= both sides are equal, so nothing will be synced
+    SO_DO_NOTHING, //nothing will be synced: both sides differ
+    SO_EQUAL,      //nothing will be synced: both sides are equal
     SO_UNRESOLVED_CONFLICT
 };
 

@@ -46,7 +46,7 @@ FolderHistoryBox::FolderHistoryBox(wxWindow* parent,
     we can't attach to wxEVT_COMMAND_TEXT_UPDATED, since setValueAndUpdateList() will implicitly emit wxEVT_COMMAND_TEXT_UPDATED again when calling Clear()!
     => Crash on Suse/X11/wxWidgets 2.9.4 on startup (setting a flag to guard against recursion does not work, still crash)
 
-    On OS attaching to wxEVT_LEFT_DOWN leads to occasional crashes, especially when double-clicking
+    On OS X attaching to wxEVT_LEFT_DOWN leads to occasional crashes, especially when double-clicking
     */
 #endif
 
@@ -110,10 +110,11 @@ void FolderHistoryBox::setValueAndUpdateList(const wxString& dirpath)
 void FolderHistoryBox::OnKeyEvent(wxKeyEvent& event)
 {
     const int keyCode = event.GetKeyCode();
-    if (keyCode == WXK_DELETE || keyCode == WXK_NUMPAD_DELETE)
+    if (keyCode == WXK_DELETE ||
+        keyCode == WXK_NUMPAD_DELETE)
     {
         //try to delete the currently selected config history item
-        int pos = this->GetCurrentSelection();
+        const int pos = this->GetCurrentSelection();
         if (0 <= pos && pos < static_cast<int>(this->GetCount()) &&
             //what a mess...:
             (GetValue() != GetString(pos) || //avoid problems when a character shall be deleted instead of list item
@@ -126,14 +127,10 @@ void FolderHistoryBox::OnKeyEvent(wxKeyEvent& event)
             //delete selected row
             if (sharedHistory_.get())
                 sharedHistory_->delItem(toZ(GetString(pos)));
-            SetString(pos, wxString()); //in contrast to Delete(), this one does not kill the drop-down list and gives a nice visual feedback!
-            //Delete(pos);
+            SetString(pos, wxString()); //in contrast to "Delete(pos)", this one does not kill the drop-down list and gives a nice visual feedback!
 
-            //(re-)set value
             this->SetValue(currentVal);
-
-            //eat up key event
-            return;
+            return; //eat up key event
         }
     }
     event.Skip();
