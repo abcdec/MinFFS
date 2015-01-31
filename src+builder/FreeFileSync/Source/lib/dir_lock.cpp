@@ -550,7 +550,9 @@ bool tryLock(const Zstring& lockfilepath) //throw FileError
     //=> we don't need it that badly //::SetFileAttributes(applyLongPathPrefix(lockfilepath).c_str(), FILE_ATTRIBUTE_HIDDEN); //(try to) hide it
 
 #elif defined ZEN_LINUX || defined ZEN_MAC
-    ::umask(0); //important! -> why?
+    const mode_t oldMask = ::umask(0); //important: we want the lock file to have exactly the permissions specified
+    ZEN_ON_SCOPE_EXIT(::umask(oldMask));
+
     //O_EXCL contains a race condition on NFS file systems: http://linux.die.net/man/2/open
     const int fileHandle = ::open(lockfilepath.c_str(), O_CREAT | O_WRONLY | O_EXCL, S_IRWXU | S_IRWXG | S_IRWXO);
     if (fileHandle == -1)

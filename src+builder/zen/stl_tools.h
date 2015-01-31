@@ -19,7 +19,10 @@ template <class V, class Predicate>
 void vector_remove_if(V& vec, Predicate p);
 
 template <class V, class W>
-void vector_append(V& vec, W& vec2);
+void vector_append(V& vec, const W& vec2);
+
+template <class V, class W>
+void set_append(V& s, const W& s2);
 
 template <class S, class Predicate>
 void set_remove_if(S& set, Predicate p);
@@ -68,9 +71,16 @@ void vector_remove_if(V& vec, Predicate p)
 
 
 template <class V, class W> inline
-void vector_append(V& vec, W& vec2)
+void vector_append(V& vec, const W& vec2)
 {
     vec.insert(vec.end(), vec2.begin(), vec2.end());
+}
+
+
+template <class V, class W> inline
+void set_append(V& s, const W& s2)
+{
+	s.insert(s2.begin(), s2.end());
 }
 
 

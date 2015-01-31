@@ -14,7 +14,7 @@
 namespace zen
 {
 template <typename Function> inline
-zen::Opt<std::wstring> tryReportingError(Function cmd, ProcessCallback& handler) //return ignored error message if available
+zen::Opt<std::wstring> tryReportingError(Function cmd, ProcessCallback& handler) //throw X?; return ignored error message if available
 {
     for (size_t retryNumber = 0;; ++retryNumber)
         try
@@ -24,7 +24,7 @@ zen::Opt<std::wstring> tryReportingError(Function cmd, ProcessCallback& handler)
         }
         catch (zen::FileError& error)
         {
-            switch (handler.reportError(error.toString(), retryNumber)) //may throw!
+            switch (handler.reportError(error.toString(), retryNumber)) //throw ?
             {
                 case ProcessCallback::IGNORE_ERROR:
                     return error.toString();

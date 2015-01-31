@@ -1,3 +1,22 @@
+FreeFileSync 6.13
+-----------------
+Fixed crash when failing to create log file during batch run
+Show directory traversal errors as conflict category on grid
+Improved file filter behavior for certain edge cases when updating the database
+Fixed crash when task scheduler ends FreeFileSync after a certain time (Windows)
+Don't show alternative folder paths if volume name is empty
+Support silent installation for Inno Setup (Windows)
+Fixed recursive yield when minimized into notification area (Linux, OS X)
+Include ACLs when copying file and folder permissions (OS X)
+New file copy routine including extended attributes (OS X)
+Fixed failure to permanently delete directories containing symlinks
+Copy extended attributes when creating new folders and symlinks (OS X)
+Restore process umask after creating lock file (Linux, OS X)
+Copy directory permissions by default (Linux, OS X)
+Optimized construction of merged path filters
+Exclude items subject to traversal errors when updating the database
+
+
 FreeFileSync 6.12 [2014-12-01]
 ------------------------------
 New "Actions" menu bar entry with basic operations

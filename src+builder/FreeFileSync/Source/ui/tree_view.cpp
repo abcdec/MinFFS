@@ -584,7 +584,7 @@ void TreeView::updateCmpResult(bool showExcluded,
                 return leftNewerFilesActive;
             case FILE_RIGHT_NEWER:
                 return rightNewerFilesActive;
-            case FILE_DIFFERENT:
+            case FILE_DIFFERENT_CONTENT:
                 return differentFilesActive;
             case FILE_EQUAL:
             case FILE_DIFFERENT_METADATA: //= sub-category of equal

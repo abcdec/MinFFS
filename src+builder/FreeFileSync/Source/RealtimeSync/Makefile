@@ -25,6 +25,7 @@ CPP_LIST+=../lib/localization.cpp
 CPP_LIST+=../lib/process_xml.cpp
 CPP_LIST+=../lib/resolve_path.cpp
 CPP_LIST+=../lib/ffs_paths.cpp
+CPP_LIST+=../lib/hard_filter.cpp
 CPP_LIST+=../../../zen/xml_io.cpp
 CPP_LIST+=../../../zen/dir_watcher.cpp
 CPP_LIST+=../../../zen/file_access.cpp

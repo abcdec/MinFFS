@@ -28,10 +28,11 @@ using namespace zen;
 
 namespace
 {
-#ifdef ZEN_WIN
-Zstring resolveRelativePath(const Zstring& relativePath) //note: ::GetFullPathName() is documented not threadsafe!
+Zstring resolveRelativePath(const Zstring& relativePath) //note: ::GetFullPathName() is documented to be not thread-safe!
 {
-    //don't use long path prefix! does not work with relative paths "." and ".."
+#ifdef ZEN_WIN
+    //- don't use long path prefix here! does not work with relative paths "." and ".."
+    //- function also replaces "/" characters by "\"
     const DWORD bufferSize = ::GetFullPathName(relativePath.c_str(), 0, nullptr, nullptr);
     if (bufferSize > 0)
     {
@@ -44,11 +45,8 @@ Zstring resolveRelativePath(const Zstring& relativePath) //note: ::GetFullPathNa
             return Zstring(&buffer[0], charsWritten);
     }
     return relativePath; //ERROR! Don't do anything
-}
 
 #elif defined ZEN_LINUX || defined ZEN_MAC
-Zstring resolveRelativePath(const Zstring& relativePath)
-{
     //http://linux.die.net/man/2/path_resolution
     if (!startsWith(relativePath, FILE_NAME_SEPARATOR)) //absolute names are exactly those starting with a '/'
     {
@@ -80,8 +78,9 @@ Zstring resolveRelativePath(const Zstring& relativePath)
         }
     }
     return relativePath;
-}
 #endif
+}
+
 
 #ifdef ZEN_WIN
 class CsidlConstants
@@ -147,7 +146,7 @@ private:
         addCsidl(CSIDL_COMMON_DESKTOPDIRECTORY, L"csidl_PublicDesktop"); // C:\Users\All Users\Desktop
 
         addCsidl(CSIDL_FAVORITES,        L"csidl_Favorites");       // C:\Users\<user>\Favorites
-        addCsidl(CSIDL_COMMON_FAVORITES, L"csidl_PublicFavorites"); // C:\Users\<user>\Favorites; unused? -> http://blogs.msdn.com/b/oldnewthing/archive/2012/09/04/10346022.aspx
+        //addCsidl(CSIDL_COMMON_FAVORITES, L"csidl_PublicFavorites"); // C:\Users\<user>\Favorites; unused? -> http://blogs.msdn.com/b/oldnewthing/archive/2012/09/04/10346022.aspx
 
         addCsidl(CSIDL_PERSONAL,         L"csidl_MyDocuments");     // C:\Users\<user>\Documents
         addCsidl(CSIDL_COMMON_DOCUMENTS, L"csidl_PublicDocuments"); // C:\Users\Public\Documents
@@ -209,11 +208,11 @@ auto& dummy = CsidlConstants::get();
 #endif
 
 
-std::unique_ptr<Zstring> getEnvironmentVar(const Zstring& envName) //return nullptr if not found
+Opt<Zstring> getEnvironmentVar(const Zstring& envName) //return nullptr if not found
 {
     wxString value;
     if (!wxGetEnv(utfCvrtTo<wxString>(envName), &value))
-        return nullptr;
+        return NoValue();
 
     //some postprocessing:
     trim(value); //remove leading, trailing blanks
@@ -224,32 +223,32 @@ std::unique_ptr<Zstring> getEnvironmentVar(const Zstring& envName) //return null
         value.length() >= 2)
         value = wxString(value.c_str() + 1, value.length() - 2);
 
-    return zen::make_unique<Zstring>(utfCvrtTo<Zstring>(value));
+    return utfCvrtTo<Zstring>(value);
 }
 
 
-std::unique_ptr<Zstring> resolveMacro(const Zstring& macro, //macro without %-characters
-                                      const std::vector<std::pair<Zstring, Zstring>>& ext) //return nullptr if not resolved
+Opt<Zstring> resolveMacro(const Zstring& macro, //macro without %-characters
+                          const std::vector<std::pair<Zstring, Zstring>>& ext) //return nullptr if not resolved
 {
     auto equalNoCase = [](const Zstring& lhs, const Zstring& rhs) { return utfCvrtTo<wxString>(lhs).CmpNoCase(utfCvrtTo<wxString>(rhs)) == 0; };
 
     //there exist environment variables named %TIME%, %DATE% so check for our internal macros first!
     if (equalNoCase(macro, Zstr("time")))
-        return zen::make_unique<Zstring>(formatTime<Zstring>(Zstr("%H%M%S")));
+        return formatTime<Zstring>(Zstr("%H%M%S"));
 
     if (equalNoCase(macro, Zstr("date")))
-        return zen::make_unique<Zstring>(formatTime<Zstring>(FORMAT_ISO_DATE));
+        return formatTime<Zstring>(FORMAT_ISO_DATE);
 
     if (equalNoCase(macro, Zstr("timestamp")))
-        return zen::make_unique<Zstring>(formatTime<Zstring>(Zstr("%Y-%m-%d %H%M%S"))); //e.g. "2012-05-15 131513"
+        return formatTime<Zstring>(Zstr("%Y-%m-%d %H%M%S")); //e.g. "2012-05-15 131513"
 
-    std::unique_ptr<Zstring> cand;
+    Zstring cand;
     auto processPhrase = [&](const Zchar* phrase, const Zchar* format) -> bool
     {
         if (!equalNoCase(macro, phrase))
             return false;
 
-        cand = zen::make_unique<Zstring>(formatTime<Zstring>(format));
+        cand = formatTime<Zstring>(format);
         return true;
     };
 
@@ -266,11 +265,11 @@ std::unique_ptr<Zstring> resolveMacro(const Zstring& macro, //macro without %-ch
     {
         auto it = std::find_if(ext.begin(), ext.end(), [&](const std::pair<Zstring, Zstring>& p) { return equalNoCase(macro, p.first); });
         if (it != ext.end())
-            return zen::make_unique<Zstring>(it->second);
+            return it->second;
     }
 
     //try to resolve as environment variable
-    if (std::unique_ptr<Zstring> value = getEnvironmentVar(macro))
+    if (Opt<Zstring> value = getEnvironmentVar(macro))
         return value;
 
 #ifdef ZEN_WIN
@@ -279,11 +278,11 @@ std::unique_ptr<Zstring> resolveMacro(const Zstring& macro, //macro without %-ch
         const auto& csidlMap = CsidlConstants::get();
         auto it = csidlMap.find(macro);
         if (it != csidlMap.end())
-            return zen::make_unique<Zstring>(it->second);
+            return it->second;
     }
 #endif
 
-    return nullptr;
+    return NoValue();
 }
 
 const Zchar MACRO_SEP = Zstr('%');
@@ -300,7 +299,7 @@ Zstring expandMacros(const Zstring& text, const std::vector<std::pair<Zstring, Z
             Zstring potentialMacro = beforeFirst(rest, MACRO_SEP);
             Zstring postfix        = afterFirst (rest, MACRO_SEP); //text == prefix + MACRO_SEP + potentialMacro + MACRO_SEP + postfix
 
-            if (std::unique_ptr<Zstring> value = resolveMacro(potentialMacro, ext))
+            if (Opt<Zstring> value = resolveMacro(potentialMacro, ext))
                 return prefix + *value + expandMacros(postfix, ext);
             else
                 return prefix + MACRO_SEP + potentialMacro + expandMacros(MACRO_SEP + postfix, ext);
@@ -384,7 +383,7 @@ Zstring getVolumeName(const Zstring& volumePath) //return empty string on error
                                    nullptr,    //__out_opt  LPDWORD lpFileSystemFlags,
                                    nullptr,    //__out      LPTSTR lpFileSystemNameBuffer,
                                    0))         //__in       DWORD nFileSystemNameSize
-            return &buffer[0];
+            return &buffer[0]; //can be empty!!!
     }
     return Zstring();
 }
@@ -450,8 +449,9 @@ void getDirectoryAliasesRecursive(const Zstring& dirpath, std::set<Zstring, Less
         dirpath[1] == L':' &&
         dirpath[2] == L'\\')
     {
-        if (Opt<Zstring> volname = getVolumeName(Zstring(dirpath.c_str(), 3))) //should not block
-            output.insert(L"[" + *volname + L"]" + Zstring(dirpath.c_str() + 2));
+        Zstring volname = getVolumeName(Zstring(dirpath.c_str(), 3)); //should not block
+        if (!volname.empty())
+            output.insert(L"[" + volname + L"]" + Zstring(dirpath.c_str() + 2));
     }
 
     //2. replace volume name by volume path: [SYSTEM]\dirpath -> c:\dirpath
@@ -470,7 +470,7 @@ void getDirectoryAliasesRecursive(const Zstring& dirpath, std::set<Zstring, Less
         //get list of useful variables
         auto addEnvVar = [&](const Zstring& envName)
         {
-            if (std::unique_ptr<Zstring> value = getEnvironmentVar(envName))
+            if (Opt<Zstring> value = getEnvironmentVar(envName))
                 envToDir.emplace(envName, *value);
         };
 #ifdef ZEN_WIN
@@ -556,7 +556,7 @@ Zstring zen::getFormattedDirectoryPath(const Zstring& dirpassPhrase) // throw()
     need to resolve relative paths:
     WINDOWS:
      - \\?\-prefix which needs absolute names
-     - Volume Shadow Copy: volume name needs to be part of each filepath
+     - Volume Shadow Copy: volume name needs to be part of each file path
      - file icon buffer (at least for extensions that are actually read from disk, like "exe")
      - ::SHFileOperation(): Using relative path names is not thread safe
     WINDOWS/LINUX:

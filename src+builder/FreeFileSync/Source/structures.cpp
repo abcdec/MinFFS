@@ -10,6 +10,7 @@
 #include <ctime>
 #include <zen/i18n.h>
 #include <zen/time.h>
+#include "lib/hard_filter.h"
 
 using namespace zen;
 
@@ -166,7 +167,7 @@ std::wstring zen::getSymbol(CompareFilesResult cmpRes)
             return L"newer <-";
         case FILE_RIGHT_NEWER:
             return L"newer ->";
-        case FILE_DIFFERENT:
+        case FILE_DIFFERENT_CONTENT:
             return L"!=";
         case FILE_EQUAL:
         case FILE_DIFFERENT_METADATA: //= sub-category of equal!
@@ -338,7 +339,7 @@ FilterConfig mergeFilterConfig(const FilterConfig& global, const FilterConfig& l
     FilterConfig out = local;
 
     //hard filter
-    if (out.includeFilter == FilterConfig().includeFilter)
+    if (NameFilter::isNull(out.includeFilter, Zstring())) //fancy way of checking for "*" include
         out.includeFilter = global.includeFilter;
     //else: if both global and local include filter contain data, only local filter is preserved
 

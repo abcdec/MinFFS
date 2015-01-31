@@ -162,7 +162,7 @@ GridView::StatusCmpResult GridView::updateCmpResult(bool showExcluded, //maps so
                 output.existsRightNewer = true;
                 if (!rightNewerFilesActive) return false;
                 break;
-            case FILE_DIFFERENT:
+            case FILE_DIFFERENT_CONTENT:
                 output.existsDifferent = true;
                 if (!differentFilesActive) return false;
                 break;

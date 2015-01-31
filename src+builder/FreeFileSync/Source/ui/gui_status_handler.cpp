@@ -271,8 +271,8 @@ SyncStatusHandler::~SyncStatusHandler()
                     try
                     {
                         //use EXEC_TYPE_ASYNC until there is reason not to: https://sourceforge.net/p/freefilesync/discussion/help/thread/828dca52
-                        tryReportingError([&] { shellExecute(expandMacros(finalCommand), EXEC_TYPE_ASYNC); }, //throw FileError, throw X?
-                                          *this);
+                        tryReportingError([&] { shellExecute(expandMacros(finalCommand), EXEC_TYPE_ASYNC); }, //throw FileError
+                                          *this); //throw X?
                     }
                     catch (...) {}
             }

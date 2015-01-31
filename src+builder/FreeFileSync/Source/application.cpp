@@ -232,7 +232,7 @@ void Application::onEnterEventLoop(wxEvent& event)
 
 
 int Application::OnRun()
-{
+{	
     auto processException = [](const std::wstring& msg)
     {
         //it's not always possible to display a message box, e.g. corrupted stack, however low-level file output works!
@@ -277,8 +277,8 @@ void showSyntaxHelp();
 
 void Application::launch(const std::vector<Zstring>& commandArgs)
 {
-    //wxWidgets app exit handling is weird... we want the app to exit only if the logical main window is closed
-    wxTheApp->SetExitOnFrameDelete(false); //avoid popup-windows from becoming temporary top windows leading to program exit after closure
+    //wxWidgets app exit handling is weird... we want to exit only if the logical main window is closed, not just *any* window!
+    wxTheApp->SetExitOnFrameDelete(false); //prevent popup-windows from becoming temporary top windows leading to program exit after closure
     ZEN_ON_SCOPE_EXIT(if (!mainWindowWasSet()) wxTheApp->ExitMainLoop();); //quit application, if no main window was set (batch silent mode)
 
     try
@@ -354,7 +354,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                         filepath += Zstr(".xml");
                     else
                     {
-                        notifyError(replaceCpy(_("Cannot open file %x."), L"%x", fmtFileName(filepath)), std::wstring());
+                        notifyError(replaceCpy(_("Cannot find file %x."), L"%x", fmtFileName(filepath)), std::wstring());
                         return;
                     }
                 }
