@@ -621,8 +621,8 @@ private:
             //or it was excluded via filter and the database entry should be preserved
 
             warn_static("insufficient for *.txt-include filters! -> e.g. 1. *.txt-include, both sides in sync, txt-fiels in subfolder")
-				warn_static("2. delete all subfolders externally ")
-				warn_static("3. sync => db should be updated == entries removed for .txt; mabye even for deleted subfolders!?!")
+            warn_static("2. delete all subfolders externally ")
+            warn_static("3. sync => db should be updated == entries removed for .txt; mabye even for deleted subfolders!?!")
         });
     }
 

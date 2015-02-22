@@ -143,9 +143,7 @@ bool zen::recycleOrDelete(const Zstring& itempath) //throw FileError
         return false; //neither file nor any other object with that name existing: no error situation, manual deletion relies on it!
 
 #ifdef ZEN_WIN
-    std::vector<Zstring> itempaths;
-    itempaths.push_back(itempath);
-    recycleOrDelete(itempaths, nullptr); //throw FileError
+	recycleOrDelete({ itempath }, nullptr); //throw FileError
 
 #elif defined ZEN_LINUX
     GFile* file = ::g_file_new_for_path(itempath.c_str()); //never fails according to docu
@@ -231,7 +229,7 @@ bool zen::recycleOrDelete(const Zstring& itempath) //throw FileError
 
 
 #ifdef ZEN_WIN
-bool zen::recycleBinExists(const Zstring& pathName, const std::function<void ()>& onUpdateGui) //throw FileError
+bool zen::recycleBinExists(const Zstring& dirpath, const std::function<void ()>& onUpdateGui) //throw FileError
 {
     if (vistaOrLater())
     {
@@ -240,24 +238,24 @@ bool zen::recycleBinExists(const Zstring& pathName, const std::function<void ()>
         const DllFun<FunType_getLastErrorMessage> getLastErrorMessage(getDllName(), funName_getLastErrorMessage);
 
         if (!getRecycleBinStatus || !getLastErrorMessage)
-            throw FileError(replaceCpy(_("Checking recycle bin failed for folder %x."), L"%x", fmtFileName(pathName)),
+            throw FileError(replaceCpy(_("Checking recycle bin failed for folder %x."), L"%x", fmtFileName(dirpath)),
                             replaceCpy(_("Cannot load file %x."), L"%x", fmtFileName(getDllName())));
 
         bool hasRecycler = false;
-        if (!getRecycleBinStatus(pathName.c_str(), hasRecycler))
-            throw FileError(replaceCpy(_("Checking recycle bin failed for folder %x."), L"%x", fmtFileName(pathName)), getLastErrorMessage());
+        if (!getRecycleBinStatus(dirpath.c_str(), hasRecycler))
+            throw FileError(replaceCpy(_("Checking recycle bin failed for folder %x."), L"%x", fmtFileName(dirpath)), getLastErrorMessage());
 
         return hasRecycler;
     }
     else
     {
         //excessive runtime if recycle bin exists, is full and drive is slow:
-        auto ft = async([pathName]()
+        auto ft = async([dirpath]()
         {
             SHQUERYRBINFO recInfo = {};
             recInfo.cbSize = sizeof(recInfo);
-            return ::SHQueryRecycleBin(pathName.c_str(), //__in_opt  LPCTSTR pszRootPath,
-                                       &recInfo);        //__inout   LPSHQUERYRBINFO pSHQueryRBInfo
+            return ::SHQueryRecycleBin(dirpath.c_str(), //__in_opt  LPCTSTR pszRootPath,
+                                       &recInfo);       //__inout   LPSHQUERYRBINFO pSHQueryRBInfo
         });
 
         while (!ft.timed_wait(boost::posix_time::milliseconds(50)))
@@ -278,7 +276,7 @@ bool zen::recycleBinExists(const Zstring& pathName, const std::function<void ()>
     // -> not upward-compatible, wrong result for subst-alias: recycler assumed existing, although it is not!
 
     //5. alternative approach a'la Raymond Chen: http://blogs.msdn.com/b/oldnewthing/archive/2008/09/18/8956382.aspx
-    //caveat: might not be reliable, e.g. "subst"-alias of volume contains "$Recycle.Bin" although it is not available!
+    //caveat: might not be reliable, e.g. "subst"-alias of volume contains "$Recycle.Bin" although recycler is not available!
 
     /*
         Zstring rootPathPf = appendSeparator(&buffer[0]);

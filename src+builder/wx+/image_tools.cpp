@@ -156,7 +156,7 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
         dc.SetTextBackground(*wxWHITE); //
         dc.SetFont(font);
 
-        assert(!contains(text, L"&")); //accelerator keys not supported here; see also getTextExtent()
+        //assert(!contains(text, L"&")); //accelerator keys not supported here; see also getTextExtent()
         wxString textFmt = replaceCpy(text, L"&", L"", false);
 
         //for some reason wxDC::DrawText messes up "weak" bidi characters even when wxLayout_RightToLeft is set! (--> arrows in hebrew/arabic)

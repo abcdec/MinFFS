@@ -35,8 +35,8 @@ bool recycleOrDelete(const Zstring& itempath); //throw FileError, return "true" 
 
 
 #ifdef ZEN_WIN
-//can take a long time if recycle bin is full and drive is slow!!! => buffer volume ids!
-bool recycleBinExists(const Zstring& pathName, const std::function<void ()>& onUpdateGui); //throw FileError
+//can take a long time if recycle bin is full and drive is slow!!! => buffer!
+bool recycleBinExists(const Zstring& dirpath, const std::function<void ()>& onUpdateGui); //throw FileError
 
 void recycleOrDelete(const std::vector<Zstring>& filepaths, //throw FileError, return "true" if file/dir was actually deleted
                      const std::function<void (const Zstring& currentItem)>& notifyDeletionStatus); //optional; currentItem may be empty

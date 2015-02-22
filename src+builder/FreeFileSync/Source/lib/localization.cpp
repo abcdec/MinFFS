@@ -111,27 +111,6 @@ FFSTranslation::FFSTranslation(const Zstring& filepath, wxLanguage languageId) :
 }
 
 
-class FindLngfiles : public zen::TraverseCallback
-{
-public:
-    FindLngfiles(std::vector<Zstring>& lngFiles) : lngFiles_(lngFiles) {}
-
-    void onFile(const Zchar* shortName, const Zstring& filepath, const FileInfo& details) override
-    {
-        if (endsWith(filepath, Zstr(".lng")))
-            lngFiles_.push_back(filepath);
-    }
-
-    HandleLink onSymlink(const Zchar* shortName, const Zstring& linkpath, const SymlinkInfo& details) override { return LINK_SKIP; }
-    TraverseCallback* onDir(const Zchar* shortName, const Zstring& dirpath)                           override { return nullptr; }
-    HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                          override { assert(false); return ON_ERROR_IGNORE; } //errors are not really critical in this context
-    HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zchar* shortName)  override { assert(false); return ON_ERROR_IGNORE; } //
-
-private:
-    std::vector<Zstring>& lngFiles_;
-};
-
-
 struct LessTranslation
 {
     bool operator()(const ExistingTranslations::Entry& lhs, const ExistingTranslations::Entry& rhs) const
@@ -189,10 +168,12 @@ ExistingTranslations::ExistingTranslations()
 
     //search language files available
     std::vector<Zstring> lngFiles;
-    FindLngfiles traverseCallback(lngFiles);
 
-    traverseFolder(zen::getResourceDir() +  Zstr("Languages"), //throw();
-                   traverseCallback);
+    traverseFolder(zen::getResourceDir() + Zstr("Languages"), [&](const FileInfo& fi)
+    {
+        if (endsWith(fi.fullPath, Zstr(".lng")))
+            lngFiles.push_back(fi.fullPath);
+    }, nullptr, nullptr, [&](const std::wstring& errorMsg) { assert(false); }); //errors are not really critical in this context
 
     for (const Zstring& filepath : lngFiles)
     {

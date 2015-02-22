@@ -47,15 +47,6 @@ As used by GetModuleFileNameEx() and symlinks (FSCTL_GET_REPARSE_POINT):
 
 
 
-
-
-
-
-
-
-
-
-
 //################## implementation ##################
 
 //there are two flavors of long path prefix: one for UNC paths, one for regular paths
@@ -128,11 +119,11 @@ Zstring zen::ntPathToWin32Path(const Zstring& path) //noexcept
         if (bufSize > 0)
         {
             std::vector<wchar_t> buf(bufSize);
-            DWORD charsWritten = ::GetEnvironmentVariable(L"SystemRoot", //_In_opt_   LPCTSTR lpName,
+            const DWORD charsWritten = ::GetEnvironmentVariable(L"SystemRoot", //_In_opt_   LPCTSTR lpName,
                                                           &buf[0],       //_Out_opt_  LPTSTR lpBuffer,
                                                           bufSize);      //_In_       DWORD nSize
 
-            if (charsWritten != 0 && charsWritten < bufSize)
+            if (0 < charsWritten && charsWritten < bufSize)
                 return replaceCpy(path, L"\\SystemRoot\\", appendSeparator(Zstring(&buf[0], charsWritten)), false);
         }
     }

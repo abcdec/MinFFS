@@ -15,12 +15,24 @@ using namespace zen;
 
 namespace
 {
-inline
-void setMinSize(std::vector<char>& buffer, size_t minSize)
-{
-    if (buffer.size() < minSize) //this is similar to reserve(), but we need a "properly initialized" array here
-        buffer.resize(minSize);
-}
+    /*
+	1. there seems to be no perf improvement possible when using file mappings instad of ::ReadFile() calls on Windows:
+		=> buffered   access: same perf
+		=> unbuffered access: same perf on USB stick, file mapping 30% slower on local disk
+
+	2. Tests on Win7 x64 show that buffer size does NOT matter if files are located on different physical disks!
+    Impact of buffer size when files are on same disk:
+
+    buffer  MB/s
+    ------------
+    64      10
+    128     19
+    512     40
+    1024    48
+    2048    56
+    4096    56
+    8192    56
+    */
 
 class BufferSize
 {
@@ -39,29 +51,23 @@ public:
             bufSize /= 2;
     }
 
-    operator size_t() const { return bufSize; }
+    size_t get() const { return bufSize; }
 
 private:
     static const size_t BUFFER_SIZE_MIN   =        64 * 1024;
     static const size_t BUFFER_SIZE_START =       128 * 1024; //initial buffer size
     static const size_t BUFFER_SIZE_MAX   = 16 * 1024 * 1024;
 
-    /*Tests on Win7 x64 show that buffer size does NOT matter if files are located on different physical disks!
-    Impact of buffer size when files are on same disk:
-
-    buffer  MB/s
-    ------------
-    64      10
-    128     19
-    512     40
-    1024    48
-    2048    56
-    4096    56
-    8192    56
-    */
-
     size_t bufSize;
 };
+
+
+inline
+void setMinSize(std::vector<char>& buffer, size_t minSize)
+{
+    if (buffer.size() < minSize) //this is similar to reserve(), but we need a "properly initialized" array here
+        buffer.resize(minSize);
+}
 
 
 const std::int64_t TICKS_PER_SEC = ticksPerSec();
@@ -89,13 +95,13 @@ bool zen::filesHaveSameContent(const Zstring& filepath1, const Zstring& filepath
 
     do
     {
-        setMinSize(memory1, bufferSize);
-        setMinSize(memory2, bufferSize);
+        setMinSize(memory1, bufferSize.get());
+        setMinSize(memory2, bufferSize.get());
 
         const TickVal startTime = getTicks();
 
-        const size_t length1 = file1.read(&memory1[0], bufferSize); //throw FileError
-        const size_t length2 = file2.read(&memory2[0], bufferSize); //returns actual number of bytes read
+        const size_t length1 = file1.read(&memory1[0], bufferSize.get()); //throw FileError
+        const size_t length2 = file2.read(&memory2[0], bufferSize.get()); //returns actual number of bytes read
         //send progress updates immediately after reading to reliably allow speed calculations for our clients!
         if (onUpdateStatus)
             onUpdateStatus(std::max(length1, length2));

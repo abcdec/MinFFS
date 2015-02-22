@@ -125,7 +125,7 @@ inline
 bool running64BitWindows() //http://blogs.msdn.com/b/oldnewthing/archive/2005/02/01/364563.aspx
 {
     static_assert(zen::is32BitBuild || zen::is64BitBuild, "");
-    return is64BitBuild || runningWOW64(); //should we bother to make this a compile-time check?
+    return is64BitBuild || runningWOW64(); //should we bother to make this a compile-time check for the first case?
 }
 }
 

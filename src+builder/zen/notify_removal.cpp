@@ -86,7 +86,7 @@ MessageProvider::MessageProvider() :
     if (::RegisterClass(&wc) == 0)
         throwFileError(_("Unable to register to receive system messages."), L"RegisterClass", getLastError());
 
-    ScopeGuard guardClass = makeGuard([&] { ::UnregisterClass(dummyClassName, hMainModule); });
+    ScopeGuard guardConstructor = zen::makeGuard([&] { this->~MessageProvider(); });
 
     //create dummy-window
     windowHandle = ::CreateWindow(dummyClassName, //_In_opt_  LPCTSTR lpClassName,
@@ -106,14 +106,15 @@ MessageProvider::MessageProvider() :
     if (::SetWindowLongPtr(windowHandle, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this)) == 0 && ::GetLastError() != ERROR_SUCCESS)
         throwFileError(_("Unable to register to receive system messages."), L"SetWindowLongPtr", ::GetLastError());
 
-    guardClass.dismiss();
+    guardConstructor.dismiss();
 }
 
 
 MessageProvider::~MessageProvider()
 {
     //clean-up in reverse order
-    ::DestroyWindow(windowHandle);
+    if (windowHandle)
+        ::DestroyWindow(windowHandle);
     ::UnregisterClass(dummyClassName, //LPCTSTR lpClassName OR ATOM in low-order word!
                       hMainModule);   //HINSTANCE hInstance
 }

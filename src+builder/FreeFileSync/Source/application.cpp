@@ -232,7 +232,7 @@ void Application::onEnterEventLoop(wxEvent& event)
 
 
 int Application::OnRun()
-{	
+{
     auto processException = [](const std::wstring& msg)
     {
         //it's not always possible to display a message box, e.g. corrupted stack, however low-level file output works!

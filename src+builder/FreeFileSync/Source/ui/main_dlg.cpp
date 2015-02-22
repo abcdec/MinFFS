@@ -192,18 +192,19 @@ public:
 
         dirpathLeft .Connect(EVENT_ON_DIR_MANUAL_CORRECTION, wxCommandEventHandler(MainDialog::onDirManualCorrection), nullptr, &mainDialog);
         dirpathRight.Connect(EVENT_ON_DIR_MANUAL_CORRECTION, wxCommandEventHandler(MainDialog::onDirManualCorrection), nullptr, &mainDialog);
+
+        m_bpButtonFolderPairOptions->SetBitmapLabel(getResourceImage(L"button_arrow_down"));
     }
 
-    void setValues(const Zstring& leftDir,
-                   const Zstring& rightDir,
-                   AltCompCfgPtr cmpCfg,
-                   AltSyncCfgPtr syncCfg,
-                   const FilterConfig& filter)
+    void setValues(const FolderPairEnh& fp)
     {
-        setConfig(cmpCfg, syncCfg, filter);
-        dirpathLeft .setPath(toWx(leftDir));
-        dirpathRight.setPath(toWx(rightDir));
+        setConfig(fp.altCmpConfig, fp.altSyncConfig, fp.localFilter);
+        dirpathLeft .setPath(toWx(fp.dirpathPhraseLeft));
+        dirpathRight.setPath(toWx(fp.dirpathPhraseRight));
     }
+
+    FolderPairEnh getValues() const { return FolderPairEnh(getLeftDir(), getRightDir(), getAltCompConfig(), getAltSyncConfig(), getAltFilterConfig()); }
+
     Zstring getLeftDir () const { return toZ(dirpathLeft .getPath()); }
     Zstring getRightDir() const { return toZ(dirpathRight.getPath()); }
 
@@ -239,18 +240,21 @@ public:
 
         dirpathLeft .Connect(EVENT_ON_DIR_MANUAL_CORRECTION, wxCommandEventHandler(MainDialog::onDirManualCorrection), nullptr, &mainDialog);
         dirpathRight.Connect(EVENT_ON_DIR_MANUAL_CORRECTION, wxCommandEventHandler(MainDialog::onDirManualCorrection), nullptr, &mainDialog);
+
+        mainDialog.m_panelTopLeft  ->Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(MainDialog::onTopFolderPairKeyEvent), nullptr, &mainDialog);
+        mainDialog.m_panelTopMiddle->Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(MainDialog::onTopFolderPairKeyEvent), nullptr, &mainDialog);
+        mainDialog.m_panelTopRight ->Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(MainDialog::onTopFolderPairKeyEvent), nullptr, &mainDialog);
     }
 
-    void setValues(const Zstring& leftDir,
-                   const Zstring& rightDir,
-                   AltCompCfgPtr cmpCfg,
-                   AltSyncCfgPtr syncCfg,
-                   const FilterConfig& filter)
+    void setValues(const FolderPairEnh& fp)
     {
-        setConfig(cmpCfg, syncCfg, filter);
-        dirpathLeft .setPath(toWx(leftDir));
-        dirpathRight.setPath(toWx(rightDir));
+        setConfig(fp.altCmpConfig, fp.altSyncConfig, fp.localFilter);
+        dirpathLeft .setPath(toWx(fp.dirpathPhraseLeft));
+        dirpathRight.setPath(toWx(fp.dirpathPhraseRight));
     }
+
+    FolderPairEnh getValues() const { return FolderPairEnh(getLeftDir(), getRightDir(), getAltCompConfig(), getAltSyncConfig(), getAltFilterConfig()); }
+
     Zstring getLeftDir () const { return toZ(dirpathLeft .getPath()); }
     Zstring getRightDir() const { return toZ(dirpathRight.getPath()); }
 
@@ -537,27 +541,27 @@ MainDialog::MainDialog(const Zstring& globalConfigFile,
     auiMgr.AddPane(m_panelCenter,
                    wxAuiPaneInfo().Name(L"PanelCenter").CenterPane().PaneBorder(false));
 
-	{
-    //set comparison button label tentatively for m_panelTopButtons to receive final height:
-    updateTopButton(*m_buttonCompare, getResourceImage(L"compare"), L"Dummy", false);
-    m_panelTopButtons->GetSizer()->SetSizeHints(m_panelTopButtons); //~=Fit() + SetMinSize()
+    {
+        //set comparison button label tentatively for m_panelTopButtons to receive final height:
+        updateTopButton(*m_buttonCompare, getResourceImage(L"compare"), L"Dummy", false);
+        m_panelTopButtons->GetSizer()->SetSizeHints(m_panelTopButtons); //~=Fit() + SetMinSize()
 
-    setBitmapTextLabel(*m_buttonCancel, wxImage(), m_buttonCancel->GetLabel()); //we can't use a wxButton for cancel: it's rendered smaller on OS X than a wxBitmapButton!
-    m_buttonCancel->SetMinSize(wxSize(std::max(m_buttonCancel->GetSize().x, TOP_BUTTON_OPTIMAL_WIDTH),
-                                      std::max(m_buttonCancel->GetSize().y, m_buttonCompare->GetSize().y)));
+        setBitmapTextLabel(*m_buttonCancel, wxImage(), m_buttonCancel->GetLabel()); //we can't use a wxButton for cancel: it's rendered smaller on OS X than a wxBitmapButton!
+        m_buttonCancel->SetMinSize(wxSize(std::max(m_buttonCancel->GetSize().x, TOP_BUTTON_OPTIMAL_WIDTH),
+                                          std::max(m_buttonCancel->GetSize().y, m_buttonCompare->GetSize().y)));
 
-    auiMgr.AddPane(m_panelTopButtons,
-                   wxAuiPaneInfo().Name(L"PanelTop").Layer(2).Top().Row(1).Caption(_("Main Bar")).CaptionVisible(false).PaneBorder(false).Gripper().MinSize(TOP_BUTTON_OPTIMAL_WIDTH, m_panelTopButtons->GetSize().GetHeight()));
-    //note: min height is calculated incorrectly by wxAuiManager if panes with and without caption are in the same row => use smaller min-size
+        auiMgr.AddPane(m_panelTopButtons,
+                       wxAuiPaneInfo().Name(L"PanelTop").Layer(2).Top().Row(1).Caption(_("Main Bar")).CaptionVisible(false).PaneBorder(false).Gripper().MinSize(TOP_BUTTON_OPTIMAL_WIDTH, m_panelTopButtons->GetSize().GetHeight()));
+        //note: min height is calculated incorrectly by wxAuiManager if panes with and without caption are in the same row => use smaller min-size
 
-    auiMgr.AddPane(compareStatus->getAsWindow(),
-                   wxAuiPaneInfo().Name(L"PanelProgress").Layer(2).Top().Row(2).CaptionVisible(false).PaneBorder(false).Hide());
-	}
+        auiMgr.AddPane(compareStatus->getAsWindow(),
+                       wxAuiPaneInfo().Name(L"PanelProgress").Layer(2).Top().Row(2).CaptionVisible(false).PaneBorder(false).Hide());
+    }
 
     auiMgr.AddPane(m_panelDirectoryPairs,
                    wxAuiPaneInfo().Name(L"PanelFolders").Layer(2).Top().Row(3).Caption(_("Folder Pairs")).CaptionVisible(false).PaneBorder(false).Gripper());
 
-	auiMgr.AddPane(m_panelSearch,
+    auiMgr.AddPane(m_panelSearch,
                    wxAuiPaneInfo().Name(L"PanelFind").Layer(2).Bottom().Row(2).Caption(_("Find")).CaptionVisible(false).PaneBorder(false).Gripper().MinSize(200, m_bpButtonHideSearch->GetSize().GetHeight()).Hide());
 
     auiMgr.AddPane(m_panelViewFilter,
@@ -803,10 +807,10 @@ MainDialog::MainDialog(const Zstring& globalConfigFile,
 
         if (havePartialPair != haveFullPair) //either all pairs full or all half-filled -> validity check!
         {
-            //potentially slow network access: give all checks 500ms to finish
-            const bool allFilesExist = firstMissingDir.timedWait(boost::posix_time::milliseconds(500)) && //true: have result
-                                       !firstMissingDir.get(); //no missing
-            if (allFilesExist)
+            const bool startComparisonNow = !firstMissingDir.timedWait(boost::posix_time::milliseconds(500)) || //= no result yet   => start comparison anyway!
+                                            !firstMissingDir.get(); //= all directories exist
+
+            if (startComparisonNow)
                 if (wxEvtHandler* evtHandler = m_buttonCompare->GetEventHandler())
                 {
                     wxCommandEvent dummy2(wxEVT_COMMAND_BUTTON_CLICKED);
@@ -1944,9 +1948,10 @@ void MainDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events without
                 !isComponentOf(focus, m_gridMainR     ) && //
                 !isComponentOf(focus, m_gridNavi      ) &&
                 !isComponentOf(focus, m_listBoxHistory) && //don't propagate if selecting config
-                !isComponentOf(focus, m_directoryLeft ) && //don't propagate if changing directory field
-                !isComponentOf(focus, m_directoryRight) &&
                 !isComponentOf(focus, m_panelSearch   ) &&
+                !isComponentOf(focus, m_panelTopLeft  ) &&  //don't propagate if changing directory fields
+                !isComponentOf(focus, m_panelTopMiddle) &&
+                !isComponentOf(focus, m_panelTopRight ) &&
                 !isComponentOf(focus, m_scrolledWindowFolderPairs) &&
                 m_gridMainL->IsEnabled())
                 if (wxEvtHandler* evtHandler = m_gridMainL->getMainWin().GetEventHandler())
@@ -3220,34 +3225,18 @@ void MainDialog::setConfig(const xmlAccess::XmlGuiConfig& newGuiCfg, const std::
     updateGlobalFilterButton();
 
     //set first folder pair
-    firstFolderPair->setValues(currentCfg.mainCfg.firstPair.dirpathPhraseLeft,
-                               currentCfg.mainCfg.firstPair.dirpathPhraseRight,
-                               currentCfg.mainCfg.firstPair.altCmpConfig,
-                               currentCfg.mainCfg.firstPair.altSyncConfig,
-                               currentCfg.mainCfg.firstPair.localFilter);
+    firstFolderPair->setValues(currentCfg.mainCfg.firstPair);
 
     //folderHistoryLeft->addItem(currentCfg.mainCfg.firstPair.leftDirectory);
     //folderHistoryRight->addItem(currentCfg.mainCfg.firstPair.rightDirectory);
 
     setAddFolderPairs(currentCfg.mainCfg.additionalPairs);
 
-    //read GUI layout
     setViewTypeSyncAction(currentCfg.highlightSyncAction);
 
     clearGrid(); //+ update GUI!
 
     setLastUsedConfig(referenceFiles, newGuiCfg);
-}
-
-
-inline
-FolderPairEnh getEnhancedPair(const FolderPairPanel* panel)
-{
-    return FolderPairEnh(panel->getLeftDir(),
-                         panel->getRightDir(),
-                         panel->getAltCompConfig(),
-                         panel->getAltSyncConfig(),
-                         panel->getAltFilterConfig());
 }
 
 
@@ -3258,16 +3247,13 @@ xmlAccess::XmlGuiConfig MainDialog::getConfig() const
     //load settings whose ownership lies not in currentCfg:
 
     //first folder pair
-    guiCfg.mainCfg.firstPair = FolderPairEnh(firstFolderPair->getLeftDir(),
-                                             firstFolderPair->getRightDir(),
-                                             firstFolderPair->getAltCompConfig(),
-                                             firstFolderPair->getAltSyncConfig(),
-                                             firstFolderPair->getAltFilterConfig());
+    guiCfg.mainCfg.firstPair = firstFolderPair->getValues();
 
     //add additional pairs
     guiCfg.mainCfg.additionalPairs.clear();
-    std::transform(additionalFolderPairs.begin(), additionalFolderPairs.end(),
-                   std::back_inserter(guiCfg.mainCfg.additionalPairs), getEnhancedPair);
+
+    for (const FolderPairPanel* panel : additionalFolderPairs)
+        guiCfg.mainCfg.additionalPairs.push_back(panel->getValues());
 
     //sync preview
     guiCfg.highlightSyncAction = m_bpButtonViewTypeSyncAction->isActive();
@@ -3616,12 +3602,19 @@ void MainDialog::updateGui()
 }
 
 
-void MainDialog::clearGrid()
+void MainDialog::clearGrid(ptrdiff_t pos)
 {
-    folderCmp.clear();
+    if (!folderCmp.empty())
+    {
+        assert(pos < makeSigned(folderCmp.size()));
+        if (pos < 0)
+            folderCmp.clear();
+        else
+            folderCmp.erase(folderCmp.begin() + pos);
+    }
+
     gridDataView->setData(folderCmp);
     treeDataView->setData(folderCmp);
-
     updateGui();
 }
 
@@ -3837,20 +3830,17 @@ void MainDialog::onGridLabelLeftClickC(GridClickEvent& event)
 
 void MainDialog::OnSwapSides(wxCommandEvent& event)
 {
-    //swap directory names: first pair
-    firstFolderPair->setValues(firstFolderPair->getRightDir(), // swap directories
-                               firstFolderPair->getLeftDir(),  //
-                               firstFolderPair->getAltCompConfig(),
-                               firstFolderPair->getAltSyncConfig(),
-                               firstFolderPair->getAltFilterConfig());
+    //swap directory names:
+    FolderPairEnh fp1st = firstFolderPair->getValues();
+    std::swap(fp1st.dirpathPhraseLeft, fp1st.dirpathPhraseRight);
+    firstFolderPair->setValues(fp1st);
 
-    //additional pairs
     for (FolderPairPanel* panel : additionalFolderPairs)
-        panel->setValues(panel->getRightDir(), // swap directories
-                         panel->getLeftDir(),  //
-                         panel->getAltCompConfig(),
-                         panel->getAltSyncConfig(),
-                         panel->getAltFilterConfig());
+    {
+        FolderPairEnh fp = panel->getValues();
+        std::swap(fp.dirpathPhraseLeft, fp.dirpathPhraseRight);
+        panel->setValues(fp);
+    }
 
     //swap view filter
     bool tmp = m_bpButtonShowLeftOnly->isActive();
@@ -4166,47 +4156,28 @@ void MainDialog::startFindNext() //F3 or ENTER in m_textCtrlSearchTxt
 }
 
 
-void MainDialog::OnAddFolderPair(wxCommandEvent& event)
+void MainDialog::OnTopFolderPairAdd(wxCommandEvent& event)
 {
 #ifdef ZEN_WIN
     wxWindowUpdateLocker dummy(this); //leads to GUI corruption problems on Linux/OS X!
 #endif
 
-    std::vector<FolderPairEnh> newPairs;
-    newPairs.push_back(getConfig().mainCfg.firstPair);
-
-    //clear first pair
-    const FolderPairEnh cfgEmpty;
-    firstFolderPair->setValues(cfgEmpty.dirpathPhraseLeft,
-                               cfgEmpty.dirpathPhraseRight,
-                               cfgEmpty.altCmpConfig,
-                               cfgEmpty.altSyncConfig,
-                               cfgEmpty.localFilter);
-
-    //keep sequence to update GUI as last step
-    addAddFolderPair(newPairs, true); //add pair in front of additonal pairs
+    insertAddFolderPair({ FolderPairEnh() }, 0);
+    moveAddFolderPairUp(0);
 }
 
 
-void MainDialog::OnRemoveTopFolderPair(wxCommandEvent& event)
+void MainDialog::OnTopFolderPairRemove(wxCommandEvent& event)
 {
-    if (!additionalFolderPairs.empty())
-    {
 #ifdef ZEN_WIN
-        wxWindowUpdateLocker dummy(this); //leads to GUI corruption problems on Linux/OS X!
+    wxWindowUpdateLocker dummy(this); //leads to GUI corruption problems on Linux/OS X!
 #endif
 
-        //get settings from second folder pair
-        const FolderPairEnh cfgSecond = getEnhancedPair(additionalFolderPairs[0]);
-
-        //reset first pair
-        firstFolderPair->setValues(cfgSecond.dirpathPhraseLeft,
-                                   cfgSecond.dirpathPhraseRight,
-                                   cfgSecond.altCmpConfig,
-                                   cfgSecond.altSyncConfig,
-                                   cfgSecond.localFilter);
-
-        removeAddFolderPair(0); //remove second folder pair (first of additional folder pairs)
+    assert(!additionalFolderPairs.empty());
+    if (!additionalFolderPairs.empty())
+    {
+        moveAddFolderPairUp(0);
+        removeAddFolderPair(0);
     }
 }
 
@@ -4224,6 +4195,95 @@ void MainDialog::OnRemoveFolderPair(wxCommandEvent& event)
             removeAddFolderPair(it - additionalFolderPairs.begin());
             break;
         }
+}
+
+
+void MainDialog::OnShowFolderPairOptions(wxCommandEvent& event)
+{
+#ifdef ZEN_WIN
+    wxWindowUpdateLocker dummy(this); //leads to GUI corruption problems on Linux/OS X!
+#endif
+
+    const wxObject* const eventObj = event.GetEventObject(); //find folder pair originating the event
+    for (auto it = additionalFolderPairs.begin(); it != additionalFolderPairs.end(); ++it)
+        if (eventObj == (*it)->m_bpButtonFolderPairOptions)
+        {
+            const ptrdiff_t pos = it - additionalFolderPairs.begin();
+
+            ContextMenu menu;
+            menu.addItem(_("Add folder pair"), [this, pos] { insertAddFolderPair({ FolderPairEnh() },  pos); }, &getResourceImage(L"item_add_small"));
+            menu.addSeparator();
+            menu.addItem(_("Move up"  ) + L"\tAlt+Page Up"  , [this, pos] { moveAddFolderPairUp(pos);     }, &getResourceImage(L"move_up_small"));
+            menu.addItem(_("Move down") + L"\tAlt+Page Down", [this, pos] { moveAddFolderPairUp(pos + 1); }, &getResourceImage(L"move_down_small"), pos + 1 < makeSigned(additionalFolderPairs.size()));
+            menu.popup(*this);
+
+            break;
+        }
+}
+
+
+void MainDialog::onTopFolderPairKeyEvent(wxKeyEvent& event)
+{
+    const int keyCode = event.GetKeyCode();
+
+    if (event.AltDown())
+        switch (keyCode)
+        {
+            case WXK_PAGEDOWN: //Alt + Page Down
+            case WXK_NUMPAD_PAGEDOWN:
+                if (!additionalFolderPairs.empty())
+                {
+                    moveAddFolderPairUp(0);
+                    additionalFolderPairs[0]->m_directoryLeft->SetFocus();
+                }
+                return;
+        }
+
+    event.Skip();
+}
+
+
+void MainDialog::onAddFolderPairKeyEvent(wxKeyEvent& event)
+{
+    const int keyCode = event.GetKeyCode();
+
+    auto getAddFolderPairPos = [&]() -> ptrdiff_t //find folder pair originating the event
+    {
+        if (auto eventObj = dynamic_cast<const wxWindow*>(event.GetEventObject()))
+            for (auto it = additionalFolderPairs.begin(); it != additionalFolderPairs.end(); ++it)
+                if (isComponentOf(eventObj, *it))
+                    return it - additionalFolderPairs.begin();
+        return -1;
+    };
+
+    if (event.AltDown())
+        switch (keyCode)
+        {
+            case WXK_PAGEUP: //Alt + Page Up
+            case WXK_NUMPAD_PAGEUP:
+            {
+                const ptrdiff_t pos = getAddFolderPairPos();
+                if (pos >= 0)
+                {
+                    moveAddFolderPairUp(pos);
+                    (pos == 0 ? m_directoryLeft : additionalFolderPairs[pos - 1]->m_directoryLeft)->SetFocus();
+                }
+            }
+            return;
+            case WXK_PAGEDOWN: //Alt + Page Down
+            case WXK_NUMPAD_PAGEDOWN:
+            {
+                const ptrdiff_t pos = getAddFolderPairPos();
+                if (0 <= pos && pos + 1 < makeSigned(additionalFolderPairs.size()))
+                {
+                    moveAddFolderPairUp(pos + 1);
+                    additionalFolderPairs[pos + 1]->m_directoryLeft->SetFocus();
+                }
+            }
+            return;
+        }
+
+    event.Skip();
 }
 
 
@@ -4286,18 +4346,13 @@ void MainDialog::updateGuiForFolderPair()
 }
 
 
-void MainDialog::addAddFolderPair(const std::vector<FolderPairEnh>& newPairs, bool addFront)
+void MainDialog::insertAddFolderPair(const std::vector<FolderPairEnh>& newPairs, size_t pos)
 {
-#ifdef ZEN_WIN
-    wxWindowUpdateLocker dummy(m_panelDirectoryPairs); //leads to GUI corruption problems on Linux/OS X!
-#endif
+    assert(pos <= additionalFolderPairs.size() && additionalFolderPairs.size() == bSizerAddFolderPairs->GetItemCount());
+    pos = std::min(pos, additionalFolderPairs.size());
 
-    std::vector<FolderPairPanel*> newEntries;
-
-    std::for_each(newPairs.begin(), newPairs.end(),
-                  [&](const FolderPairEnh& enhPair)
+    for (size_t i = 0; i < newPairs.size(); ++i)
     {
-        //add new folder pair
         FolderPairPanel* newPair = new FolderPairPanel(m_scrolledWindowFolderPairs, *this);
 
         //init dropdown history
@@ -4308,58 +4363,73 @@ void MainDialog::addAddFolderPair(const std::vector<FolderPairEnh>& newPairs, bo
         const int width = m_panelTopLeft->GetSize().GetWidth();
         newPair->m_panelLeft->SetMinSize(wxSize(width, -1));
 
-        if (addFront)
-        {
-            bSizerAddFolderPairs->Insert(0, newPair, 0, wxEXPAND);
-            additionalFolderPairs.insert(additionalFolderPairs.begin(), newPair);
-        }
-        else
-        {
-            bSizerAddFolderPairs->Add(newPair, 0, wxEXPAND);
-            additionalFolderPairs.push_back(newPair);
-        }
-        newEntries.push_back(newPair);
+        bSizerAddFolderPairs->Insert(pos, newPair, 0, wxEXPAND);
+        additionalFolderPairs.insert(additionalFolderPairs.begin() + pos, newPair);
 
         //register events
-        newPair->m_bpButtonRemovePair->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(MainDialog::OnRemoveFolderPair), nullptr, this);
-    });
+        newPair->m_bpButtonFolderPairOptions->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(MainDialog::OnShowFolderPairOptions), nullptr, this);
+        newPair->m_bpButtonFolderPairOptions->Connect(wxEVT_RIGHT_DOWN,             wxCommandEventHandler(MainDialog::OnShowFolderPairOptions), nullptr, this);
+        newPair->m_bpButtonRemovePair       ->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(MainDialog::OnRemoveFolderPair     ), nullptr, this);
+        static_cast<FolderPairPanelGenerated*>(newPair)->Connect(wxEVT_CHAR_HOOK,       wxKeyEventHandler(MainDialog::onAddFolderPairKeyEvent), nullptr, this);
+
+    }
 
     updateGuiForFolderPair();
 
     //wxComboBox screws up miserably if width/height is smaller than the magic number 4! Problem occurs when trying to set tooltip
     //so we have to update window sizes before setting configuration:
     for (auto it = newPairs.begin(); it != newPairs.end(); ++it)//set alternate configuration
-        newEntries[it - newPairs.begin()]->setValues(it->dirpathPhraseLeft,
-                                                     it->dirpathPhraseRight,
-                                                     it->altCmpConfig,
-                                                     it->altSyncConfig,
-                                                     it->localFilter);
+        additionalFolderPairs[pos + (it - newPairs.begin())]->setValues(*it);
     clearGrid(); //+ GUI update
+}
+
+
+void MainDialog::moveAddFolderPairUp(size_t pos)
+{
+    assert(pos < additionalFolderPairs.size());
+    if (pos < additionalFolderPairs.size())
+    {
+        const FolderPairEnh cfgTmp = additionalFolderPairs[pos]->getValues();
+        if (pos == 0)
+        {
+            additionalFolderPairs[pos]->setValues(firstFolderPair->getValues());
+            firstFolderPair->setValues(cfgTmp);
+        }
+        else
+        {
+            additionalFolderPairs[pos]->setValues(additionalFolderPairs[pos - 1]->getValues());
+            additionalFolderPairs[pos - 1]->setValues(cfgTmp);
+        }
+
+        //move comparison results, too!
+        if (!folderCmp.empty())
+            std::swap(folderCmp[pos], folderCmp[pos + 1]); //invariant: folderCmp is empty or matches number of all folder pairs
+
+        gridDataView->setData(folderCmp);
+        treeDataView->setData(folderCmp);
+        updateGui();
+    }
 }
 
 
 void MainDialog::removeAddFolderPair(size_t pos)
 {
-#ifdef ZEN_WIN
-    wxWindowUpdateLocker dummy(m_panelDirectoryPairs); //leads to GUI corruption problems on Linux/OS X!
-#endif
-
+    assert(pos < additionalFolderPairs.size());
     if (pos < additionalFolderPairs.size())
     {
         FolderPairPanel* panel = additionalFolderPairs[pos];
 
-        bSizerAddFolderPairs->Detach(panel); //Remove() does not work on Window*, so do it manually
+        bSizerAddFolderPairs->Detach(panel); //Remove() does not work on wxWindow*, so do it manually
         additionalFolderPairs.erase(additionalFolderPairs.begin() + pos);
         //more (non-portable) wxWidgets bullshit: on OS X wxWindow::Destroy() screws up and calls "operator delete" directly rather than
         //the deferred deletion it is expected to do (and which is implemented correctly on Windows and Linux)
         //http://bb10.com/python-wxpython-devel/2012-09/msg00004.html
         //=> since we're in a mouse button callback of a sub-component of "panel" we need to delay deletion ourselves:
         processAsync2([] {}, [panel] { panel->Destroy(); });
+
+        updateGuiForFolderPair();
+        clearGrid(pos + 1); //+ GUI update
     }
-
-    updateGuiForFolderPair();
-
-    clearGrid(); //+ GUI update
 }
 
 
@@ -4372,9 +4442,8 @@ void MainDialog::setAddFolderPairs(const std::vector<zen::FolderPairEnh>& newPai
     additionalFolderPairs.clear();
     bSizerAddFolderPairs->Clear(true);
 
-    //updateGuiForFolderPair(); -> already called in addAddFolderPair()
-
-    addAddFolderPair(newPairs);
+    //updateGuiForFolderPair(); -> already called in insertAddFolderPair()
+    insertAddFolderPair(newPairs, 0);
 }
 
 

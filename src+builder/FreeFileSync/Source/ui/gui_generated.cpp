@@ -939,8 +939,8 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     m_bpButtonSyncConfig->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnSyncSettings ), NULL, this );
     m_bpButtonSyncConfig->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( MainDialogGenerated::OnSyncSettingsContext ), NULL, this );
     m_buttonSync->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnStartSync ), NULL, this );
-    m_bpButtonAddPair->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnAddFolderPair ), NULL, this );
-    m_bpButtonRemovePair->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnRemoveTopFolderPair ), NULL, this );
+    m_bpButtonAddPair->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnTopFolderPairAdd ), NULL, this );
+    m_bpButtonRemovePair->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnTopFolderPairRemove ), NULL, this );
     m_bpButtonSwapSides->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnSwapSides ), NULL, this );
     m_bpButtonHideSearch->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( MainDialogGenerated::OnHideSearchPanel ), NULL, this );
     m_textCtrlSearchTxt->Connect( wxEVT_COMMAND_TEXT_ENTER, wxCommandEventHandler( MainDialogGenerated::OnSearchGridEnter ), NULL, this );
@@ -2040,6 +2040,11 @@ FolderPairPanelGenerated::FolderPairPanelGenerated( wxWindow* parent, wxWindowID
 
     wxBoxSizer* bSizer134;
     bSizer134 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_bpButtonFolderPairOptions = new wxBitmapButton( m_panelLeft, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( 25,25 ), wxBU_AUTODRAW );
+    m_bpButtonFolderPairOptions->SetToolTip( _("Arrange folder pair") );
+
+    bSizer134->Add( m_bpButtonFolderPairOptions, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
     m_bpButtonRemovePair = new wxBitmapButton( m_panelLeft, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( 25,25 ), wxBU_AUTODRAW );
     m_bpButtonRemovePair->SetToolTip( _("Remove folder pair") );

@@ -1,5 +1,23 @@
-FreeFileSync 6.13
------------------
+FreeFileSync 6.14 [2015-02-10]
+------------------------------
+New buttons allow changing the order of folder pairs
+New keyboard shortcuts for rearranging folder pairs
+Preserve comparison results when deleting a specific folder pair
+Allow inserting new folder pairs into the middle of the list
+Append status to log file names when warnings occur
+Don't interrupt immediate comparison when starting a .ffs_gui file for slow devices
+Work around wxWidgets bug eating up command keys in text boxes (Linux)
+Fixed incorrect parameter error when checking recycle bin on drive mounted with Paragon ExtFS (Windows)
+Use colon as time stamp seperator in log file names
+Refactored basic low-level file traversal routine
+Optimized file icon startup procedure
+Fixed occasional failure to set modification times on Samba shares (OS X)
+Transfer creation times during file copy (OS X)
+Support copying file times with nano-second precision (OS X)
+
+
+FreeFileSync 6.13 [2015-01-11]
+------------------------------
 Fixed crash when failing to create log file during batch run
 Show directory traversal errors as conflict category on grid
 Improved file filter behavior for certain edge cases when updating the database

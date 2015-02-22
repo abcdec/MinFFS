@@ -214,8 +214,8 @@ protected:
     virtual void OnCompSettingsContext( wxMouseEvent& event ) { event.Skip(); }
     virtual void OnGlobalFilterContext( wxMouseEvent& event ) { event.Skip(); }
     virtual void OnSyncSettingsContext( wxMouseEvent& event ) { event.Skip(); }
-    virtual void OnAddFolderPair( wxCommandEvent& event ) { event.Skip(); }
-    virtual void OnRemoveTopFolderPair( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnTopFolderPairAdd( wxCommandEvent& event ) { event.Skip(); }
+    virtual void OnTopFolderPairRemove( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnSwapSides( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnHideSearchPanel( wxCommandEvent& event ) { event.Skip(); }
     virtual void OnSearchGridEnter( wxCommandEvent& event ) { event.Skip(); }
@@ -480,6 +480,7 @@ protected:
 
 public:
     wxPanel* m_panelLeft;
+    wxBitmapButton* m_bpButtonFolderPairOptions;
     wxBitmapButton* m_bpButtonRemovePair;
     FolderHistoryBox* m_directoryLeft;
     wxPanel* m_panel20;

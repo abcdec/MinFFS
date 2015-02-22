@@ -88,22 +88,13 @@ const double ln2   = 0.693147180559945309417;
 
 
 
-
-
-
-
-
-
-
-
-
 //################# inline implementation #########################
 template <class T> inline
 T abs(T value)
 {
     static_assert(std::is_signed<T>::value, "");
     if (value < 0)
-        return -value; // operator "?:" caveat: may be different type than "value"
+        return -value; //operator "?:" caveat: may be different type than "value"
     else
         return value;
 }

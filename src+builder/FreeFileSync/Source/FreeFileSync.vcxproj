@@ -95,7 +95,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>__WXMSW__;ZEN_WIN;WXINTL_NO_GETTEXT_MACRO;__WXDEBUG__;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__WXMSW__;ZEN_WIN;__WXDEBUG__;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories></AdditionalIncludeDirectories>
       <PrecompiledHeaderFile>wx+/pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -109,12 +109,12 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalDependencies>wxmsw30ud_aui.lib;wxmsw30ud_adv.lib;wxmsw30ud_core.lib;wxbase30ud.lib;wxpngd.lib;wxzlibd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>wxmsw30ud_aui.lib;wxmsw30ud_adv.lib;wxmsw30ud_core.lib;wxbase30ud.lib;wxpngd.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories></AdditionalLibraryDirectories>
     </Link>
     <ResourceCompile>
       <AdditionalIncludeDirectories></AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);ZEN_ARCHITECTURE_X86</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -122,7 +122,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>__WXMSW__;ZEN_WIN;WXINTL_NO_GETTEXT_MACRO;__WXDEBUG__;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__WXMSW__;ZEN_WIN;__WXDEBUG__;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories></AdditionalIncludeDirectories>
       <PrecompiledHeaderFile>wx+/pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -135,19 +135,19 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalDependencies>wxmsw30ud_aui.lib;wxmsw30ud_adv.lib;wxmsw30ud_core.lib;wxbase30ud.lib;wxpngd.lib;wxzlibd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>wxmsw30ud_aui.lib;wxmsw30ud_adv.lib;wxmsw30ud_core.lib;wxbase30ud.lib;wxpngd.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories></AdditionalLibraryDirectories>
     </Link>
     <ResourceCompile>
       <AdditionalIncludeDirectories></AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);ZEN_ARCHITECTURE_X64</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>__WXMSW__;ZEN_WIN;WXINTL_NO_GETTEXT_MACRO;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__WXMSW__;ZEN_WIN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories></AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -157,7 +157,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>wxmsw30u_aui.lib;wxmsw30u_adv.lib;wxmsw30u_core.lib;wxbase30u.lib;wxpng.lib;wxzlib.lib;wxbase30u_net.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>wxmsw30u_aui.lib;wxmsw30u_adv.lib;wxmsw30u_core.lib;wxbase30u.lib;wxzlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories></AdditionalLibraryDirectories>
       <OptimizeReferences>true</OptimizeReferences>
@@ -165,7 +165,7 @@
     </Link>
     <ResourceCompile>
       <AdditionalIncludeDirectories></AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);ZEN_ARCHITECTURE_X86</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
     <PostBuildEvent>
     </PostBuildEvent>
@@ -174,7 +174,7 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>__WXMSW__;ZEN_WIN;WXINTL_NO_GETTEXT_MACRO;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__WXMSW__;ZEN_WIN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories></AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -184,7 +184,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>wxmsw30u_aui.lib;wxmsw30u_adv.lib;wxmsw30u_core.lib;wxbase30u.lib;wxpng.lib;wxzlib.lib;wxbase30u_net.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>wxmsw30u_aui.lib;wxmsw30u_adv.lib;wxmsw30u_core.lib;wxbase30u.lib;wxzlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories></AdditionalLibraryDirectories>
       <OptimizeReferences>true</OptimizeReferences>
@@ -192,7 +192,7 @@
     </Link>
     <ResourceCompile>
       <AdditionalIncludeDirectories></AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);ZEN_ARCHITECTURE_X64</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
     <PostBuildEvent>
     </PostBuildEvent>

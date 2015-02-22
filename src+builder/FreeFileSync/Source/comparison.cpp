@@ -473,6 +473,8 @@ std::list<std::shared_ptr<BaseDirPair>> ComparisonBuffer::compareByContent(const
 
     const std::wstring txtComparingContentOfFiles = _("Comparing content of files %x");
 
+	//PERF_START;
+
     //compare files (that have same size) bytewise...
     for (FilePair* fileObj : filesToCompareBytewise)
     {
@@ -761,11 +763,11 @@ std::shared_ptr<BaseDirPair> ComparisonBuffer::performComparison(const ResolvedF
     }
 
     Zstring excludefilterFailedRead;
-	if (failedReads.find(Zstring()) != failedReads.end()) //empty path if read-error for whole base directory
-		excludefilterFailedRead += Zstr("*\n");
-	else
-		for (const auto& item : failedReads)
-			excludefilterFailedRead += item.first + Zstr("\n"); //exclude item AND (potential) child items!
+    if (failedReads.find(Zstring()) != failedReads.end()) //empty path if read-error for whole base directory
+        excludefilterFailedRead += Zstr("*\n");
+    else
+        for (const auto& item : failedReads)
+            excludefilterFailedRead += item.first + Zstr("\n"); //exclude item AND (potential) child items!
 
     std::shared_ptr<BaseDirPair> output = std::make_shared<BaseDirPair>(fp.dirpathLeft,
                                                                         bufValueLeft != nullptr, //dir existence must be checked only once: available iff buffer entry exists!

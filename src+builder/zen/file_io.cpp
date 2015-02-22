@@ -32,11 +32,12 @@ Zstring getLockingProcessNames(const Zstring& filepath) //throw(), empty string 
         const DllFun<FunType_getLockingProcesses> getLockingProcesses(getDllName(), funName_getLockingProcesses);
         const DllFun<FunType_freeString>          freeString         (getDllName(), funName_freeString);
 
+        const wchar_t* processList = nullptr;
         if (getLockingProcesses && freeString)
-            if (const wchar_t* procList = getLockingProcesses(filepath.c_str()))
+            if (getLockingProcesses(filepath.c_str(), processList))
             {
-                ZEN_ON_SCOPE_EXIT(freeString(procList));
-                return procList;
+                ZEN_ON_SCOPE_EXIT(freeString(processList));
+                return processList;
             }
     }
     return Zstring();

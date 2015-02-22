@@ -190,8 +190,7 @@ void moveFile(const Zstring& sourceFile, //throw FileError
 
 void moveDirSymlink(const Zstring& sourceLink, const Zstring& targetLink) //throw FileError
 {
-    moveObject(sourceLink, //throw FileError
-               targetLink,
+    moveObject(sourceLink, targetLink, //throw FileError
                [&]
     {
         //create target
@@ -201,40 +200,6 @@ void moveDirSymlink(const Zstring& sourceLink, const Zstring& targetLink) //thro
         removeDirectory(sourceLink); //throw FileError; newly copied link is NOT deleted if exception is thrown here!
     });
 }
-
-
-class TraverseFilesOneLevel : public TraverseCallback
-{
-public:
-    TraverseFilesOneLevel(std::vector<Zstring>& files, std::vector<Zstring>& dirs) : files_(files), dirs_(dirs) {}
-
-private:
-    void onFile(const Zchar* shortName, const Zstring& filepath, const FileInfo& details) override
-    {
-        files_.push_back(shortName);
-    }
-
-    HandleLink onSymlink(const Zchar* shortName, const Zstring& linkpath, const SymlinkInfo& details) override
-    {
-        if (dirExists(linkpath)) //dir symlink
-            dirs_.push_back(shortName);
-        else //file symlink, broken symlink
-            files_.push_back(shortName);
-        return LINK_SKIP;
-    }
-
-    TraverseCallback* onDir(const Zchar* shortName, const Zstring& dirpath) override
-    {
-        dirs_.push_back(shortName);
-        return nullptr; //DON'T traverse into subdirs; moveDirectory works recursively!
-    }
-
-    HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                         override { throw FileError(msg); }
-    HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zchar* shortName) override { throw FileError(msg); }
-
-    std::vector<Zstring>& files_;
-    std::vector<Zstring>& dirs_;
-};
 }
 
 
@@ -314,10 +279,18 @@ void FileVersioner::revisionDirImpl(const Zstring& dirpath, const Zstring& relat
         //traverse source directory one level
         std::vector<Zstring> fileList; //list of *short* names
         std::vector<Zstring> dirList;  //
+
+        traverseFolder(dirpath,
+        [&](const FileInfo& fi) { fileList.push_back(fi.shortName); },
+        [&](const DirInfo&  di) { dirList .push_back(di.shortName); },
+        [&](const SymlinkInfo& si)
         {
-            TraverseFilesOneLevel tol(fileList, dirList); //throw FileError
-            traverseFolder(dirpath, tol);                 //
-        }
+            if (dirExists(si.fullPath)) //dir symlink
+                dirList.push_back(si.shortName);
+            else //file symlink, broken symlink
+                fileList.push_back(si.shortName);
+        },
+        [&](const std::wstring& errorMsg) { throw FileError(errorMsg); });
 
         const Zstring dirpathPf = appendSeparator(dirpath);
         const Zstring relpathPf = appendSeparator(relativePath);
