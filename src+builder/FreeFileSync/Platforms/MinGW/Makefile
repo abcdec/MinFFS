@@ -24,7 +24,7 @@ PROJECT_TOP := ../../..
 MINGW_ROOT  := C:/MinGW
 WXWGT_ROOT  := C:/wxWidgets
 BOOST_ROOT  := C:/Boost
-BOOST_VER   := 1_57
+BOOST_VER   := 1_58
 BOOST_MINGW := mgw48
 
 .SUFFIXES:	.rc
