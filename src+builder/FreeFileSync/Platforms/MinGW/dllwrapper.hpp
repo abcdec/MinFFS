@@ -76,7 +76,7 @@ public:
     // zen/IFileOperation/file_op.h : getLastErrorMessage
     inline wchar_t* operator()() const { return functionPtr_(); };
     // zen/IFileOperation/file_op.h : getLockingProcesses
-    inline wchar_t* operator()(const wchar_t*a) const { return functionPtr_(a); };
+    inline wchar_t* operator()(const wchar_t*a, const wchar_t*b) const { return functionPtr_(a, b); };
     // zen/IFileOperation/file_op.h : getRecycleBinStatus
     inline bool operator()(const wchar_t *a, bool &b) const { return functionPtr_(a, b); };
     // zen/IFileOperation/file_op.h : moveToRecycleBin

@@ -238,12 +238,21 @@ TimeComp localTime(time_t utc)
     struct ::tm lt = {};
 
 	//use thread-safe variants of localtime()!
+#ifdef MinFFS_PATCH
+    // No localtime_s in MinGW. Use localtime() which is thread safe.
+    struct ::tm *ltp = ::localtime(&utc);
+    if (ltp == nullptr) {
+        return TimeComp();
+    }
+    lt = *ltp;
+#else
 #ifdef ZEN_WIN
     if (::localtime_s(&lt, &utc) != 0)
 #else
 	if (::localtime_r(&utc, &lt) == nullptr)
 #endif
         return TimeComp();
+#endif//MinFFS_PATCH
 
     return implementation::toZenTimeComponents(lt);
 }

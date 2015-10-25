@@ -46,6 +46,7 @@ Usage:
 #endif
 
 #else//TODO_MinFFS_WARN_STATIC
-#define warn_static(TXT) {}
+// Do nothing
+#define warn_static(TXT)
 #endif//TODO_MinFFS_WARN_STATIC
 #endif //WARN_STATIC_HEADER_08724567834560832745

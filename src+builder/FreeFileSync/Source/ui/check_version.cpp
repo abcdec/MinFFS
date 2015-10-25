@@ -304,8 +304,10 @@ enum GetVerResult
 
 GetVerResult getOnlineVersion(wxString& version)
 {
+#ifndef TODO_MinFFS_InternetVersion
+    return GET_VER_NO_CONNECTION;
+#else
 #ifdef ZEN_WIN //internet access supporting proxy connections
-#ifdef TODO_MinFFS_InternetVersion
     std::vector<char> output;
     try
     {
@@ -317,7 +319,6 @@ GetVerResult getOnlineVersion(wxString& version)
     }
     output.push_back('\0');
     version = utfCvrtTo<wxString>(&output[0]);
-
 #elif defined ZEN_LINUX || defined ZEN_MAC
     if (!getStringFromUrl(L"www.freefilesync.org", L"/latest_version.txt", 5, &version))
     {
@@ -327,6 +328,7 @@ GetVerResult getOnlineVersion(wxString& version)
 #endif
 	trim(version); //Windows: remove trailing blank and newline
     return version.empty() ? GET_VER_PAGE_NOT_FOUND : GET_VER_SUCCESS; //empty version possible??
+#endif//TODO_MinFFS_InternetVersion
 }
 
 

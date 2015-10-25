@@ -214,9 +214,10 @@ void DirectoryName<NameControl>::onSelectDir(wxCommandEvent& event)
             wchar_t* selectedFolder = nullptr;
             wchar_t* errorMsg       = nullptr;
             bool cancelled = false;
+#ifdef TODO_MinFFS_freestring_fixup
             ZEN_ON_SCOPE_EXIT(freeString(selectedFolder));
             ZEN_ON_SCOPE_EXIT(freeString(errorMsg));
-
+#endif//TODO_MinFFS_freestring_fixup
             const ifile::GuidProxy guid = { '\x0', '\x4a', '\xf9', '\x31', '\xb4', '\x92', '\x40', '\xa0',
                                             '\x8d', '\xc2', '\xc', '\xa5', '\xef', '\x59', '\x6e', '\x3b'
                                           }; //some random GUID => have Windows save IFileDialog state separately from other file/dir pickers!

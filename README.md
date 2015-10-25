@@ -148,6 +148,29 @@ Once all dependent toolsets have been installed, use the following steps to buil
 ```
   - Run c.bat to clean up build.
 
+NOTE: When compiling, if the following error is seen, it is a MinGW bug http://ehc.ac/p/mingw/bugs/2250/ and need to manually update MinGW header.
+...
+c:\mingw\include\math.h: In function 'float hypotf(float, float)':
+c:\mingw\include\math.h:635:30: error: '_hypot' was not declared in this scope
+ { return (float)(_hypot (x, y)); }
+...
+
+Example of modification to get MinFFS compiled is as follows (but not sure if it works for all cases, please use a fixed version of MinGW as appropriate.)
+...
+*** math.h      2015-10-25 14:50:00.285749700 -0500
+--- math.h-fixed        2015-10-25 14:48:36.130069200 -0500
+***************
+*** 631,636 ****
+--- 631,637 ----
+  extern double __cdecl hypot (double, double); /* in libmoldname.a */
+  extern float __cdecl hypotf (float, float);
+  #ifndef __NO_INLINE__
++ _CRTIMP double __cdecl _hypot (double, double);
+  __CRT_INLINE float __cdecl hypotf (float x, float y)
+  { return (float)(_hypot (x, y)); }
+  #endif
+...	    
+
 
 ### Toolset Versions
 
@@ -155,7 +178,7 @@ As of Dec 31, 2014, MinFFS binary distribution is built by the following toolset
 
   - MinGW 4.8.1
   - wxWidgets 3.0.2
-  - Boost 1.57
+  - Boost 1.58
   - Unicode NSIS 2.46.5
 
 

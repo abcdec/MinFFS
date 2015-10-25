@@ -37,7 +37,9 @@ Zstring getLockingProcessNames(const Zstring& filepath) //throw(), empty string 
         if (getLockingProcesses && freeString)
             if (getLockingProcesses(filepath.c_str(), processList))
             {
+#ifdef TODO_MinFFS_lockingProcessDisplay
                 ZEN_ON_SCOPE_EXIT(freeString(processList));
+#endif//TODO_MinFFS_lockingProcessDisplay
                 return processList;
             }
     }

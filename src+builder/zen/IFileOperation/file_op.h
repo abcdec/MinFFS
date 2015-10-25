@@ -31,7 +31,8 @@ namespace fileop
     // this until a better solution is found...
     typedef wchar_t* (*FunType_freeString)(const wchar_t*);
     typedef wchar_t* (*FunType_getLastErrorMessage)(void);
-    typedef wchar_t* (*FunType_getLockingProcesses)(const wchar_t*);
+    //typedef wchar_t* (*FunType_getLockingProcesses)(const wchar_t*);
+    typedef wchar_t* (*FunType_getLockingProcesses)(const wchar_t*, const wchar_t*);
     typedef bool (*FunType_getRecycleBinStatus)(const wchar_t *, bool&);
     typedef bool (*FunType_moveToRecycleBin)(const wchar_t**,
 					     std::vector<const wchar_t*>::size_type,
