@@ -15,24 +15,24 @@ using namespace zen;
 
 namespace
 {
-    /*
-	1. there seems to be no perf improvement possible when using file mappings instad of ::ReadFile() calls on Windows:
-		=> buffered   access: same perf
-		=> unbuffered access: same perf on USB stick, file mapping 30% slower on local disk
+/*
+1. there seems to be no perf improvement possible when using file mappings instad of ::ReadFile() calls on Windows:
+	=> buffered   access: same perf
+	=> unbuffered access: same perf on USB stick, file mapping 30% slower on local disk
 
-	2. Tests on Win7 x64 show that buffer size does NOT matter if files are located on different physical disks!
-    Impact of buffer size when files are on same disk:
+2. Tests on Win7 x64 show that buffer size does NOT matter if files are located on different physical disks!
+Impact of buffer size when files are on same disk:
 
-    buffer  MB/s
-    ------------
-    64      10
-    128     19
-    512     40
-    1024    48
-    2048    56
-    4096    56
-    8192    56
-    */
+buffer  MB/s
+------------
+64      10
+128     19
+512     40
+1024    48
+2048    56
+4096    56
+8192    56
+*/
 
 class BufferSize
 {
@@ -74,7 +74,7 @@ const std::int64_t TICKS_PER_SEC = ticksPerSec();
 }
 
 
-bool zen::filesHaveSameContent(const Zstring& filepath1, const Zstring& filepath2, const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus)
+bool zen::filesHaveSameContent(const Zstring& filepath1, const Zstring& filepath2, const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus) //throw FileError
 {
     static boost::thread_specific_ptr<std::vector<char>> cpyBuf1;
     static boost::thread_specific_ptr<std::vector<char>> cpyBuf2;
@@ -133,7 +133,7 @@ bool zen::filesHaveSameContent(const Zstring& filepath1, const Zstring& filepath
     }
     while (!file1.eof());
 
-    if (!file2.eof()) //highly unlikely, but possible! (but then again, not in this context where both files have same size...)
+    if (!file2.eof()) //unlikely, but possible
         return false;
 
     return true;

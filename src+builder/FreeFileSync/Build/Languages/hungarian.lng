@@ -615,8 +615,8 @@ A parancs végrehajtódik, ha:
 <source>FreeFileSync is up to date.</source>
 <target>A FreeFileSync naprakész.</target>
 
-<source>Unable to connect to FreeFileSync.org.</source>
-<target>Nem tudok csatlakozni a FreeFileSync.org-hoz</target>
+<source>Unable to connect to www.freefilesync.org.</source>
+<target>Nem tudok csatlakozni a www.freefilesync.org-hoz</target>
 
 <source>Cannot find current FreeFileSync version number online. Do you want to check manually?</source>
 <target>Nem lehet online megtalálni a jelenlegi FreeFileSync verziószámot. Meg akarod keresni manuálisan?</target>

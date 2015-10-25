@@ -625,8 +625,8 @@ Komanda inicijuojama jei:
 <source>FreeFileSync is up to date.</source>
 <target>FreeFileSync yra naujausia.</target>
 
-<source>Unable to connect to FreeFileSync.org.</source>
-<target>Nepavyko prisijungti prie FreeFileSync.org</target>
+<source>Unable to connect to www.freefilesync.org.</source>
+<target>Nepavyko prisijungti prie www.freefilesync.org</target>
 
 <source>Cannot find current FreeFileSync version number online. Do you want to check manually?</source>
 <target>Dabartinės FreeFileSync versijos numeris internete nerastas. Ar norėtumėte patikrinti rankiniu būdu?</target>

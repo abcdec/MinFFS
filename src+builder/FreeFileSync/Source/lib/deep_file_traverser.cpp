@@ -12,10 +12,6 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-#ifdef ZEN_MAC
-    #include <zen/osx_string.h>
-#endif
-
 using namespace zen;
 
 
@@ -85,7 +81,7 @@ private:
         /* quote: "Since POSIX.1 does not specify the size of the d_name field, and other nonstandard fields may precede
                    that field within the dirent structure, portable applications that use readdir_r() should allocate
                    the buffer whose address is passed in entry as follows:
-                       len = offsetof(struct dirent, d_name) + pathconf(dirpath, _PC_NAME_MAX) + 1
+                       len = offsetof(struct dirent, d_name) + pathconf(dirPath, _PC_NAME_MAX) + 1
                        entryp = malloc(len); */
         const size_t nameMax = std::max<long>(::pathconf(directoryFormatted.c_str(), _PC_NAME_MAX), 10000); //::pathconf may return long(-1)
         buffer.resize(offsetof(struct ::dirent, d_name) + nameMax + 1);
@@ -96,28 +92,28 @@ private:
     DirTraverser           (const DirTraverser&) = delete;
     DirTraverser& operator=(const DirTraverser&) = delete;
 
-    void traverse(const Zstring& dirpath, TraverseCallback& sink)
+    void traverse(const Zstring& dirPath, TraverseCallback& sink)
     {
         tryReportingDirError([&]
         {
-            traverseWithException(dirpath, sink); //throw FileError
+            traverseWithException(dirPath, sink); //throw FileError
         }, sink);
     }
 
-    void traverseWithException(const Zstring& dirpath, TraverseCallback& sink) //throw FileError
+    void traverseWithException(const Zstring& dirPath, TraverseCallback& sink) //throw FileError
     {
         //no need to check for endless recursion: Linux has a fixed limit on the number of symbolic links in a path
 
-        DIR* dirObj = ::opendir(dirpath.c_str()); //directory must NOT end with path separator, except "/"
+        DIR* dirObj = ::opendir(dirPath.c_str()); //directory must NOT end with path separator, except "/"
         if (!dirObj)
-            throwFileError(replaceCpy(_("Cannot open directory %x."), L"%x", fmtFileName(dirpath)), L"opendir", getLastError());
+            throwFileError(replaceCpy(_("Cannot open directory %x."), L"%x", fmtFileName(dirPath)), L"opendir", getLastError());
         ZEN_ON_SCOPE_EXIT(::closedir(dirObj)); //never close nullptr handles! -> crash
 
         for (;;)
         {
             struct ::dirent* dirEntry = nullptr;
             if (::readdir_r(dirObj, reinterpret_cast< ::dirent*>(&buffer[0]), &dirEntry) != 0)
-                throwFileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtFileName(dirpath)), L"readdir_r", getLastError());
+                throwFileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtFileName(dirPath)), L"readdir_r", getLastError());
             //don't retry but restart dir traversal on error! http://blogs.msdn.com/b/oldnewthing/archive/2014/06/12/10533529.aspx
 
             if (!dirEntry) //no more items
@@ -125,30 +121,13 @@ private:
 
             //don't return "." and ".."
             const char* shortName = dirEntry->d_name; //evaluate dirEntry *before* going into recursion => we use a single "buffer"!
+
+            if (shortName[0] == 0) throw FileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtFileName(dirPath)), L"Data corruption: Found item without name.");
             if (shortName[0] == '.' &&
                 (shortName[1] == 0 || (shortName[1] == '.' && shortName[2] == 0)))
                 continue;
-#ifdef ZEN_MAC
-            //some file system abstraction layers fail to properly return decomposed UTF8: http://developer.apple.com/library/mac/#qa/qa1173/_index.html
-            //so we need to do it ourselves; perf: ~600 ns per conversion
-            //note: it's not sufficient to apply this in z_impl::compareFilenamesNoCase: if UTF8 forms differ, FFS assumes a rename in case sensitivity and
-            //   will try to propagate the rename => this won't work if target drive reports a particular UTF8 form only!
-            if (CFStringRef cfStr = osx::createCFString(shortName))
-            {
-                ZEN_ON_SCOPE_EXIT(::CFRelease(cfStr));
-
-                CFIndex lenMax = ::CFStringGetMaximumSizeOfFileSystemRepresentation(cfStr); //"could be much larger than the actual space required" => don't store in Zstring
-                if (lenMax > 0)
-                {
-                    bufferUtfDecomposed.resize(lenMax);
-                    if (::CFStringGetFileSystemRepresentation(cfStr, &bufferUtfDecomposed[0], lenMax)) //get decomposed UTF form (verified!) despite ambiguous documentation
-                        shortName = &bufferUtfDecomposed[0]; //attention: => don't access "shortName" after recursion in "traverse"!
-                }
-            }
-            //const char* sampleDecomposed  = "\x6f\xcc\x81.txt";
-            //const char* samplePrecomposed = "\xc3\xb3.txt";
-#endif
-            const Zstring& itempath = appendSeparator(dirpath) + shortName;
+				
+            const Zstring& itempath = appendSeparator(dirPath) + shortName;
 
             struct ::stat statData = {};
             if (!tryReportingItemError([&]
@@ -185,7 +164,10 @@ private:
                                 }
                             }
                             else //a file or named pipe, ect.
-                                sink.onFile({ shortName, itempath, makeUnsigned(statDataTrg.st_size), statDataTrg.st_mtime, extractFileId(statDataTrg), &linkInfo });
+							{
+								TraverseCallback::FileInfo fi = { shortName, itempath, makeUnsigned(statDataTrg.st_size), statDataTrg.st_mtime, extractFileId(statDataTrg), &linkInfo };
+								sink.onFile(fi);
+							}
                         }
                         // else //broken symlink -> ignore: it's client's responsibility to handle error!
                     }
@@ -204,7 +186,10 @@ private:
                 }
             }
             else //a file or named pipe, ect.
-                sink.onFile({ shortName, itempath, makeUnsigned(statData.st_size), statData.st_mtime, extractFileId(statData), nullptr });
+			{
+				TraverseCallback::FileInfo fi = { shortName, itempath, makeUnsigned(statData.st_size), statData.st_mtime, extractFileId(statData), nullptr };
+				sink.onFile(fi);
+			}
             /*
             It may be a good idea to not check "S_ISREG(statData.st_mode)" explicitly and to not issue an error message on other types to support these scenarios:
             - RTS setup watch (essentially wants to read directories only)
@@ -216,11 +201,8 @@ private:
     }
 
     std::vector<char> buffer;
-#ifdef ZEN_MAC
-    std::vector<char> bufferUtfDecomposed;
-#endif
 };
 }
 
 
-void zen::deepTraverseFolder(const Zstring& dirpath, TraverseCallback& sink) { DirTraverser::execute(dirpath, sink); }
+void zen::deepTraverseFolder(const Zstring& dirPath, TraverseCallback& sink) { DirTraverser::execute(dirPath, sink); }

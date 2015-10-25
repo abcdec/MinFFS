@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef BINARY_H_INCLUDED
-#define BINARY_H_INCLUDED
+#ifndef BINARY_H_INCLUDED_3941281398513241134
+#define BINARY_H_INCLUDED_3941281398513241134
 
 #include <functional>
 #include <zen/zstring.h>
@@ -13,9 +13,9 @@
 
 namespace zen
 {
-bool filesHaveSameContent(const Zstring& filepath1,  //throw FileError
+bool filesHaveSameContent(const Zstring& filepath1, //throw FileError
                           const Zstring& filepath2,
                           const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus); //may be nullptr
 }
 
-#endif // BINARY_H_INCLUDED
+#endif //BINARY_H_INCLUDED_3941281398513241134

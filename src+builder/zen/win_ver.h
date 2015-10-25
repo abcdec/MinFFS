@@ -28,7 +28,7 @@ inline bool operator==(const OsVersion& lhs, const OsVersion& rhs) { return lhs.
 
 
 //version overview: http://msdn.microsoft.com/en-us/library/ms724834(VS.85).aspx
-const OsVersion osVersionWin10        (6, 4);
+const OsVersion osVersionWin10       (10, 0);
 const OsVersion osVersionWin81        (6, 3);
 const OsVersion osVersionWin8         (6, 2);
 const OsVersion osVersionWin7         (6, 1);
@@ -40,7 +40,8 @@ const OsVersion osVersionWin2000      (5, 0);
 /*
 	NOTE: there are two basic APIs to check Windows version: (empiric study following)
 		GetVersionEx      -> reports version considering compatibility mode (and compatibility setting in app manifest since Windows 8.1)
-		VerifyVersionInfo -> always reports *real* Windows Version
+		VerifyVersionInfo -> always reports *real* Windows Version 
+								*) Win10 Technical preview caveat: VerifyVersionInfo returns 6.3 unless manifest entry is added!!!
 */
 
 //GetVersionEx()-based APIs:
@@ -69,13 +70,9 @@ OsVersion getOsVersion()
     OSVERSIONINFO osvi = {};
     osvi.dwOSVersionInfoSize = sizeof(osvi);
 #ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable : 4996) //"'GetVersionExW': was declared deprecated"
+#pragma warning(suppress: 4996) //"'GetVersionExW': was declared deprecated"
 #endif
     if (!::GetVersionEx(&osvi)) //38 ns per call! (yes, that's nano!) -> we do NOT miss C++11 thread-safe statics right now...
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
     {
         assert(false);
         return OsVersion();
@@ -99,7 +96,7 @@ bool isRealOsVersion(const OsVersion& ver)
 
     const bool rv = ::VerifyVersionInfo(&verInfo, VER_MAJORVERSION | VER_MINORVERSION, conditionMask)
                     == TRUE; //silence VC "performance warnings"
-    assert(rv || GetLastError() == ERROR_OLD_WIN_VERSION);
+    assert(rv || ::GetLastError() == ERROR_OLD_WIN_VERSION);
 
     return rv;
 }
@@ -125,7 +122,7 @@ inline
 bool running64BitWindows() //http://blogs.msdn.com/b/oldnewthing/archive/2005/02/01/364563.aspx
 {
     static_assert(zen::is32BitBuild || zen::is64BitBuild, "");
-    return is64BitBuild || runningWOW64(); //should we bother to make this a compile-time check for the first case?
+    return is64BitBuild || runningWOW64(); //should we bother to give a compile-time result in the first case?
 }
 }
 

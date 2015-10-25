@@ -25,7 +25,7 @@
 
 #elif defined ZEN_LINUX
     #include <sys/vfs.h> //statfs
-    #include <fcntl.h> //AT_SYMLINK_NOFOLLOW, UTIME_OMIT
+    #include <sys/time.h> //lutimes
     #ifdef HAVE_SELINUX
         #include <selinux/selinux.h>
     #endif
@@ -36,8 +36,8 @@
 #endif
 
 #if defined ZEN_LINUX || defined ZEN_MAC
+    #include <fcntl.h> //open, close, AT_SYMLINK_NOFOLLOW, UTIME_OMIT
     #include <sys/stat.h>
-    #include <sys/time.h> //lutimes
 #endif
 
 using namespace zen;
@@ -250,7 +250,7 @@ std::uint64_t zen::getFilesize(const Zstring& filepath) //throw FileError
         throwFileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtFileName(filepath)), L"CreateFile", getLastError());
     ZEN_ON_SCOPE_EXIT(::CloseHandle(hFile));
 
-	//why not use ::GetFileSizeEx() instead???
+    //why not use ::GetFileSizeEx() instead???
     BY_HANDLE_FILE_INFORMATION fileInfoHnd = {};
     if (!::GetFileInformationByHandle(hFile, &fileInfoHnd))
         throwFileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtFileName(filepath)), L"GetFileInformationByHandle", getLastError());
@@ -462,7 +462,8 @@ Zstring findUnused8Dot3Name(const Zstring& filepath) //find a unique 8.3 short n
         if (!somethingExists(output)) //ensure uniqueness
             return output;
     }
-    throw std::runtime_error(std::string("100000000 files, one for each number, exist in this directory? You're kidding...") + utfCvrtTo<std::string>(pathPrefix));
+    throw std::runtime_error(std::string("100000000 files, one for each number, exist in this directory? You're kidding...") + utfCvrtTo<std::string>(pathPrefix) +
+                             "\n" + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
 }
 
 
@@ -581,18 +582,18 @@ void removeDirectoryImpl(const Zstring& directory, //throw FileError
     {
         std::vector<Zstring> fileList;
         std::vector<Zstring> dirList;
-		//get all files and directories from current directory (WITHOUT subdirectories!)
-traverseFolder(directory,
-				[&](const FileInfo& fi){ fileList.push_back(fi.fullPath); },
-				[&](const DirInfo&  di){ dirList .push_back(di.fullPath); },
-				[&](const SymlinkInfo& si)
-{
-	        if (dirExists(si.fullPath)) //dir symlink
-            dirList.push_back(si.fullPath);
-        else //file symlink, broken symlink
-            fileList.push_back(si.fullPath);
-},
-[&](const std::wstring& errorMsg){ throw FileError(errorMsg); });
+        //get all files and directories from current directory (WITHOUT subdirectories!)
+        traverseFolder(directory,
+        [&](const FileInfo& fi) { fileList.push_back(fi.fullPath); },
+        [&](const DirInfo&  di) { dirList .push_back(di.fullPath); },
+        [&](const SymlinkInfo& si)
+        {
+            if (dirExists(si.fullPath)) //dir symlink
+                dirList.push_back(si.fullPath);
+            else //file symlink, broken symlink
+                fileList.push_back(si.fullPath);
+        },
+        [&](const std::wstring& errorMsg) { throw FileError(errorMsg); });
 
         //delete directories recursively
         for (const Zstring& dirpath : dirList)
@@ -955,26 +956,52 @@ void zen::setFileTime(const Zstring& filepath, std::int64_t modTime, ProcSymlink
     setFileTimeRaw(filepath, nullptr, timetToFileTime(modTime), procSl); //throw FileError
 
 #elif defined ZEN_LINUX
-    //sigh, we can't use utimensat on NTFS volumes on Ubuntu: silent failure!!! what morons are programming this shit???
-
-    //    struct ::timespec newTimes[2] = {};
-    //    newTimes[0].tv_nsec = UTIME_OMIT; //omit access time
-    //    newTimes[1].tv_sec = to<time_t>(modTime); //modification time (seconds)
-    //
-    //    if (::utimensat(AT_FDCWD, filepath.c_str(), newTimes, procSl == SYMLINK_DIRECT ? AT_SYMLINK_NOFOLLOW : 0) != 0)
-    //        throwFileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtFileName(filepath)), L"utimensat", getLastError());
-
+    //[2013-05-01] sigh, we can't use utimensat() on NTFS volumes on Ubuntu: silent failure!!! what morons are programming this shit???
     //=> fallback to "retarded-idiot version"! -- DarkByte
+    //
+    //[2015-03-09]
+    // - cannot reproduce issues with NTFS and utimensat() on Ubuntu
+    // - utimensat() is supposed to obsolete utime/utimes and is also used by "touch"
+    //=> let's give utimensat another chance:
+    struct ::timespec newTimes[2] = {};
+    newTimes[0].tv_nsec = UTIME_OMIT; //omit access time
+    newTimes[1].tv_sec  = modTime;    //modification time (seconds)
 
-    struct ::timeval newTimes[2] = {};
-    newTimes[0].tv_sec = ::time(nullptr); //access time (seconds)
-    newTimes[1].tv_sec = modTime;         //modification time (seconds)
+    if (procSl == ProcSymlink::FOLLOW)
+    {
+        //don't use utimensat() directly, but open file descriptor manually:
+        //=> solves EINVAL bug for certain CIFS/NTFS drives: https://sourceforge.net/p/freefilesync/discussion/help/thread/1ace042d/
+        //=> using utimensat(AT_SYMLINK_NOFOLLOW) for symlinks and open()/futimens() for regular files is consistent with "cp" and "touch"!
+        const int fdFile = ::open(filepath.c_str(), O_WRONLY, 0); //"if O_CREAT is not specified, then mode is ignored"
+        if (fdFile == -1)
+            throwFileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtFileName(filepath)), L"open", getLastError());
+        ZEN_ON_SCOPE_EXIT(::close(fdFile));
 
-    const int rv = procSl == ProcSymlink::FOLLOW ?
-                   :: utimes(filepath.c_str(), newTimes) :
-                   ::lutimes(filepath.c_str(), newTimes);
-    if (rv != 0)
-        throwFileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtFileName(filepath)), L"utimes", getLastError());
+        if (::futimens(fdFile, newTimes) != 0)
+            throwFileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtFileName(filepath)), L"futimens", getLastError());
+    }
+    else
+    {
+        if (::utimensat(AT_FDCWD, filepath.c_str(), newTimes, AT_SYMLINK_NOFOLLOW) != 0)
+            throwFileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtFileName(filepath)), L"utimensat", getLastError());
+    }
+
+    /*
+    	struct ::timeval newTimes[2] = {};
+    	newTimes[0].tv_sec = ::time(nullptr); //access time (seconds)
+    	newTimes[1].tv_sec = modTime;         //modification time (seconds)
+
+    	if (procSl == ProcSymlink::FOLLOW)
+    	{
+    		if (::utimes(filepath.c_str(), newTimes) != 0)
+    			throwFileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtFileName(filepath)), L"utimes", getLastError());
+    	}
+    	else
+    	{
+    		if (::lutimes(filepath.c_str(), newTimes) != 0)
+    			throwFileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtFileName(filepath)), L"lutimes", getLastError());
+    	}
+    */
 
 #elif defined ZEN_MAC
     struct ::timespec writeTime = {};
@@ -1063,15 +1090,15 @@ void copySecurityContext(const Zstring& source, const Zstring& target, ProcSymli
 
 
 //copy permissions for files, directories or symbolic links: requires admin rights
-void copyObjectPermissions(const Zstring& source, const Zstring& target, ProcSymlink procSl) //throw FileError
+void copyItemPermissions(const Zstring& sourcePath, const Zstring& targetPath, ProcSymlink procSl) //throw FileError
 {
 #ifdef ZEN_WIN
     //in contrast to ::SetSecurityInfo(), ::SetFileSecurity() seems to honor the "inherit DACL/SACL" flags
     //CAVEAT: if a file system does not support ACLs, GetFileSecurity() will return successfully with a *valid* security descriptor containing *no* ACL entries!
 
     //NOTE: ::GetFileSecurity()/::SetFileSecurity() do NOT follow Symlinks! getResolvedFilePath() requires Vista or later!
-    const Zstring sourceResolved = procSl == ProcSymlink::FOLLOW && symlinkExists(source) ? getResolvedFilePath(source) : source; //throw FileError
-    const Zstring targetResolved = procSl == ProcSymlink::FOLLOW && symlinkExists(target) ? getResolvedFilePath(target) : target; //
+    const Zstring sourceResolved = procSl == ProcSymlink::FOLLOW && symlinkExists(sourcePath) ? getResolvedFilePath(sourcePath) : sourcePath; //throw FileError
+    const Zstring targetResolved = procSl == ProcSymlink::FOLLOW && symlinkExists(targetPath) ? getResolvedFilePath(targetPath) : targetPath; //
 
     //setting privileges requires admin rights!
     try
@@ -1217,32 +1244,32 @@ void copyObjectPermissions(const Zstring& source, const Zstring& target, ProcSym
 #elif defined ZEN_LINUX
 
 #ifdef HAVE_SELINUX  //copy SELinux security context
-    copySecurityContext(source, target, procSl); //throw FileError
+    copySecurityContext(sourcePath, targetPath, procSl); //throw FileError
 #endif
 
     struct ::stat fileInfo = {};
     if (procSl == ProcSymlink::FOLLOW)
     {
-        if (::stat(source.c_str(), &fileInfo) != 0)
-            throwFileError(replaceCpy(_("Cannot read permissions of %x."), L"%x", fmtFileName(source)), L"stat", getLastError());
+        if (::stat(sourcePath.c_str(), &fileInfo) != 0)
+            throwFileError(replaceCpy(_("Cannot read permissions of %x."), L"%x", fmtFileName(sourcePath)), L"stat", getLastError());
 
-        if (::chown(target.c_str(), fileInfo.st_uid, fileInfo.st_gid) != 0) // may require admin rights!
-            throwFileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtFileName(target)), L"chown", getLastError());
+        if (::chown(targetPath.c_str(), fileInfo.st_uid, fileInfo.st_gid) != 0) // may require admin rights!
+            throwFileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtFileName(targetPath)), L"chown", getLastError());
 
-        if (::chmod(target.c_str(), fileInfo.st_mode) != 0)
-            throwFileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtFileName(target)), L"chmod", getLastError());
+        if (::chmod(targetPath.c_str(), fileInfo.st_mode) != 0)
+            throwFileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtFileName(targetPath)), L"chmod", getLastError());
     }
     else
     {
-        if (::lstat(source.c_str(), &fileInfo) != 0)
-            throwFileError(replaceCpy(_("Cannot read permissions of %x."), L"%x", fmtFileName(source)), L"lstat", getLastError());
+        if (::lstat(sourcePath.c_str(), &fileInfo) != 0)
+            throwFileError(replaceCpy(_("Cannot read permissions of %x."), L"%x", fmtFileName(sourcePath)), L"lstat", getLastError());
 
-        if (::lchown(target.c_str(), fileInfo.st_uid, fileInfo.st_gid) != 0) // may require admin rights!
-            throwFileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtFileName(target)), L"lchown", getLastError());
+        if (::lchown(targetPath.c_str(), fileInfo.st_uid, fileInfo.st_gid) != 0) // may require admin rights!
+            throwFileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtFileName(targetPath)), L"lchown", getLastError());
 
-        if (!symlinkExists(target) && //setting access permissions doesn't make sense for symlinks on Linux: there is no lchmod()
-            ::chmod(target.c_str(), fileInfo.st_mode) != 0)
-            throwFileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtFileName(target)), L"chmod", getLastError());
+        if (!symlinkExists(targetPath) && //setting access permissions doesn't make sense for symlinks on Linux: there is no lchmod()
+            ::chmod(targetPath.c_str(), fileInfo.st_mode) != 0)
+            throwFileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtFileName(targetPath)), L"chmod", getLastError());
     }
 
 #elif defined ZEN_MAC
@@ -1250,27 +1277,27 @@ void copyObjectPermissions(const Zstring& source, const Zstring& target, ProcSym
     if (procSl == ProcSymlink::DIRECT)
         flags |= COPYFILE_NOFOLLOW;
 
-    if (::copyfile(source.c_str(), target.c_str(), 0, flags) != 0)
-        throwFileError(replaceCpy(replaceCpy(_("Cannot copy permissions from %x to %y."), L"%x", L"\n" + fmtFileName(source)), L"%y", L"\n" + fmtFileName(target)), L"copyfile", getLastError());
+    if (::copyfile(sourcePath.c_str(), targetPath.c_str(), 0, flags) != 0)
+        throwFileError(replaceCpy(replaceCpy(_("Cannot copy permissions from %x to %y."), L"%x", L"\n" + fmtFileName(sourcePath)), L"%y", L"\n" + fmtFileName(targetPath)), L"copyfile", getLastError());
 
     //owner is *not* copied with ::copyfile():
 
     struct ::stat fileInfo = {};
     if (procSl == ProcSymlink::FOLLOW)
     {
-        if (::stat(source.c_str(), &fileInfo) != 0)
-            throwFileError(replaceCpy(_("Cannot read permissions of %x."), L"%x", fmtFileName(source)), L"stat", getLastError());
+        if (::stat(sourcePath.c_str(), &fileInfo) != 0)
+            throwFileError(replaceCpy(_("Cannot read permissions of %x."), L"%x", fmtFileName(sourcePath)), L"stat", getLastError());
 
-        if (::chown(target.c_str(), fileInfo.st_uid, fileInfo.st_gid) != 0) // may require admin rights!
-            throwFileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtFileName(target)), L"chown", getLastError());
+        if (::chown(targetPath.c_str(), fileInfo.st_uid, fileInfo.st_gid) != 0) // may require admin rights!
+            throwFileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtFileName(targetPath)), L"chown", getLastError());
     }
     else
     {
-        if (::lstat(source.c_str(), &fileInfo) != 0)
-            throwFileError(replaceCpy(_("Cannot read permissions of %x."), L"%x", fmtFileName(source)), L"lstat", getLastError());
+        if (::lstat(sourcePath.c_str(), &fileInfo) != 0)
+            throwFileError(replaceCpy(_("Cannot read permissions of %x."), L"%x", fmtFileName(sourcePath)), L"lstat", getLastError());
 
-        if (::lchown(target.c_str(), fileInfo.st_uid, fileInfo.st_gid) != 0) // may require admin rights!
-            throwFileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtFileName(target)), L"lchown", getLastError());
+        if (::lchown(targetPath.c_str(), fileInfo.st_uid, fileInfo.st_gid) != 0) // may require admin rights!
+            throwFileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtFileName(targetPath)), L"lchown", getLastError());
     }
 #endif
 }
@@ -1412,7 +1439,7 @@ void zen::makeDirectoryPlain(const Zstring& directory, //throw FileError, ErrorT
             mode = dirInfo.st_mode; //analog to "cp" which copies "mode" (considering umask) by default
             mode |= S_IRWXU; //FFS only: we need full access to copy child items! "cp" seems to apply permissions *after* copying child items
         }
-    //=> need copyObjectPermissions() only for "chown" and umask-agnostic permissions
+    //=> need copyItemPermissions() only for "chown" and umask-agnostic permissions
 
     if (::mkdir(directory.c_str(), mode) != 0)
     {
@@ -1501,7 +1528,7 @@ void zen::makeDirectoryPlain(const Zstring& directory, //throw FileError, ErrorT
 
         //enforce copying file permissions: it's advertized on GUI...
         if (copyFilePermissions)
-            copyObjectPermissions(templateDir, directory, ProcSymlink::FOLLOW); //throw FileError
+            copyItemPermissions(templateDir, directory, ProcSymlink::FOLLOW); //throw FileError
 
         guardNewDir.dismiss(); //target has been created successfully!
     }
@@ -1561,23 +1588,26 @@ void zen::copySymlink(const Zstring& sourceLink, const Zstring& targetLink, bool
 
     setFileTimeRaw(targetLink, &sourceAttr.ftCreationTime, sourceAttr.ftLastWriteTime, ProcSymlink::DIRECT); //throw FileError
 
-#elif defined ZEN_LINUX || defined ZEN_MAC
+#elif defined ZEN_LINUX
     struct ::stat sourceInfo = {};
     if (::lstat(sourceLink.c_str(), &sourceInfo) != 0)
         throwFileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtFileName(sourceLink)), L"lstat", getLastError());
 
-#ifdef ZEN_LINUX
-	setFileTime(targetLink, sourceInfo.st_mtime, ProcSymlink::DIRECT); //throw FileError
+    setFileTime(targetLink, sourceInfo.st_mtime, ProcSymlink::DIRECT); //throw FileError
+
 #elif defined ZEN_MAC
-	    setFileTimeRaw(targetLink, &sourceInfo.st_birthtimespec, sourceInfo.st_mtimespec, ProcSymlink::DIRECT); //throw FileError
+    struct ::stat sourceInfo = {};
+    if (::lstat(sourceLink.c_str(), &sourceInfo) != 0)
+        throwFileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtFileName(sourceLink)), L"lstat", getLastError());
 
     if (::copyfile(sourceLink.c_str(), targetLink.c_str(), 0, COPYFILE_XATTR | COPYFILE_NOFOLLOW) != 0)
         throwFileError(replaceCpy(replaceCpy(_("Cannot copy attributes from %x to %y."), L"%x", L"\n" + fmtFileName(sourceLink)), L"%y", L"\n" + fmtFileName(targetLink)), L"copyfile", getLastError());
-#endif
+
+    setFileTimeRaw(targetLink, &sourceInfo.st_birthtimespec, sourceInfo.st_mtimespec, ProcSymlink::DIRECT); //throw FileError
 #endif
 
     if (copyFilePermissions)
-        copyObjectPermissions(sourceLink, targetLink, ProcSymlink::DIRECT); //throw FileError
+        copyItemPermissions(sourceLink, targetLink, ProcSymlink::DIRECT); //throw FileError
 
     guardNewLink.dismiss(); //target has been created successfully!
 }
@@ -1903,37 +1933,6 @@ void copyFileWindowsSparse(const Zstring& sourceFile,
 
 DEFINE_NEW_FILE_ERROR(ErrorShouldCopyAsSparse);
 
-class ErrorHandling
-{
-public:
-    ErrorHandling() : shouldCopyAsSparse(false) {}
-
-    //call context: copyCallbackInternal()
-    void reportErrorShouldCopyAsSparse() { shouldCopyAsSparse = true; }
-
-    void reportUserException(const std::exception_ptr& e) { exception = e; }
-
-    void reportError(const std::wstring& msg, const std::wstring& description) { errorMsg = std::make_pair(msg, description); }
-
-    //call context: copyFileWindowsDefault()
-    void evaluateErrors() //throw X
-    {
-        if (shouldCopyAsSparse)
-            throw ErrorShouldCopyAsSparse(L"sparse dummy value");
-
-        if (exception)
-            std::rethrow_exception(exception);
-
-        if (!errorMsg.first.empty())
-            throw FileError(errorMsg.first, errorMsg.second);
-    }
-
-private:
-    bool shouldCopyAsSparse;                        //
-    std::pair<std::wstring, std::wstring> errorMsg; //these are exclusive!
-    std::exception_ptr exception;
-};
-
 
 struct CallbackData
 {
@@ -1949,10 +1948,10 @@ struct CallbackData
 
     const Zstring& sourceFile_;
     const Zstring& targetFile_;
-    const std::function<void(std::int64_t bytesDelta)>& onUpdateCopyStatus_;
+    const std::function<void(std::int64_t bytesDelta)>& onUpdateCopyStatus_; //optional
 
-    ErrorHandling errorHandler;
-    BY_HANDLE_FILE_INFORMATION fileInfoSrc; //modified by CopyFileEx() at beginning
+    std::exception_ptr exception; //out
+    BY_HANDLE_FILE_INFORMATION fileInfoSrc; //out: modified by CopyFileEx() at beginning
     BY_HANDLE_FILE_INFORMATION fileInfoTrg; //
 
     std::int64_t bytesReported; //used internally to calculate bytes transferred delta
@@ -1971,6 +1970,7 @@ DWORD CALLBACK copyCallbackInternal(LARGE_INTEGER totalFileSize,
 {
     /*
     this callback is invoked for block sizes managed by Windows, these may vary from e.g. 64 kB up to 1MB. It seems this depends on file size amongst others.
+    Note: for 0-sized files this callback is invoked just ONCE!
 
     symlink handling:
         if source is a symlink and COPY_FILE_COPY_SYMLINK is     specified, this callback is NOT invoked!
@@ -1990,71 +1990,60 @@ DWORD CALLBACK copyCallbackInternal(LARGE_INTEGER totalFileSize,
 
     CallbackData& cbd = *static_cast<CallbackData*>(lpData);
 
-    if (dwCallbackReason == CALLBACK_STREAM_SWITCH &&  //called up-front for every file (even if 0-sized)
-        dwStreamNumber == 1) //consider ADS!
+    try
     {
-        //#################### return source file attributes ################################
-        if (!::GetFileInformationByHandle(hSourceFile, &cbd.fileInfoSrc))
+        if (dwCallbackReason == CALLBACK_STREAM_SWITCH &&  //called up-front for every file (even if 0-sized)
+            dwStreamNumber == 1) //consider ADS!
         {
-            const DWORD lastError = ::GetLastError(); //copy before directly or indirectly making other system calls!
-            cbd.errorHandler.reportError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtFileName(cbd.sourceFile_)), formatSystemError(L"GetFileInformationByHandle", lastError));
-            return PROGRESS_CANCEL;
+            //#################### return source file attributes ################################
+            if (!::GetFileInformationByHandle(hSourceFile, &cbd.fileInfoSrc))
+                throwFileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtFileName(cbd.sourceFile_)), L"GetFileInformationByHandle", ::GetLastError());
+
+            if (!::GetFileInformationByHandle(hDestinationFile, &cbd.fileInfoTrg))
+                throwFileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtFileName(cbd.targetFile_)), L"GetFileInformationByHandle", ::GetLastError());
+
+            //#################### switch to sparse file copy if req. #######################
+            if (canCopyAsSparse(cbd.fileInfoSrc.dwFileAttributes, cbd.targetFile_)) //throw ()
+                throw ErrorShouldCopyAsSparse(L"sparse dummy value"); //use a different copy routine!
+
+            //#################### copy file creation time ################################
+            ::SetFileTime(hDestinationFile, &cbd.fileInfoSrc.ftCreationTime, nullptr, nullptr); //no error handling!
+            //=> not really needed here, creation time is set anyway at the end of copyFileWindowsDefault()!
+
+            //#################### copy NTFS compressed attribute #########################
+            const bool sourceIsCompressed = (cbd.fileInfoSrc.dwFileAttributes & FILE_ATTRIBUTE_COMPRESSED) != 0;
+            const bool targetIsCompressed = (cbd.fileInfoTrg.dwFileAttributes & FILE_ATTRIBUTE_COMPRESSED) != 0; //already set by CopyFileEx if target parent folder is compressed!
+            if (sourceIsCompressed && !targetIsCompressed)
+            {
+                USHORT cmpState = COMPRESSION_FORMAT_DEFAULT;
+                DWORD bytesReturned = 0;
+                if (!::DeviceIoControl(hDestinationFile,      //_In_         HANDLE hDevice,
+                                       FSCTL_SET_COMPRESSION, //_In_         DWORD dwIoControlCode,
+                                       &cmpState,             //_In_opt_     LPVOID lpInBuffer,
+                                       sizeof(cmpState),      //_In_         DWORD nInBufferSize,
+                                       nullptr,               //_Out_opt_    LPVOID lpOutBuffer,
+                                       0,                     //_In_         DWORD nOutBufferSize,
+                                       &bytesReturned,        //_Out_opt_    LPDWORD lpBytesReturned
+                                       nullptr))              //_Inout_opt_  LPOVERLAPPED lpOverlapped
+                {} //may legitimately fail with ERROR_INVALID_FUNCTION if
+
+                // - if target folder is encrypted
+                // - target volume does not support compressed attribute
+                //#############################################################################
+            }
         }
 
-        if (!::GetFileInformationByHandle(hDestinationFile, &cbd.fileInfoTrg))
-        {
-            const DWORD lastError = ::GetLastError(); //copy before directly or indirectly making other system calls!
-            cbd.errorHandler.reportError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtFileName(cbd.targetFile_)), formatSystemError(L"GetFileInformationByHandle", lastError));
-            return PROGRESS_CANCEL;
-        }
-
-        //#################### switch to sparse file copy if req. #######################
-        if (canCopyAsSparse(cbd.fileInfoSrc.dwFileAttributes, cbd.targetFile_)) //throw ()
-        {
-            cbd.errorHandler.reportErrorShouldCopyAsSparse(); //use a different copy routine!
-            return PROGRESS_CANCEL;
-        }
-
-        //#################### copy file creation time ################################
-        ::SetFileTime(hDestinationFile, &cbd.fileInfoSrc.ftCreationTime, nullptr, nullptr); //no error handling!
-        //=> not really needed here, creation time is set anyway at the end of copyFileWindowsDefault()!
-
-        //#################### copy NTFS compressed attribute #########################
-        const bool sourceIsCompressed = (cbd.fileInfoSrc.dwFileAttributes & FILE_ATTRIBUTE_COMPRESSED) != 0;
-        const bool targetIsCompressed = (cbd.fileInfoTrg.dwFileAttributes & FILE_ATTRIBUTE_COMPRESSED) != 0; //already set by CopyFileEx if target parent folder is compressed!
-        if (sourceIsCompressed && !targetIsCompressed)
-        {
-            USHORT cmpState = COMPRESSION_FORMAT_DEFAULT;
-            DWORD bytesReturned = 0;
-            if (!::DeviceIoControl(hDestinationFile,      //_In_         HANDLE hDevice,
-                                   FSCTL_SET_COMPRESSION, //_In_         DWORD dwIoControlCode,
-                                   &cmpState,             //_In_opt_     LPVOID lpInBuffer,
-                                   sizeof(cmpState),      //_In_         DWORD nInBufferSize,
-                                   nullptr,               //_Out_opt_    LPVOID lpOutBuffer,
-                                   0,                     //_In_         DWORD nOutBufferSize,
-                                   &bytesReturned,        //_Out_opt_    LPDWORD lpBytesReturned
-                                   nullptr))              //_Inout_opt_  LPOVERLAPPED lpOverlapped
-            {} //may legitimately fail with ERROR_INVALID_FUNCTION if
-
-            // - if target folder is encrypted
-            // - target volume does not support compressed attribute
-            //#############################################################################
-        }
-    }
-
-    //called after copy operation is finished - note: for 0-sized files this callback is invoked just ONCE!
-    //if (totalFileSize.QuadPart == totalBytesTransferred.QuadPart && dwStreamNumber == 1) {}
-    if (cbd.onUpdateCopyStatus_ && totalBytesTransferred.QuadPart >= 0) //should always be true, but let's still check
-        try
+        if (cbd.onUpdateCopyStatus_ && totalBytesTransferred.QuadPart >= 0) //should always be true, but let's still check
         {
             cbd.onUpdateCopyStatus_(totalBytesTransferred.QuadPart - cbd.bytesReported); //throw X!
             cbd.bytesReported = totalBytesTransferred.QuadPart;
         }
-        catch (...)
-        {
-            cbd.errorHandler.reportUserException(std::current_exception());
-            return PROGRESS_CANCEL;
-        }
+    }
+    catch (...)
+    {
+        cbd.exception = std::current_exception();
+        return PROGRESS_CANCEL;
+    }
     return PROGRESS_CONTINUE;
 }
 
@@ -2083,10 +2072,11 @@ void copyFileWindowsDefault(const Zstring& sourceFile,
         copyFlags |= COPY_FILE_ALLOW_DECRYPTED_DESTINATION; //allow copying from encrypted to non-encrypted location
 
     //if (vistaOrLater()) //see http://blogs.technet.com/b/askperf/archive/2007/05/08/slow-large-file-copy-issues.aspx
-    //  copyFlags |= COPY_FILE_NO_BUFFERING; //no perf difference at worst, huge improvement for large files (20% in test NTFS -> NTFS)
-    //It's a shame this flag causes file corruption! https://sourceforge.net/projects/freefilesync/forums/forum/847542/topic/5177950
-    //documentation on CopyFile2() even states: "It is not recommended to pause copies that are using this flag." How dangerous is this thing, why offer it at all???
-    //perf advantage: ~15% faster
+    //  copyFlags |= COPY_FILE_NO_BUFFERING; //no perf difference at worst, improvement for large files (20% in test NTFS -> NTFS)
+    // - this flag may cause file corruption! https://sourceforge.net/p/freefilesync/discussion/open-discussion/thread/65f48357/
+    // - documentation on CopyFile2() even states: "It is not recommended to pause copies that are using this flag."
+    //=> it's not worth it! instead of skipping buffering at kernel-level (=> also NO prefetching!!!), skip it at user-level: memory mapped files!
+    //   however, perf-measurements for memory mapped files show: it's also not worth it!
 
     CallbackData cbd(onUpdateCopyStatus, sourceFile, targetFile);
 
@@ -2096,8 +2086,9 @@ void copyFileWindowsDefault(const Zstring& sourceFile,
                                       &cbd,                 //__in_opt  LPVOID lpData,
                                       nullptr,              //__in_opt  LPBOOL pbCancel,
                                       copyFlags) != FALSE;  //__in      DWORD dwCopyFlags
+    if (cbd.exception)
+        std::rethrow_exception(cbd.exception); //throw ?, process errors in callback first!
 
-    cbd.errorHandler.evaluateErrors(); //throw ?, process errors in callback first!
     if (!success)
     {
         const DWORD lastError = ::GetLastError(); //copy before directly or indirectly making other system calls!
@@ -2204,26 +2195,40 @@ void copyFileOsSpecific(const Zstring& sourceFile,
 }
 
 
-#elif defined ZEN_LINUX
+#elif defined ZEN_LINUX || defined ZEN_MAC
 void copyFileOsSpecific(const Zstring& sourceFile,
                         const Zstring& targetFile,
                         const std::function<void(std::int64_t bytesDelta)>& onUpdateCopyStatus,
                         InSyncAttributes* newAttrib) //throw FileError, ErrorTargetExisting
 {
-    FileInputUnbuffered fileIn(sourceFile); //throw FileError
+    FileInput fileIn(sourceFile); //throw FileError
 
     struct ::stat sourceInfo = {};
-    if (::fstat(fileIn.getDescriptor(), &sourceInfo) != 0)
+    if (::fstat(fileIn.getHandle(), &sourceInfo) != 0)
         throwFileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtFileName(sourceFile)), L"fstat", getLastError());
 
-    zen::ScopeGuard guardTarget = zen::makeGuard([&] { try { removeFile(targetFile); } catch (FileError&) {} }); //transactional behavior: place guard before lifetime of FileOutput
-    try
+    const int fdTarget = ::open(targetFile.c_str(), O_WRONLY | O_CREAT | O_EXCL,
+                                sourceInfo.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)); //analog to "cp" which copies "mode" (considering umask) by default
+    //=> need copyItemPermissions() only for "chown" and umask-agnostic permissions
+    if (fdTarget == -1)
     {
-        FileOutputUnbuffered fileOut(targetFile, //throw FileError, ErrorTargetExisting
-                                     sourceInfo.st_mode); //analog to "cp" which copies "mode" (considering umask) by default
-        //=> need copyObjectPermissions() only for "chown" and umask-agnostic permissions
+        const int ec = errno; //copy before making other system calls!
+        const std::wstring errorMsg = replaceCpy(_("Cannot write file %x."), L"%x", fmtFileName(targetFile));
+        const std::wstring errorDescr = formatSystemError(L"open", ec);
 
-        std::vector<char> buffer(128 * 1024); //see comment in FileInputUnbuffered::read
+        if (ec == EEXIST)
+            throw ErrorTargetExisting(errorMsg, errorDescr);
+
+        throw FileError(errorMsg, errorDescr);
+    }
+
+    zen::ScopeGuard guardTarget = zen::makeGuard([&] { try { removeFile(targetFile); } catch (FileError&) {} });
+    //transactional behavior: place guard after ::open() and before lifetime of FileOutput:
+    //=> don't delete file that existed previously!!!
+    {
+        FileOutput fileOut(fdTarget, targetFile); //pass ownership
+
+        std::vector<char> buffer(128 * 1024);
         do
         {
             const size_t bytesRead = fileIn.read(&buffer[0], buffer.size()); //throw FileError
@@ -2235,186 +2240,58 @@ void copyFileOsSpecific(const Zstring& sourceFile,
         }
         while (!fileIn.eof());
 
-        //adapt target file modification time:
-        {
-            //read and return file statistics
-            struct ::stat targetInfo = {};
-            if (::fstat(fileOut.getDescriptor(), &targetInfo) != 0)
-                throwFileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtFileName(targetFile)), L"fstat", getLastError());
-
-            if (newAttrib)
-            {
-                newAttrib->fileSize         = sourceInfo.st_size;
-                newAttrib->modificationTime = sourceInfo.st_mtime;
-                newAttrib->sourceFileId     = extractFileId(sourceInfo);
-                newAttrib->targetFileId     = extractFileId(targetInfo);
-            }
-        }
-    }
-    catch (const ErrorTargetExisting&)
-    {
-        guardTarget.dismiss(); //don't delete file that existed previously!
-        throw;
-    }
-
-    //we cannot set the target file times while the file descriptor is still open after a write operation:
-    //this triggers bugs on samba shares where the modification time is set to current time instead.
-    //http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=340236
-    //http://comments.gmane.org/gmane.linux.file-systems.cifs/2854
-    //on the other hand we thereby have to reopen https://sourceforge.net/p/freefilesync/bugs/230/
-    setFileTime(targetFile, sourceInfo.st_mtime, ProcSymlink::FOLLOW); //throw FileError
-
-    guardTarget.dismiss(); //target has been created successfully!
-}
-
-
-#elif defined ZEN_MAC
-struct CallbackData
-{
-    CallbackData(const std::function<void(std::int64_t bytesDelta)>& onUpdateCopyStatus,
-                 const Zstring& sourceFile,
-                 const Zstring& targetFile) :
-        onUpdateCopyStatus_(onUpdateCopyStatus),
-        sourceFile_(sourceFile),
-        targetFile_(targetFile),
-        bytesReported() {}
-
-    const std::function<void(std::int64_t bytesDelta)>& onUpdateCopyStatus_; //in
-    const Zstring& sourceFile_;
-    const Zstring& targetFile_;
-
-    std::pair<std::wstring, std::wstring> errorMsg; //out; these are exclusive!
-    std::exception_ptr exception;                   //
-
-    std::int64_t bytesReported; //private to callback
-};
-
-
-int copyFileCallback(int what, int stage, copyfile_state_t state, const char* src, const char* dst, void* ctx)
-{
-    CallbackData& cbd = *static_cast<CallbackData*>(ctx);
-
-    off_t bytesCopied = 0;
-    if (::copyfile_state_get(state, COPYFILE_STATE_COPIED, &bytesCopied) != 0)
-    {
-        cbd.errorMsg = std::make_pair(replaceCpy(replaceCpy(_("Cannot copy file %x to %y."), L"%x", L"\n" + fmtFileName(cbd.sourceFile_)), L"%y", L"\n" + fmtFileName(cbd.targetFile_)),
-                                      formatSystemError(L"copyfile_state_get, COPYFILE_STATE_COPIED", getLastError()));
-        return COPYFILE_QUIT;
-    }
-
-    if (cbd.onUpdateCopyStatus_)
-        try
-        {
-            cbd.onUpdateCopyStatus_(bytesCopied - cbd.bytesReported); //throw X!
-            cbd.bytesReported = bytesCopied;
-        }
-        catch (...)
-        {
-            cbd.exception = std::current_exception();
-            return COPYFILE_QUIT;
-        }
-    return COPYFILE_CONTINUE;
-}
-
-
-void copyFileOsSpecific(const Zstring& sourceFile,
-                        const Zstring& targetFile,
-                        const std::function<void(std::int64_t bytesDelta)>& onUpdateCopyStatus,
-                        InSyncAttributes* newAttrib) //throw FileError, ErrorTargetExisting
-{
-        struct ::stat sourceInfo = {};
-
-    //http://blog.plasticsfuture.org/2006/03/05/the-state-of-backup-and-cloning-tools-under-mac-os-x/
-    {
-        auto getCopyErrorMessage = [&] { return replaceCpy(replaceCpy(_("Cannot copy file %x to %y."), L"%x", L"\n" + fmtFileName(sourceFile)), L"%y", L"\n" + fmtFileName(targetFile)); };
-
-        copyfile_state_t copyState = ::copyfile_state_alloc();
-        ZEN_ON_SCOPE_EXIT(::copyfile_state_free(copyState));
-
-        CallbackData cbd(onUpdateCopyStatus, sourceFile, targetFile);
-
-        if (::copyfile_state_set(copyState, COPYFILE_STATE_STATUS_CTX, &cbd) != 0)
-            throwFileError(getCopyErrorMessage(), L"copyfile_state_set, COPYFILE_STATE_STATUS_CTX", getLastError());
-
-        if (::copyfile_state_set(copyState, COPYFILE_STATE_STATUS_CB, reinterpret_cast<const void*>(&copyFileCallback)) != 0)
-            throwFileError(getCopyErrorMessage(), L"copyfile_state_set, COPYFILE_STATE_STATUS_CB", getLastError());
-
-        zen::ScopeGuard guardTarget = zen::makeGuard([&] { try { removeFile(targetFile); } catch (FileError&) {} }); //transactional behavior: docs seem to indicate that copyfile does not clean up
-
-        //http://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man3/copyfile.3.html
-        if (::copyfile(sourceFile.c_str(), targetFile.c_str(),
-                       copyState,
-                       COPYFILE_XATTR | COPYFILE_DATA | COPYFILE_EXCL) != 0)
-            //- even though we don't use COPYFILE_STAT, "mode" (considering umask) is still copied! => harmonized with Linux file copy!
-            //- COPYFILE_STAT does not copy file creation time
-        {
-            //evaluate first! errno is not set for COPYFILE_QUIT!
-            if (cbd.exception)
-                std::rethrow_exception(cbd.exception);
-
-            if (!cbd.errorMsg.first.empty())
-                throw FileError(cbd.errorMsg.first, cbd.errorMsg.second);
-
-            const int lastError = errno;
-            std::wstring errorDescr = formatSystemError(L"copyfile", lastError);
-
-            if (lastError == EEXIST)
-            {
-                guardTarget.dismiss(); //don't delete file that existed previously!
-                throw ErrorTargetExisting(getCopyErrorMessage(), errorDescr);
-            }
-
-            throw FileError(getCopyErrorMessage(), errorDescr);
-        }
-
-        int fdSource = 0;
-        if (::copyfile_state_get(copyState, COPYFILE_STATE_SRC_FD, &fdSource) != 0)
-            throwFileError(getCopyErrorMessage(), L"copyfile_state_get, COPYFILE_STATE_SRC_FD", getLastError());
-
-        int fdTarget = 0;
-        if (::copyfile_state_get(copyState, COPYFILE_STATE_DST_FD, &fdTarget) != 0)
-            throwFileError(getCopyErrorMessage(), L"copyfile_state_get, COPYFILE_STATE_DST_FD", getLastError());
-
-        if (::fstat(fdSource, &sourceInfo) != 0)
-            throwFileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtFileName(sourceFile)), L"fstat", getLastError());
-
         struct ::stat targetInfo = {};
-        if (::fstat(fdTarget, &targetInfo) != 0)
+        if (::fstat(fileOut.getHandle(), &targetInfo) != 0)
             throwFileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtFileName(targetFile)), L"fstat", getLastError());
 
-        if (newAttrib)
+        if (newAttrib) //return file statistics
         {
             newAttrib->fileSize         = sourceInfo.st_size;
-			newAttrib->modificationTime = sourceInfo.st_mtimespec.tv_sec; //use same time variable as setFileTimeRaw() for consistency
-            //newAttrib->modificationTime = sourceInfo.st_mtime;          //
+#ifdef  ZEN_MAC
+            newAttrib->modificationTime = sourceInfo.st_mtimespec.tv_sec; //use same time variable like setFileTimeRaw() for consistency
+#else
+            newAttrib->modificationTime = sourceInfo.st_mtime;
+#endif
             newAttrib->sourceFileId     = extractFileId(sourceInfo);
             newAttrib->targetFileId     = extractFileId(targetInfo);
         }
 
-        guardTarget.dismiss();
-    } //make sure target file handle is closed before setting modification time!
+#ifdef ZEN_MAC
+        //using ::copyfile with COPYFILE_DATA seems to trigger bugs unlike our stream-based copying!
+        //=> use ::copyfile for extended attributes only: https://sourceforge.net/p/freefilesync/discussion/help/thread/91384c8a/
+        //http://blog.plasticsfuture.org/2006/03/05/the-state-of-backup-and-cloning-tools-under-mac-os-x/
+        //docs:   http://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man3/copyfile.3.html
+        //source: http://www.opensource.apple.com/source/copyfile/copyfile-103.92.1/copyfile.c
+        if (::fcopyfile(fileIn.getHandle(), fileOut.getHandle(), 0, COPYFILE_XATTR) != 0)
+            throwFileError(replaceCpy(replaceCpy(_("Cannot copy attributes from %x to %y."), L"%x", L"\n" + fmtFileName(sourceFile)), L"%y", L"\n" + fmtFileName(targetFile)), L"copyfile", getLastError());
+#endif
+    } //close output file handle before setting file time
 
-
-    zen::ScopeGuard guardTarget = zen::makeGuard([&] { try { removeFile(targetFile); } catch (FileError&) {} });
-    //same issue like on Linux: we cannot set the target file times (::futimes) while the file descriptor is still open after a write operation:
+    //we cannot set the target file times (::futimes) while the file descriptor is still open after a write operation:
     //this triggers bugs on samba shares where the modification time is set to current time instead.
-    //https://sourceforge.net/p/freefilesync/discussion/help/thread/881357c0/
-    //http://comments.gmane.org/gmane.linux.file-systems.cifs/2854
+    //Linux: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=340236
+    //       http://comments.gmane.org/gmane.linux.file-systems.cifs/2854
+    //OS X:  https://sourceforge.net/p/freefilesync/discussion/help/thread/881357c0/
+#ifdef  ZEN_MAC
     setFileTimeRaw(targetFile, &sourceInfo.st_birthtimespec, sourceInfo.st_mtimespec, ProcSymlink::FOLLOW); //throw FileError
-        //sourceInfo.st_birthtime; -> only seconds-preicions
-        //sourceInfo.st_mtime;     ->
-    guardTarget.dismiss();
+    //sourceInfo.st_birthtime; -> only seconds-precision
+    //sourceInfo.st_mtime;     ->
+#else
+    setFileTime(targetFile, sourceInfo.st_mtime, ProcSymlink::FOLLOW); //throw FileError
+#endif
+
+    guardTarget.dismiss(); //target has been created successfully!
 }
 #endif
 
 /*
-      ------------------
-      |File Copy Layers|
-      ------------------
+               ------------------
+               |File Copy Layers|
+               ------------------
                   copyFile (setup transactional behavior)
-                       |
+                        |
                 copyFileWithPermissions
-                       |
+                        |
                copyFileOsSpecific (solve 8.3 issue)
                         |
 			  copyFileWindowsSelectRoutine
@@ -2436,7 +2313,7 @@ void copyFileWithPermissions(const Zstring& sourceFile,
         //at this point we know we created a new file, so it's fine to delete it for cleanup!
         zen::ScopeGuard guardTargetFile = zen::makeGuard([&] { try { removeFile(targetFile); } catch (FileError&) {}});
 
-        copyObjectPermissions(sourceFile, targetFile, ProcSymlink::FOLLOW); //throw FileError
+        copyItemPermissions(sourceFile, targetFile, ProcSymlink::FOLLOW); //throw FileError
 
         guardTargetFile.dismiss(); //target has been created successfully!
     }

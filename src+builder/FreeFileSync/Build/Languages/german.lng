@@ -630,8 +630,8 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>FreeFileSync is up to date.</source>
 <target>FreeFileSync ist auf dem neuesten Stand.</target>
 
-<source>Unable to connect to FreeFileSync.org.</source>
-<target>Es kann keine Verbindung zu FreeFileSync.org aufgebaut werden.</target>
+<source>Unable to connect to www.freefilesync.org.</source>
+<target>Es kann keine Verbindung zu www.freefilesync.org aufgebaut werden.</target>
 
 <source>Cannot find current FreeFileSync version number online. Do you want to check manually?</source>
 <target>Die aktuelle FreeFileSync Versionsnummer wurde online nicht gefunden. Möchten Sie manuell prüfen?</target>
@@ -877,7 +877,7 @@ Die Befehlszeile wird ausgelöst, wenn:
 <target>Maximum:</target>
 
 <source>Select filter rules to exclude certain files from synchronization. Enter file paths relative to their corresponding folder pair.</source>
-<target>Wählen Sie Filterregeln aus, um einzelne Dateien von der Synchronisation auszuschließen. Geben Sie Dateipfade relativ zu ihrem zugehörigen Ordnerpaar an.</target>
+<target>Wählen Sie Filterregeln aus, um einzelne Dateien von der Synchronisation auszuschließen. Geben Sie Dateipfade relativ zum zugehörigen Ordnerpaar an.</target>
 
 <source>C&lear</source>
 <target>&Löschen</target>

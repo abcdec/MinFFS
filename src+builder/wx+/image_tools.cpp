@@ -76,7 +76,6 @@ wxImage zen::stackImages(const wxImage& img1, const wxImage& img2, ImageStackLay
     wxImage output(width, height);
     output.SetAlpha();
     ::memset(output.GetAlpha(), wxIMAGE_ALPHA_TRANSPARENT, width * height);
-    ::memset(output.GetData (), 0, 3 * width * height); //redundant due to transparent alpha
 
     auto calcPos = [&](int imageExtent, int totalExtent)
     {
@@ -184,4 +183,47 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
         *dataPtr++ = col.Blue();
     }
     return output;
+}
+
+
+void zen::convertToVanillaImage(wxImage& img)
+{
+    if (!img.HasAlpha())
+    {
+        unsigned char mask_r = 0;
+        unsigned char mask_g = 0;
+        unsigned char mask_b = 0;
+        const bool haveMask = img.HasMask() && img.GetOrFindMaskColour(&mask_r, &mask_g, &mask_b);
+		//check for mask before calling wxImage::GetOrFindMaskColour() to skip needlessly searching for new mask color
+
+        img.SetAlpha();
+        ::memset(img.GetAlpha(), wxIMAGE_ALPHA_OPAQUE, img.GetWidth() * img.GetHeight());
+
+		//wxWidgets, as always, tries to be more clever than it really is and fucks up wxStaticBitmap if wxBitmap is fully opaque:
+		img.GetAlpha()[img.GetWidth() * img.GetHeight() - 1] = 254;
+
+        if (haveMask)
+        {
+            img.SetMask(false);
+            unsigned char*       alphaPtr = img.GetAlpha();
+            const unsigned char* dataPtr  = img.GetData();
+
+            const int pixelCount = img.GetWidth() * img.GetHeight();
+            for (int i = 0; i < pixelCount; ++ i)
+            {
+                const unsigned char r = *dataPtr++;
+                const unsigned char g = *dataPtr++;
+                const unsigned char b = *dataPtr++;
+
+                if (r == mask_r &&
+                    g == mask_g &&
+                    b == mask_b)
+                    alphaPtr[i] = wxIMAGE_ALPHA_TRANSPARENT;
+            }
+        }
+    }
+	else
+	{
+		assert(!img.HasMask());
+	}
 }

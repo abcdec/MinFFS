@@ -615,8 +615,8 @@ Komut şu durumlarda yürütülür:
 <source>FreeFileSync is up to date.</source>
 <target>FreeFileSync güncel.</target>
 
-<source>Unable to connect to FreeFileSync.org.</source>
-<target>FreeFileSync.org sitesine bağlanılamadı.</target>
+<source>Unable to connect to www.freefilesync.org.</source>
+<target>www.freefilesync.org sitesine bağlanılamadı.</target>
 
 <source>Cannot find current FreeFileSync version number online. Do you want to check manually?</source>
 <target>Geçerli FreeFileSync sürüm numarası çevrimiçi olarak bulunamıyor. El ile denetlemek ister misiniz?</target>

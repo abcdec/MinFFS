@@ -39,18 +39,18 @@ Zstring addStatusToLogfilename(const Zstring& logfilepath, const std::wstring& s
 void limitLogfileCount(const Zstring& logdir, const std::wstring& jobname, size_t maxCount, const std::function<void()>& onUpdateStatus) //noexcept
 {
     std::vector<Zstring> logFiles;
-	const Zstring prefix = utfCvrtTo<Zstring>(jobname);
+    const Zstring prefix = utfCvrtTo<Zstring>(jobname);
 
-traverseFolder(logdir, [&](const FileInfo& fi)
-{ 
+    traverseFolder(logdir, [&](const FileInfo& fi)
+    {
         const Zstring fileName(fi.shortName);
         if (startsWith(fileName, prefix) && endsWith(fileName, Zstr(".log")))
             logFiles.push_back(fi.fullPath);
 
         if (onUpdateStatus)
             onUpdateStatus();
-}, 
-				nullptr, nullptr, [&](const std::wstring& errorMsg){ assert(false); }); //errors are not really critical in this context
+    },
+    nullptr, nullptr, [&](const std::wstring& errorMsg) { assert(false); }); //errors are not really critical in this context
 
     if (logFiles.size() <= maxCount)
         return;
@@ -78,11 +78,11 @@ std::unique_ptr<FileOutput> prepareNewLogfile(const Zstring& logfileDirectory, /
     //create logfile directory if required
     makeDirectory(logfileDir); //throw FileError
 
-    const std::string colon = "\xcb\xb8"; //="modifier letter raised colon" => regular colon is forbidden in file names on Windows and OS X
-    const auto format = utfCvrtTo<Zstring>("%Y-%m-%d %H" + colon + "%M" + colon + "%S");
+    //const std::string colon = "\xcb\xb8"; //="modifier letter raised colon" => regular colon is forbidden in file names on Windows and OS X
+    //=> too many issues, most notably cmd.exe is not Unicode-awere: http://sourceforge.net/p/freefilesync/discussion/open-discussion/thread/c559a5fb/
 
     //assemble logfile name
-    const Zstring body = appendSeparator(logfileDir) + utfCvrtTo<Zstring>(jobName) + Zstr(" ") + formatTime<Zstring>(format, timeStamp);
+    const Zstring body = appendSeparator(logfileDir) + utfCvrtTo<Zstring>(jobName) + Zstr(" ") + formatTime<Zstring>(Zstr("%Y-%m-%d %H%M%S"), timeStamp);
 
     //ensure uniqueness
     Zstring filepath = body + Zstr(".log");

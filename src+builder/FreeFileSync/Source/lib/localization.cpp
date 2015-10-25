@@ -124,7 +124,7 @@ struct LessTranslation
                                        rhs.languageName.c_str(), //__in  LPCTSTR lpString2,
                                        static_cast<int>(rhs.languageName.size())); //__in  int cchCount2
         if (rv == 0)
-            throw std::runtime_error("Error comparing strings.");
+            throw std::runtime_error("Error comparing strings (CompareString). " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
         else
             return rv == CSTR_LESS_THAN; //convert to C-style string compare result
 
@@ -352,6 +352,7 @@ wxLanguage mapLanguageDialect(wxLanguage language)
         //case wxLANGUAGE_DANISH:
         //case wxLANGUAGE_FINNISH:
         //case wxLANGUAGE_GREEK:
+        //case wxLANGUAGE_HINDI:
         //case wxLANGUAGE_HEBREW:
         //case wxLANGUAGE_HUNGARIAN:
         //case wxLANGUAGE_JAPANESE:

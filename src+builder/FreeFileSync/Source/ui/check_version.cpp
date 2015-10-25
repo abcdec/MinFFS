@@ -8,19 +8,25 @@
 #include <zen/string_tools.h>
 #include <zen/i18n.h>
 #include <zen/utf.h>
+#include <zen/scope_guard.h>
+#include <zen/build_info.h>
 #include <wx/timer.h>
 #include <wx/utils.h>
 #include <wx+/popup_dlg.h>
 #include "../version/version.h"
-#include <zen/scope_guard.h>
 
 #ifdef ZEN_WIN
     #include <zen/win.h> //tame wininet include
+    #include <zen/win_ver.h>
     #include <wininet.h>
 
-#elif defined ZEN_LINUX || defined ZEN_MAC
+#elif defined ZEN_LINUX
     #include <wx/protocol/http.h>
     #include <wx/sstream.h>
+#elif defined ZEN_MAC
+    #include <wx/protocol/http.h>
+    #include <wx/sstream.h>
+    #include <CoreServices/CoreServices.h> //Gestalt()
 #endif
 
 using namespace zen;
@@ -28,22 +34,91 @@ using namespace zen;
 
 namespace
 {
-std::wstring getUserAgentName()
+std::wstring getIso639Language()
 {
-    std::wstring agentName = std::wstring(L"FreeFileSync ") + zen::currentVersion;
-#ifdef ZEN_WIN
-    agentName += L" Windows";
-#elif defined ZEN_LINUX
-    agentName += L" Linux";
-#elif defined ZEN_MAC
-    agentName += L" Mac";
-#else
-#error wtf
+#ifdef ZEN_WIN //use a more reliable function than wxWidgets:
+    const int bufSize = 10;
+    wchar_t buf[bufSize] = {};
+    int rv = ::GetLocaleInfo(LOCALE_USER_DEFAULT,   //_In_       LCID Locale,
+                             LOCALE_SISO639LANGNAME,//_In_       LCTYPE LCType,
+                             buf,                   //_Out_opt_  LPTSTR lpLCData,
+                             bufSize);              //_In_       int cchData
+    if (0 < rv && rv < bufSize)
+        return buf; //MSDN: "This can be a 3-letter code for languages that don't have a 2-letter code"!
+    else assert(false);
 #endif
     const std::wstring localeName(wxLocale::GetLanguageCanonicalName(wxLocale::GetSystemLanguage()));
-    if (!localeName.empty())
-        agentName += L" " + localeName;
+    if (localeName.empty())
+        return std::wstring();
 
+    if (contains(localeName, L"_"))
+        return beforeLast(localeName, L"_");
+
+    assert(localeName.size() == 2);
+    return localeName;
+}
+
+std::wstring getIso3166Country()
+{
+#ifdef ZEN_WIN //use a more reliable function than wxWidgets:
+    const int bufSize = 10;
+    wchar_t buf[bufSize] = {};
+    int rv = ::GetLocaleInfo(LOCALE_USER_DEFAULT,    //_In_       LCID Locale,
+                             LOCALE_SISO3166CTRYNAME,//_In_       LCTYPE LCType,
+                             buf,                    //_Out_opt_  LPTSTR lpLCData,
+                             bufSize);               //_In_       int cchData
+    if (0 < rv && rv < bufSize)
+        return buf; //MSDN: "This can also return a number, such as "029" for Caribbean."!
+    else assert(false);
+#endif
+    const std::wstring localeName(wxLocale::GetLanguageCanonicalName(wxLocale::GetSystemLanguage()));
+    if (localeName.empty())
+        return std::wstring();
+
+    if (contains(localeName, L"_"))
+        return afterLast(localeName, L"_");
+
+    return std::wstring();
+}
+
+
+std::wstring getUserAgentName() //coordinate with on_check_latest_version.php
+{
+    std::wstring agentName = std::wstring(L"FreeFileSync (") + zen::currentVersion;
+
+#ifdef ZEN_WIN
+    agentName += L" Windows";
+    const auto osvMajor = getOsVersion().major;
+    const auto osvMinor = getOsVersion().minor;
+
+#elif defined ZEN_LINUX
+    int osvMajor = 0;
+    int osvMinor = 0;
+    agentName += L" Linux";
+
+#elif defined ZEN_MAC
+    agentName += L" Mac";
+    SInt32 osvMajor = 0;
+    SInt32 osvMinor = 0;
+    ::Gestalt(gestaltSystemVersionMajor, &osvMajor);
+    ::Gestalt(gestaltSystemVersionMinor, &osvMinor);
+#endif
+    agentName += L" " + numberTo<std::wstring>(osvMajor) + L"." + numberTo<std::wstring>(osvMinor);
+
+    agentName +=
+#ifdef ZEN_WIN
+        running64BitWindows()
+#elif defined ZEN_LINUX || defined ZEN_MAC
+        zen::is64BitBuild
+#endif
+        ? L" 64" : L" 32";
+
+    const std::wstring isoLang    = getIso639Language();
+    const std::wstring isoCountry = getIso3166Country();
+    agentName += L" " + (!isoLang   .empty() ? isoLang    : L"zz");
+    agentName += L" " + (!isoCountry.empty() ? isoCountry : L"ZZ");
+
+    agentName += L")";
     return agentName;
 }
 
@@ -147,6 +222,7 @@ OutputIterator readBytesUrl(const wchar_t* url, OutputIterator result) //throw I
 #else
 bool getStringFromUrl(const wxString& server, const wxString& page, int timeout, wxString* output, int level = 0) //true on successful connection
 {
+    wxWindowDisabler dummy;
     wxHTTP webAccess;
     webAccess.SetHeader(L"content-type", L"text/html; charset=utf-8");
     webAccess.SetHeader(L"USER-AGENT", getUserAgentName());
@@ -204,10 +280,9 @@ enum GetVerResult
     GET_VER_PAGE_NOT_FOUND //version file seems to have moved! => trigger an update!
 };
 
-GetVerResult getOnlineVersion(wxString& version) //empty string on error;
+GetVerResult getOnlineVersion(wxString& version)
 {
-#ifdef ZEN_WIN
-    //internet access supporting proxy connections
+#ifdef ZEN_WIN //internet access supporting proxy connections
     std::vector<char> output;
     try
     {
@@ -215,22 +290,20 @@ GetVerResult getOnlineVersion(wxString& version) //empty string on error;
     }
     catch (const InternetConnectionError&)
     {
-        return canAccessUrl(L"http://www.freefilesync.org/") ? GET_VER_PAGE_NOT_FOUND : GET_VER_NO_CONNECTION;
+        return canAccessUrl(L"http://www.google.com/") ? GET_VER_PAGE_NOT_FOUND : GET_VER_NO_CONNECTION;
     }
-
     output.push_back('\0');
     version = utfCvrtTo<wxString>(&output[0]);
-    return GET_VER_SUCCESS;
 
 #elif defined ZEN_LINUX || defined ZEN_MAC
-    wxWindowDisabler dummy;
-
-    if (getStringFromUrl(L"www.freefilesync.org", L"/latest_version.txt", 5, &version))
-        return GET_VER_SUCCESS;
-
-    const bool canConnectToSf = getStringFromUrl(L"www.freefilesync.org", L"/", 1, nullptr);
-    return canConnectToSf ? GET_VER_PAGE_NOT_FOUND : GET_VER_NO_CONNECTION;
+    if (!getStringFromUrl(L"www.freefilesync.org", L"/latest_version.txt", 5, &version))
+    {
+        const bool canConnectToSf = getStringFromUrl(L"www.google.com", L"/", 1, nullptr);
+        return canConnectToSf ? GET_VER_PAGE_NOT_FOUND : GET_VER_NO_CONNECTION;
+    }
 #endif
+	trim(version); //Windows: remove trailing blank and newline
+    return version.empty() ? GET_VER_PAGE_NOT_FOUND : GET_VER_SUCCESS; //empty version possible??
 }
 
 
@@ -246,27 +319,63 @@ std::vector<size_t> parseVersion(const wxString& version)
 }
 
 
-bool haveNewerVersion(const wxString& onlineVersion)
+/*constexpr*/ long getInactiveCheckId()
+{
+    //use current version to calculate a changing number for the inactive state near UTC begin, in order to always check for updates after installing a new version
+    //=> convert version into 11-based *unique* number (this breaks lexicographical version ordering, but that's irrelevant!)
+    long id = 0;
+    const wchar_t* first = zen::currentVersion;
+    const wchar_t* last = first + zen::strLength(currentVersion);
+    std::for_each(first, last, [&](wchar_t c)
+    {
+        id *= 11;
+        if (L'0' <= c && c <= L'9')
+            id += c - L'0';
+        else
+        {
+            assert(c == VERSION_SEP);
+            id += 10;
+        }
+    });
+    assert(0 < id && id < 3600 * 24 * 365); //as long as value is within a year after UTC begin (1970) there's no risk to clash with *current* time
+    return id;
+}
+}
+
+
+bool zen::isNewerFreeFileSyncVersion(const wxString& onlineVersion)
 {
     std::vector<size_t> current = parseVersion(zen::currentVersion);
     std::vector<size_t> online  = parseVersion(onlineVersion);
 
-    if (online.empty() || online[0] == 0) //online version may be "This website has been moved..." In this case better check for an update
+    if (online.empty() || online[0] == 0) //online version string may be "This website has been moved..." In this case better check for an update
         return true;
 
     return std::lexicographical_compare(current.begin(), current.end(),
                                         online .begin(), online .end());
 }
+
+
+bool zen::updateCheckActive(long lastUpdateCheck)
+{
+    return lastUpdateCheck != getInactiveCheckId();
 }
 
 
-void zen::checkForUpdateNow(wxWindow* parent)
+void zen::disableUpdateCheck(long& lastUpdateCheck)
+{
+    lastUpdateCheck = getInactiveCheckId();
+}
+
+
+void zen::checkForUpdateNow(wxWindow* parent, wxString& lastOnlineVersion)
 {
     wxString onlineVersion;
     switch (getOnlineVersion(onlineVersion))
     {
         case GET_VER_SUCCESS:
-            if (haveNewerVersion(onlineVersion))
+			lastOnlineVersion = onlineVersion;
+            if (isNewerFreeFileSyncVersion(onlineVersion))
             {
                 switch (showConfirmationDialog(parent, DialogInfoType::INFO, PopupDialogCfg().
                                                setTitle(_("Check for Program Updates")).
@@ -274,7 +383,7 @@ void zen::checkForUpdateNow(wxWindow* parent)
                                                _("&Download")))
                 {
                     case ConfirmationButton::DO_IT:
-                        wxLaunchDefaultBrowser(L"http://freefilesync.org/get_latest.php");
+                        wxLaunchDefaultBrowser(L"http://www.freefilesync.org/get_latest.php");
                         break;
                     case ConfirmationButton::CANCEL:
                         break;
@@ -289,17 +398,18 @@ void zen::checkForUpdateNow(wxWindow* parent)
         case GET_VER_NO_CONNECTION:
             showNotificationDialog(parent, DialogInfoType::ERROR2, PopupDialogCfg().
                                    setTitle(("Check for Program Updates")).
-                                   setMainInstructions(_("Unable to connect to FreeFileSync.org.")));
+                                   setMainInstructions(_("Unable to connect to www.freefilesync.org.")));
             break;
 
         case GET_VER_PAGE_NOT_FOUND:
+			lastOnlineVersion = L"unknown";
             switch (showConfirmationDialog(parent, DialogInfoType::ERROR2, PopupDialogCfg().
                                            setTitle(_("Check for Program Updates")).
                                            setMainInstructions(_("Cannot find current FreeFileSync version number online. Do you want to check manually?")),
                                            _("&Check")))
             {
                 case ConfirmationButton::DO_IT:
-                    wxLaunchDefaultBrowser(L"http://www.freefilesync.org/");
+                    wxLaunchDefaultBrowser(L"http://www.freefilesync.org/get_latest.php");
                     break;
                 case ConfirmationButton::CANCEL:
                     break;
@@ -309,9 +419,9 @@ void zen::checkForUpdateNow(wxWindow* parent)
 }
 
 
-void zen::checkForUpdatePeriodically(wxWindow* parent, long& lastUpdateCheck, const std::function<void()>& onBeforeInternetAccess)
+void zen::checkForUpdatePeriodically(wxWindow* parent, long& lastUpdateCheck, wxString& lastOnlineVersion, const std::function<void()>& onBeforeInternetAccess)
 {
-    if (lastUpdateCheck != -1)
+    if (updateCheckActive(lastUpdateCheck))
     {
         if (wxGetLocalTime() >= lastUpdateCheck + 7 * 24 * 3600) //check weekly
         {
@@ -321,8 +431,9 @@ void zen::checkForUpdatePeriodically(wxWindow* parent, long& lastUpdateCheck, co
             {
                 case GET_VER_SUCCESS:
                     lastUpdateCheck = wxGetLocalTime();
+				lastOnlineVersion = onlineVersion;
 
-                    if (haveNewerVersion(onlineVersion))
+                    if (isNewerFreeFileSyncVersion(onlineVersion))
                     {
                         switch (showConfirmationDialog(parent, DialogInfoType::INFO, PopupDialogCfg().
                                                        setTitle(_("Check for Program Updates")).
@@ -342,13 +453,14 @@ void zen::checkForUpdatePeriodically(wxWindow* parent, long& lastUpdateCheck, co
                     break; //ignore this error
 
                 case GET_VER_PAGE_NOT_FOUND:
+					lastOnlineVersion = L"unknown";
                     switch (showConfirmationDialog(parent, DialogInfoType::ERROR2, PopupDialogCfg().
                                                    setTitle(_("Check for Program Updates")).
                                                    setMainInstructions(_("Cannot find current FreeFileSync version number online. Do you want to check manually?")),
                                                    _("&Check")))
                     {
                         case ConfirmationButton::DO_IT:
-                            wxLaunchDefaultBrowser(L"http://www.freefilesync.org/");
+                            wxLaunchDefaultBrowser(L"http://www.freefilesync.org/get_latest.php");
                             break;
                         case ConfirmationButton::CANCEL:
                             break;

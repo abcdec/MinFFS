@@ -508,14 +508,14 @@ MainDialog::MainDialog(const Zstring& globalConfigFile,
     //set icons for this dialog
     SetIcon(getFfsIcon()); //set application icon
 
-    m_bpButtonCmpConfig ->SetBitmapLabel(getResourceImage(L"cfg_compare"));
-    m_bpButtonSyncConfig->SetBitmapLabel(getResourceImage(L"cfg_sync"));
-    m_bpButtonNew       ->SetBitmapLabel(getResourceImage(L"new"));
-    m_bpButtonOpen      ->SetBitmapLabel(getResourceImage(L"load"));
-    m_bpButtonSaveAs    ->SetBitmapLabel(getResourceImage(L"sync"));
+    m_bpButtonCmpConfig  ->SetBitmapLabel(getResourceImage(L"cfg_compare"));
+    m_bpButtonSyncConfig ->SetBitmapLabel(getResourceImage(L"cfg_sync"));
+    m_bpButtonNew        ->SetBitmapLabel(getResourceImage(L"new"));
+    m_bpButtonOpen       ->SetBitmapLabel(getResourceImage(L"load"));
+    m_bpButtonSaveAs     ->SetBitmapLabel(getResourceImage(L"sync"));
     m_bpButtonSaveAsBatch->SetBitmapLabel(getResourceImage(L"batch"));
-    m_bpButtonAddPair   ->SetBitmapLabel(getResourceImage(L"item_add"));
-    m_bpButtonHideSearch->SetBitmapLabel(getResourceImage(L"close_panel"));
+    m_bpButtonAddPair    ->SetBitmapLabel(getResourceImage(L"item_add"));
+    m_bpButtonHideSearch ->SetBitmapLabel(getResourceImage(L"close_panel"));
 
     warn_static("remove after test")
 #ifdef ZEN_MAC
@@ -693,8 +693,18 @@ MainDialog::MainDialog(const Zstring& globalConfigFile,
         languageMenuItemMap.emplace(newItem->GetId(), entry.languageID);
 
         //connect event
-        this->Connect(newItem->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainDialog::OnMenuLanguageSwitch));
-        m_menuLanguages->Append(newItem);
+        this->Connect(newItem->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainDialog::OnMenuLanguageSwitch), nullptr, this);
+        m_menuLanguages->Append(newItem); //pass ownership
+    }
+
+    //show FreeFileSync update reminder
+    if (!globalSettings.gui.lastOnlineVersion.empty() && isNewerFreeFileSyncVersion(globalSettings.gui.lastOnlineVersion))
+    {
+        auto menu = new wxMenu();
+        wxMenuItem* newItem = new wxMenuItem(menu, wxID_ANY, _("&Download"));
+        this->Connect(newItem->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainDialog::OnMenuDownloadNewVersion));
+        menu->Append(newItem); //pass ownership
+        m_menubar1->Append(menu, L"\u21D2" L" " + _("A new version of FreeFileSync is available:")  + L" " + globalSettings.gui.lastOnlineVersion + L" " L"\u21D0");
     }
 
     //notify about (logical) application main window => program won't quit, but stay on this dialog
@@ -958,7 +968,7 @@ void MainDialog::setGlobalCfgOnInit(const xmlAccess::XmlGlobalSettings& globalSe
 
     auiMgr.GetPane(m_panelSearch).Hide(); //no need to show it on startup
 
-    m_menuItemCheckVersionAuto->Check(globalCfg.gui.lastUpdateCheck != -1);
+    m_menuItemCheckVersionAuto->Check(updateCheckActive(globalCfg.gui.lastUpdateCheck));
 
     auiMgr.Update();
 }
@@ -3378,8 +3388,7 @@ inline
 wxBitmap buttonPressed(const std::string& name)
 {
     wxBitmap background = getResourceImage(L"buttonPressed");
-    return mirrorIfRtl(
-               layOver(getResourceImage(utfCvrtTo<wxString>(name)), background));
+    return mirrorIfRtl(layOver(getResourceImage(utfCvrtTo<wxString>(name)), background));
 }
 
 
@@ -4594,15 +4603,25 @@ void MainDialog::OnMenuExportFileList(wxCommandEvent& event)
 
 void MainDialog::OnMenuCheckVersion(wxCommandEvent& event)
 {
-    zen::checkForUpdateNow(this);
+    zen::checkForUpdateNow(this, globalCfg.gui.lastOnlineVersion);
+}
+
+
+void MainDialog::OnMenuDownloadNewVersion(wxCommandEvent& event)
+{
+    wxLaunchDefaultBrowser(L"http://www.freefilesync.org/get_latest.php");
 }
 
 
 void MainDialog::OnMenuCheckVersionAutomatically(wxCommandEvent& event)
 {
-    globalCfg.gui.lastUpdateCheck = globalCfg.gui.lastUpdateCheck == -1 ? 0 : -1;
-    m_menuItemCheckVersionAuto->Check(globalCfg.gui.lastUpdateCheck != -1);
-    zen::checkForUpdatePeriodically(this, globalCfg.gui.lastUpdateCheck, [&] { flashStatusInformation(_("Searching for program updates...")); });
+    if (updateCheckActive(globalCfg.gui.lastUpdateCheck))
+        disableUpdateCheck(globalCfg.gui.lastUpdateCheck);
+    else
+        globalCfg.gui.lastUpdateCheck = 0; //reset to GlobalSetting.xml default value!
+
+    m_menuItemCheckVersionAuto->Check(updateCheckActive(globalCfg.gui.lastUpdateCheck));
+    zen::checkForUpdatePeriodically(this, globalCfg.gui.lastUpdateCheck, globalCfg.gui.lastOnlineVersion, [&] { flashStatusInformation(_("Searching for program updates...")); });
 }
 
 
@@ -4612,7 +4631,7 @@ void MainDialog::OnRegularUpdateCheck(wxIdleEvent& event)
     Disconnect(wxEVT_IDLE, wxIdleEventHandler(MainDialog::OnRegularUpdateCheck), nullptr, this);
 
     if (manualProgramUpdateRequired())
-        zen::checkForUpdatePeriodically(this, globalCfg.gui.lastUpdateCheck, [&] { flashStatusInformation(_("Searching for program updates...")); });
+        zen::checkForUpdatePeriodically(this, globalCfg.gui.lastUpdateCheck, globalCfg.gui.lastOnlineVersion, [&] { flashStatusInformation(_("Searching for program updates...")); });
 }
 
 

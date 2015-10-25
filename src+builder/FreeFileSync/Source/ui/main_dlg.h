@@ -249,6 +249,7 @@ private:
     void OnMenuFindItem      (wxCommandEvent& event) override;
     void OnMenuCheckVersion  (wxCommandEvent& event) override;
     void OnMenuCheckVersionAutomatically(wxCommandEvent& event) override;
+    void OnMenuDownloadNewVersion       (wxCommandEvent& event);
     void OnMenuAbout         (wxCommandEvent& event) override;
     void OnShowHelp          (wxCommandEvent& event) override;
     void OnMenuQuit          (wxCommandEvent& event) override { Close(); }

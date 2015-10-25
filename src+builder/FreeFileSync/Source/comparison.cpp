@@ -473,7 +473,7 @@ std::list<std::shared_ptr<BaseDirPair>> ComparisonBuffer::compareByContent(const
 
     const std::wstring txtComparingContentOfFiles = _("Comparing content of files %x");
 
-	//PERF_START;
+    //PERF_START;
 
     //compare files (that have same size) bytewise...
     for (FilePair* fileObj : filesToCompareBytewise)

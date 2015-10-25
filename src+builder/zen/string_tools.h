@@ -560,9 +560,9 @@ Num extractInteger(const S& str, bool& hasMinusSign) //very fast conversion to i
     }
 
     Num number = 0;
-    for (const CharType* iter = first; iter != last; ++iter)
+    for (const CharType* it = first; it != last; ++it)
     {
-        const CharType c = *iter;
+        const CharType c = *it;
         if (static_cast<CharType>('0') <= c && c <= static_cast<CharType>('9'))
         {
             number *= 10;

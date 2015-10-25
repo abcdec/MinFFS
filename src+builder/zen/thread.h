@@ -23,7 +23,7 @@
 #endif
 #ifdef _MSC_VER
     #pragma warning(push)
-    #pragma warning(disable : 4702 4913) //unreachable code; user defined binary operator ',' exists but no overload could convert all operands, default built-in binary operator ',' used
+    #pragma warning(disable: 4702 4913) //unreachable code; user defined binary operator ',' exists but no overload could convert all operands, default built-in binary operator ',' used
 #endif
 
 #include <boost/thread.hpp>
@@ -76,6 +76,7 @@ private:
     std::shared_ptr<AsyncResult> asyncResult;
     size_t jobsTotal_;
 };
+
 
 
 

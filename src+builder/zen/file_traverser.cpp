@@ -68,6 +68,8 @@ void zen::traverseFolder(const Zstring& dirPath,
 
             //skip "." and ".."
             const Zchar* const shortName = findData.cFileName;
+
+			if (shortName[0] == 0) throw FileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtFileName(dirPath)), L"Data corruption: Found item without name.");
             if (shortName[0] == L'.' &&
                 (shortName[1] == 0 || (shortName[1] == L'.' && shortName[2] == 0)))
                 continue;
@@ -125,6 +127,8 @@ void zen::traverseFolder(const Zstring& dirPath,
 
             //don't return "." and ".."
             const char* shortName = dirEntry->d_name;
+
+			if (shortName[0] == 0) throw FileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtFileName(dirPath)), L"Data corruption: Found item without name.");
             if (shortName[0] == '.' &&
                 (shortName[1] == 0 || (shortName[1] == '.' && shortName[2] == 0)))
                 continue;
