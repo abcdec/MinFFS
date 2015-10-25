@@ -1321,17 +1321,19 @@ void Grid::updateWindowSizes(bool updateScrollbar)
 
     auto getMainWinSize = [&](const wxSize& clientSize) { return wxSize(std::max(0, clientSize.GetWidth() - rowLabelWidth), std::max(0, clientSize.GetHeight() - colLabelHeight)); };
 
-    auto setScrollbars2 = [&](int logWidth, int logHeight) //replace SetScrollbars, which loses precision to pixelsPerUnitX for some brain-dead reason
+    auto setScrollbars2 = [&](int logWidth, int logHeight) //replace SetScrollbars, which loses precision of pixelsPerUnitX for some brain-dead reason
     {
-        int ppsuX = 0; //pixel per scroll unit
+        mainWin_->SetVirtualSize(logWidth, logHeight); //set before calling SetScrollRate(): 
+		//else SetScrollRate() would fail to preserve scroll position when "new virtual pixel-pos > old virtual height"
+
+		int ppsuX = 0; //pixel per scroll unit
         int ppsuY = 0;
         GetScrollPixelsPerUnit(&ppsuX, &ppsuY);
 
         const int ppsuNew = rowLabelWin_->getRowHeight();
         if (ppsuX != ppsuNew || ppsuY != ppsuNew) //support polling!
-            SetScrollRate(ppsuNew, ppsuNew); //internally calls AdjustScrollbars()!
+            SetScrollRate(ppsuNew, ppsuNew); //internally calls AdjustScrollbars() and GetVirtualSize()!
 
-        mainWin_->SetVirtualSize(logWidth, logHeight);
         AdjustScrollbars(); //lousy wxWidgets design decision: internally calls mainWin_->GetClientSize() without considering impact of scrollbars!
         //Attention: setting scrollbars triggers *synchronous* resize event if scrollbars are shown or hidden! => updateWindowSizes() recursion! (Windows)
     };

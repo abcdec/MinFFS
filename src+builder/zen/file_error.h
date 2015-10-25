@@ -68,7 +68,8 @@ std::wstring operator+(const std::wstring& lhs, const Zstring& rhs) { return std
 //we musn't put our overloads in namespace std, but namespace zen (+ using directive) is sufficient
 
 
-    
+#ifdef TODO_MinFFS_openDir_DLL_PROTO
+#else//TODO_MinFFS_openDir_DLL_PROTO
 inline
 std::wstring fmtFileName(const Zstring& filepath)
 {
@@ -78,15 +79,6 @@ std::wstring fmtFileName(const Zstring& filepath)
     output += L'\"';
     return output;
 }
-
-#ifdef TODO_MinFFS_openDir_DLL_PROTO
-#else//TODO_MinFFS_openDir_DLL_PROTO
-inline
-std::wstring fmtFileName(const std::wstring& filepath)
-{
-    Zstring zstringFilePath(filepath);
-    return fmtFileName(zstringFilePath);
-}    
 #endif//TODO_MinFFS_openDir_DLL_PROTO
 }
 

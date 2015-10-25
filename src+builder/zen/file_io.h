@@ -12,9 +12,6 @@
 
 #ifdef ZEN_WIN
     #include "win.h" //includes "windows.h"
-#elif defined ZEN_LINUX || defined ZEN_MAC
-    #include <cstdio>
-    #include <sys/stat.h>
 #endif
 
 
@@ -26,12 +23,12 @@ namespace zen
     static const char LINE_BREAK[] = "\n"; //since OS X apple uses newline, too
 #endif
 
-//buffered file IO optimized for sequential read/write accesses + better error reporting + long path support + following symlinks
+//OS-buffered file IO optimized for sequential read/write accesses + better error reporting + long path support + following symlinks
 
 #ifdef ZEN_WIN
     typedef HANDLE FileHandle;
 #elif defined ZEN_LINUX || defined ZEN_MAC
-    typedef FILE* FileHandle;
+    typedef int FileHandle;
 #endif
 
 class FileInput : public FileInputBase
@@ -42,6 +39,7 @@ public:
     ~FileInput();
 
     size_t read(void* buffer, size_t bytesToRead) override; //throw FileError; returns actual number of bytes read
+    FileHandle getHandle() { return fileHandle; }
 
 private:
     FileHandle fileHandle;
@@ -56,45 +54,11 @@ public:
     ~FileOutput();
 
     void write(const void* buffer, size_t bytesToWrite) override; //throw FileError
+    FileHandle getHandle() { return fileHandle; }
 
 private:
     FileHandle fileHandle;
 };
-
-#if defined ZEN_LINUX || defined ZEN_MAC
-warn_static("get rid of FileInputUnbuffered/FileOutputUnbuffered, use fdopen instead")
-
-class FileInputUnbuffered : public FileInputBase
-{
-public:
-    FileInputUnbuffered(const Zstring& filepath); //throw FileError
-    ~FileInputUnbuffered();
-
-    //considering safe-read.c it seems buffer size should be a multiple of 8192
-    size_t read(void* buffer, size_t bytesToRead) override; //throw FileError; returns actual number of bytes read
-    //do NOT rely on partially filled buffer meaning EOF!
-
-    int getDescriptor() { return fdFile;}
-
-private:
-    int fdFile;
-};
-
-class FileOutputUnbuffered : public FileOutputBase
-{
-public:
-    //creates a new file (no overwrite allowed!)
-    FileOutputUnbuffered(const Zstring& filepath, mode_t mode); //throw FileError, ErrorTargetExisting
-    FileOutputUnbuffered(int fd, const Zstring& filepath); //takes ownership!
-    ~FileOutputUnbuffered();
-
-    void write(const void* buffer, size_t bytesToWrite) override; //throw FileError
-    int getDescriptor() { return fdFile;}
-
-private:
-    int fdFile;
-};
-#endif
 }
 
 #endif //FILEIO_89578342758342572345

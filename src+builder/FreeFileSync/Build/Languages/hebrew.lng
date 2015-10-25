@@ -615,8 +615,8 @@ The command is triggered if:
 <source>FreeFileSync is up to date.</source>
 <target>FreeFileSync מעודכן לגירסה האחרונה.</target>
 
-<source>Unable to connect to FreeFileSync.org.</source>
-<target>אין תקשורת אל FreeFileSync.org</target>
+<source>Unable to connect to www.freefilesync.org.</source>
+<target>אין תקשורת אל www.freefilesync.org</target>
 
 <source>Cannot find current FreeFileSync version number online. Do you want to check manually?</source>
 <target>לא מוצא מספר גירסה עדכנית של FreeFileSync באופן מכוון. האם אתה רוצה לבדוק באופן ידני?</target>

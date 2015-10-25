@@ -111,27 +111,6 @@ FFSTranslation::FFSTranslation(const Zstring& filepath, wxLanguage languageId) :
 }
 
 
-class FindLngfiles : public zen::TraverseCallback
-{
-public:
-    FindLngfiles(std::vector<Zstring>& lngFiles) : lngFiles_(lngFiles) {}
-
-    void onFile(const Zchar* shortName, const Zstring& filepath, const FileInfo& details) override
-    {
-        if (endsWith(filepath, Zstr(".lng")))
-            lngFiles_.push_back(filepath);
-    }
-
-    HandleLink onSymlink(const Zchar* shortName, const Zstring& linkpath, const SymlinkInfo& details) override { return LINK_SKIP; }
-    TraverseCallback* onDir(const Zchar* shortName, const Zstring& dirpath)                           override { return nullptr; }
-    HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                          override { assert(false); return ON_ERROR_IGNORE; } //errors are not really critical in this context
-    HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zchar* shortName)  override { assert(false); return ON_ERROR_IGNORE; } //
-
-private:
-    std::vector<Zstring>& lngFiles_;
-};
-
-
 struct LessTranslation
 {
     bool operator()(const ExistingTranslations::Entry& lhs, const ExistingTranslations::Entry& rhs) const
@@ -145,7 +124,7 @@ struct LessTranslation
                                        rhs.languageName.c_str(), //__in  LPCTSTR lpString2,
                                        static_cast<int>(rhs.languageName.size())); //__in  int cchCount2
         if (rv == 0)
-            throw std::runtime_error("Error comparing strings.");
+            throw std::runtime_error("Error comparing strings (CompareString). " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
         else
             return rv == CSTR_LESS_THAN; //convert to C-style string compare result
 
@@ -190,10 +169,11 @@ ExistingTranslations::ExistingTranslations()
     //search language files available
     std::vector<Zstring> lngFiles;
 
-    FindLngfiles traverseCallback(lngFiles);
-
-    traverseFolder(zen::getResourceDir() +  Zstr("Languages"), //throw();
-                   traverseCallback);
+    traverseFolder(zen::getResourceDir() + Zstr("Languages"), [&](const FileInfo& fi)
+    {
+        if (endsWith(fi.fullPath, Zstr(".lng")))
+            lngFiles.push_back(fi.fullPath);
+    }, nullptr, nullptr, [&](const std::wstring& errorMsg) { assert(false); }); //errors are not really critical in this context
 
     for (const Zstring& filepath : lngFiles)
     {
@@ -372,6 +352,7 @@ wxLanguage mapLanguageDialect(wxLanguage language)
         //case wxLANGUAGE_DANISH:
         //case wxLANGUAGE_FINNISH:
         //case wxLANGUAGE_GREEK:
+        //case wxLANGUAGE_HINDI:
         //case wxLANGUAGE_HEBREW:
         //case wxLANGUAGE_HUNGARIAN:
         //case wxLANGUAGE_JAPANESE:

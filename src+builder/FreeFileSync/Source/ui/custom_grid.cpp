@@ -540,21 +540,27 @@ private:
 
                 const IconInfo ii = getIconInfo(row);
 
-                wxBitmap fileIcon;
-                if (ii.drawAsFolder)
-                    fileIcon = iconMgr_->getGenericDirIcon();
-                else if (!ii.iconPath.empty()) //retrieve file icon
+                wxBitmap fileIcon = [&]
                 {
-                    if (Opt<wxBitmap> tmpIco = iconMgr_->refIconBuffer().retrieveFileIcon(ii.iconPath))
-                        fileIcon = *tmpIco;
-                    else
+                    switch (ii.type)
                     {
-                        fileIcon = iconMgr_->getGenericFileIcon(); //better than nothing
-                        setFailedLoad(row); //save status of failed icon load -> used for async. icon loading
-                        //falsify only! we want to avoid writing incorrect success values when only partially updating the DC, e.g. when scrolling,
-                        //see repaint behavior of ::ScrollWindow() function!
+                        case IconInfo::FOLDER:
+                            return iconMgr_->getGenericDirIcon();
+
+                        case IconInfo::ICON_PATH:
+                            if (Opt<wxBitmap> tmpIco = iconMgr_->refIconBuffer().retrieveFileIcon(ii.iconPath))
+                                return *tmpIco;
+
+                            setFailedLoad(row); //save status of failed icon load -> used for async. icon loading
+                            //falsify only! we want to avoid writing incorrect success values when only partially updating the DC, e.g. when scrolling,
+                            //see repaint behavior of ::ScrollWindow() function!
+                            return iconMgr_->getGenericFileIcon(); //better than nothing
+
+                        case IconInfo::EMPTY:
+                            break;
                     }
-                }
+                    return wxBitmap();
+                }();
 
                 if (fileIcon.IsOk())
                 {
@@ -664,8 +670,14 @@ private:
 
     struct IconInfo
     {
-        Zstring iconPath;  //mutually exclusive: either non-empty iconPath, or folder, or neither if no entry at this row
-        bool drawAsFolder; //
+        enum IconType
+        {
+            EMPTY = 0, //= default value!
+            FOLDER,
+            ICON_PATH,
+        };
+        IconType type;
+        Zstring iconPath; //only set for type==ICON_PATH
         bool drawAsLink;
     };
 
@@ -682,17 +694,19 @@ private:
 
                 void visit(const FilePair& fileObj) override
                 {
-                    ii_.iconPath = fileObj.getFullPath<side>();
+                    ii_.type       = IconInfo::ICON_PATH;
+                    ii_.iconPath   = fileObj.getFullPath<side>();
                     ii_.drawAsLink = fileObj.isFollowedSymlink<side>() || hasLinkExtension(ii_.iconPath);
                 }
                 void visit(const SymlinkPair& linkObj) override
                 {
-                    ii_.iconPath = linkObj.getFullPath<side>();
+                    ii_.type       = IconInfo::ICON_PATH;
+                    ii_.iconPath   = linkObj.getFullPath<side>();
                     ii_.drawAsLink = true;
                 }
                 void visit(const DirPair& dirObj) override
                 {
-                    ii_.drawAsFolder = true;
+                    ii_.type = IconInfo::FOLDER;
                     //todo: if ("is followed symlink") ii_.drawAsLink = true;
                 }
 

@@ -619,8 +619,8 @@ Comanda este declanșată dacă:
 <source>FreeFileSync is up to date.</source>
 <target>Ai deja ultima versiune a softului.</target>
 
-<source>Unable to connect to FreeFileSync.org.</source>
-<target>Nu pot face conectarea la FreeFileSync.org.</target>
+<source>Unable to connect to www.freefilesync.org.</source>
+<target>Nu pot face conectarea la www.freefilesync.org.</target>
 
 <source>Cannot find current FreeFileSync version number online. Do you want to check manually?</source>
 <target>Nu pot afla numărul versiunii FreeFileSync disponibile acum pe internet. Vrei să-l cauți manual?</target>

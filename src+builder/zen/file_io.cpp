@@ -13,6 +13,7 @@
     #include "dll.h"
 
 #elif defined ZEN_LINUX || defined ZEN_MAC
+    #include <sys/stat.h>
     #include <fcntl.h>  //open, close
     #include <unistd.h> //read, write
 #endif
@@ -32,18 +33,21 @@ Zstring getLockingProcessNames(const Zstring& filepath) //throw(), empty string 
         const DllFun<FunType_getLockingProcesses> getLockingProcesses(getDllName(), funName_getLockingProcesses);
         const DllFun<FunType_freeString>          freeString         (getDllName(), funName_freeString);
 
+        const wchar_t* processList = nullptr;
         if (getLockingProcesses && freeString)
-            if (const wchar_t* procList = getLockingProcesses(filepath.c_str()))
+            if (getLockingProcesses(filepath.c_str(), processList))
             {
-                ZEN_ON_SCOPE_EXIT(freeString(procList));
-                return procList;
+                ZEN_ON_SCOPE_EXIT(freeString(processList));
+                return processList;
             }
     }
     return Zstring();
 }
 
 #elif defined ZEN_LINUX || defined ZEN_MAC
-//"filepath" could be a named pipe which *blocks* forever during "open()"! https://sourceforge.net/p/freefilesync/bugs/221/
+//- "filepath" could be a named pipe which *blocks* forever for open()!
+//- open() with O_NONBLOCK avoids the block, but opens successfully
+//- create sample pipe: "sudo mkfifo named_pipe"
 void checkForUnsupportedType(const Zstring& filepath) //throw FileError
 {
     struct ::stat fileInfo = {};
@@ -77,61 +81,79 @@ FileInput::FileInput(FileHandle handle, const Zstring& filepath) : FileInputBase
 FileInput::FileInput(const Zstring& filepath) : FileInputBase(filepath) //throw FileError
 {
 #ifdef ZEN_WIN
-    const wchar_t functionName[] = L"CreateFile";
-    fileHandle = ::CreateFile(applyLongPathPrefix(filepath).c_str(), //_In_      LPCTSTR lpFileName,
-                              GENERIC_READ,                          //_In_      DWORD dwDesiredAccess,
-                              FILE_SHARE_READ | FILE_SHARE_DELETE,   //_In_      DWORD dwShareMode,
-                              nullptr,                               //_In_opt_  LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-                              OPEN_EXISTING,                         //_In_      DWORD dwCreationDisposition,
-                              FILE_FLAG_SEQUENTIAL_SCAN,             //_In_      DWORD dwFlagsAndAttributes,
-                              /* possible values: (Reference http://msdn.microsoft.com/en-us/library/aa363858(VS.85).aspx#caching_behavior)
-                                FILE_FLAG_NO_BUFFERING
-                                FILE_FLAG_RANDOM_ACCESS
-                                FILE_FLAG_SEQUENTIAL_SCAN
-
-                                tests on Win7 x64 show that FILE_FLAG_SEQUENTIAL_SCAN provides best performance for binary comparison in all cases:
-                                - comparing different physical disks (DVD <-> HDD and HDD <-> HDD)
-                                - even on same physical disk! (HDD <-> HDD)
-                                - independent from client buffer size!
-
-                                tests on XP show that FILE_FLAG_SEQUENTIAL_SCAN provides best performance for binary comparison when
-                                - comparing different physical disks (DVD <-> HDD)
-
-                                while FILE_FLAG_RANDOM_ACCESS offers best performance for
-                                - same physical disk (HDD <-> HDD)
-
-                              Problem: bad XP implementation of prefetch makes flag FILE_FLAG_SEQUENTIAL_SCAN effectively load two files at the same time
-                              from one drive, swapping every 64 kB (or similar). File access times explode!
-                              => For XP it is critical to use FILE_FLAG_RANDOM_ACCESS (to disable prefetch) if reading two files on same disk and
-                              FILE_FLAG_SEQUENTIAL_SCAN when reading from different disk (e.g. massive performance improvement compared to random access for DVD <-> HDD!)
-                              => there is no compromise that satisfies all cases! (on XP)
-
-                              for FFS most comparisons are probably between different disks => let's use FILE_FLAG_SEQUENTIAL_SCAN
-                               */
-                              nullptr); //_In_opt_  HANDLE hTemplateFile
-    if (fileHandle == INVALID_HANDLE_VALUE)
-#elif defined ZEN_LINUX || defined ZEN_MAC
-    checkForUnsupportedType(filepath); //throw FileError; reading a named pipe would block forever!
-    const wchar_t functionName[] = L"fopen";
-    fileHandle = ::fopen(filepath.c_str(), "r,type=record,noseek"); //utilize UTF-8 filepath
-    if (!fileHandle)
-#endif
+    auto createHandle = [&](DWORD dwShareMode)
     {
-        const ErrorCode lastError = getLastError(); //copy before making other system calls!
-        const std::wstring errorMsg = replaceCpy(_("Cannot open file %x."), L"%x", fmtFileName(filepath));
-        std::wstring errorDescr = formatSystemError(functionName, lastError);
+        return ::CreateFile(applyLongPathPrefix(filepath).c_str(),         //_In_      LPCTSTR lpFileName,
+                            GENERIC_READ,              //_In_      DWORD dwDesiredAccess,
+                            dwShareMode,               //_In_      DWORD dwShareMode,
+                            nullptr,                   //_In_opt_  LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+                            OPEN_EXISTING,             //_In_      DWORD dwCreationDisposition,
+                            FILE_FLAG_SEQUENTIAL_SCAN, //_In_      DWORD dwFlagsAndAttributes,
+                            /* possible values: (Reference http://msdn.microsoft.com/en-us/library/aa363858(VS.85).aspx#caching_behavior)
+                              FILE_FLAG_NO_BUFFERING
+                              FILE_FLAG_RANDOM_ACCESS
+                              FILE_FLAG_SEQUENTIAL_SCAN
 
-#ifdef ZEN_WIN
-        if (lastError == ERROR_SHARING_VIOLATION || //-> enhance error message!
-            lastError == ERROR_LOCK_VIOLATION)
+                              tests on Win7 x64 show that FILE_FLAG_SEQUENTIAL_SCAN provides best performance for binary comparison in all cases:
+                              - comparing different physical disks (DVD <-> HDD and HDD <-> HDD)
+                              - even on same physical disk! (HDD <-> HDD)
+                              - independent from client buffer size!
+
+                              tests on XP show that FILE_FLAG_SEQUENTIAL_SCAN provides best performance for binary comparison when
+                              - comparing different physical disks (DVD <-> HDD)
+
+                              while FILE_FLAG_RANDOM_ACCESS offers best performance for
+                              - same physical disk (HDD <-> HDD)
+
+                            Problem: bad XP implementation of prefetch makes flag FILE_FLAG_SEQUENTIAL_SCAN effectively load two files at the same time
+                            from one drive, swapping every 64 kB (or similar). File access times explode!
+                            => For XP it is critical to use FILE_FLAG_RANDOM_ACCESS (to disable prefetch) if reading two files on same disk and
+                            FILE_FLAG_SEQUENTIAL_SCAN when reading from different disk (e.g. massive performance improvement compared to random access for DVD <-> HDD!)
+                            => there is no compromise that satisfies all cases! (on XP)
+
+                            for FFS most comparisons are probably between different disks => let's use FILE_FLAG_SEQUENTIAL_SCAN
+                             */
+                            nullptr); //_In_opt_  HANDLE hTemplateFile
+    };
+    fileHandle = createHandle(FILE_SHARE_READ | FILE_SHARE_DELETE);
+    if (fileHandle == INVALID_HANDLE_VALUE)
+    {
+        //=> support reading files which are open for write (e.g. Firefox db files): follow CopyFileEx() by addding FILE_SHARE_WRITE only for second try:
+        if (::GetLastError() == ERROR_SHARING_VIOLATION)
+            fileHandle = createHandle(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE);
+
+        //begin of "regular" error reporting
+        if (fileHandle == INVALID_HANDLE_VALUE)
         {
-            const Zstring procList = getLockingProcessNames(filepath); //throw()
-            if (!procList.empty())
-                errorDescr = _("The file is locked by another process:") + L"\n" + procList;
+            const DWORD ec = ::GetLastError(); //copy before directly or indirectly making other system calls!
+            const std::wstring errorMsg = replaceCpy(_("Cannot open file %x."), L"%x", fmtFileName(filepath));
+            std::wstring errorDescr = formatSystemError(L"CreateFile", ec);
+
+            if (ec == ERROR_SHARING_VIOLATION || //-> enhance error message!
+                ec == ERROR_LOCK_VIOLATION)
+            {
+                const Zstring procList = getLockingProcessNames(filepath); //throw()
+                if (!procList.empty())
+                    errorDescr = _("The file is locked by another process:") + L"\n" + procList;
+            }
+            throw FileError(errorMsg, errorDescr);
         }
-#endif
-        throw FileError(errorMsg, errorDescr);
     }
+
+#elif defined ZEN_LINUX || defined ZEN_MAC
+    checkForUnsupportedType(filepath); //throw FileError; opening a named pipe would block forever!
+
+    //don't use O_DIRECT: http://yarchive.net/comp/linux/o_direct.html
+    fileHandle = ::open(filepath.c_str(), O_RDONLY);
+    if (fileHandle == -1) //don't check "< 0" -> docu seems to allow "-2" to be a valid file handle
+        throwFileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtFileName(filepath)), L"open", getLastError());
+
+#ifndef ZEN_MAC //posix_fadvise not supported on OS X (and "dtruss" doesn't show alternative use of "fcntl() F_RDAHEAD/F_RDADVISE" for "cp")
+    //optimize read-ahead on input file:
+    if (::posix_fadvise(fileHandle, 0, 0, POSIX_FADV_SEQUENTIAL) != 0)
+        throwFileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtFileName(filepath)), L"posix_fadvise", getLastError());
+#endif
+#endif
 }
 
 
@@ -140,60 +162,74 @@ FileInput::~FileInput()
 #ifdef ZEN_WIN
     ::CloseHandle(fileHandle);
 #elif defined ZEN_LINUX || defined ZEN_MAC
-    ::fclose(fileHandle); //NEVER allow passing nullptr to fclose! -> crash!; fileHandle != nullptr in this context!
+    ::close(fileHandle);
 #endif
 }
 
 
-size_t FileInput::read(void* buffer, size_t bytesToRead) //returns actual number of bytes read; throw FileError
+size_t FileInput::read(void* buffer, size_t bytesToRead) //throw FileError; returns actual number of bytes read
 {
-    assert(!eof());
-    if (bytesToRead == 0) return 0;
+    assert(!eof() || bytesToRead == 0);
 #ifdef ZEN_WIN
-    const wchar_t functionName[] = L"ReadFile";
+    if (bytesToRead == 0) return 0;
+
     DWORD bytesRead = 0;
     if (!::ReadFile(fileHandle, //__in         HANDLE hFile,
                     buffer,     //__out        LPVOID lpBuffer,
                     static_cast<DWORD>(bytesToRead), //__in         DWORD nNumberOfBytesToRead,
                     &bytesRead, //__out_opt    LPDWORD lpNumberOfBytesRead,
                     nullptr))   //__inout_opt  LPOVERLAPPED lpOverlapped
-#elif defined ZEN_LINUX || defined ZEN_MAC
-    const wchar_t functionName[] = L"fread";
-    const size_t bytesRead = ::fread(buffer, 1, bytesToRead, fileHandle);
-    if (::ferror(fileHandle) != 0) //checks status of stream, not fread()!
-#endif
-        throwFileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtFileName(getFilename())), functionName, getLastError());
+        throwFileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtFileName(getFilename())), L"ReadFile", getLastError());
 
-#ifdef ZEN_WIN
     if (bytesRead < bytesToRead) //verify only!
-        setEof();
-
-#elif defined ZEN_LINUX || defined ZEN_MAC
-    if (::feof(fileHandle) != 0)
-        setEof();
-
-    if (bytesRead < bytesToRead)
-        if (!eof()) //pathologic!?
-            throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtFileName(getFilename())), L"Incomplete read."); //user should never see this
-#endif
+        setEof();                //
 
     if (bytesRead > bytesToRead)
         throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtFileName(getFilename())), L"buffer overflow"); //user should never see this
 
     return bytesRead;
+
+#elif defined ZEN_LINUX || defined ZEN_MAC
+    //Compare copy_reg() in copy.c: ftp://ftp.gnu.org/gnu/coreutils/coreutils-8.23.tar.xz
+    size_t bytesReadTotal = 0;
+
+    while (bytesToRead > 0 && !eof()) //"read() with a count of 0 returns zero" => indistinguishable from eof! => check!
+    {
+        ssize_t bytesRead = 0;
+        do
+        {
+            bytesRead = ::read(fileHandle, buffer, bytesToRead);
+        }
+        while (bytesRead < 0 && errno == EINTR);
+
+        if (bytesRead < 0)
+            throwFileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtFileName(getFilename())), L"read", getLastError());
+        else if (bytesRead == 0) //"zero indicates end of file"
+            setEof();
+        else if (bytesRead > static_cast<ssize_t>(bytesToRead)) //better safe than sorry
+            throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtFileName(getFilename())), L"buffer overflow"); //user should never see this
+
+        //if ::read is interrupted (EINTR) right in the middle, it will return successfully with "bytesRead < bytesToRead" => loop!
+        buffer = static_cast<char*>(buffer) + bytesRead; //suppress warning about pointer arithmetics on void*
+        bytesToRead -= bytesRead;
+        bytesReadTotal += bytesRead;
+    }
+
+    return bytesReadTotal;
+#endif
 }
 
+//----------------------------------------------------------------------------------------------------
 
 FileOutput::FileOutput(FileHandle handle, const Zstring& filepath) : FileOutputBase(filepath), fileHandle(handle) {}
 
 
-FileOutput::FileOutput(const Zstring& filepath, AccessFlag access) : //throw FileError, ErrorTargetExisting
-    FileOutputBase(filepath)
+FileOutput::FileOutput(const Zstring& filepath, AccessFlag access) : FileOutputBase(filepath) //throw FileError, ErrorTargetExisting
 {
 #ifdef ZEN_WIN
     const DWORD dwCreationDisposition = access == FileOutput::ACC_OVERWRITE ? CREATE_ALWAYS : CREATE_NEW;
 
-    auto getHandle = [&](DWORD dwFlagsAndAttributes)
+    auto createHandle = [&](DWORD dwFlagsAndAttributes)
     {
         return ::CreateFile(applyLongPathPrefix(filepath).c_str(), //_In_      LPCTSTR lpFileName,
                             GENERIC_READ | GENERIC_WRITE, //_In_      DWORD dwDesiredAccess,
@@ -211,20 +247,19 @@ FileOutput::FileOutput(const Zstring& filepath, AccessFlag access) : //throw Fil
                             nullptr);                  //_In_opt_  HANDLE hTemplateFile
     };
 
-    fileHandle = getHandle(FILE_ATTRIBUTE_NORMAL);
+    fileHandle = createHandle(FILE_ATTRIBUTE_NORMAL);
     if (fileHandle == INVALID_HANDLE_VALUE)
     {
-        DWORD lastError = ::GetLastError(); //copy before directly or indirectly making other system calls!
+        DWORD ec = ::GetLastError(); //copy before directly or indirectly making other system calls!
 
         //CREATE_ALWAYS fails with ERROR_ACCESS_DENIED if the existing file is hidden or "system" http://msdn.microsoft.com/en-us/library/windows/desktop/aa363858(v=vs.85).aspx
-        if (lastError == ERROR_ACCESS_DENIED &&
-            dwCreationDisposition == CREATE_ALWAYS)
+        if (ec == ERROR_ACCESS_DENIED && dwCreationDisposition == CREATE_ALWAYS)
         {
             const DWORD attrib = ::GetFileAttributes(applyLongPathPrefix(filepath).c_str());
             if (attrib != INVALID_FILE_ATTRIBUTES)
             {
-                fileHandle = getHandle(attrib); //retry: alas this may still fail for hidden file, e.g. accessing shared folder in XP as Virtual Box guest!
-                lastError = ::GetLastError();
+                fileHandle = createHandle(attrib); //retry: alas this may still fail for hidden file, e.g. accessing shared folder in XP as Virtual Box guest!
+                ec = ::GetLastError();
             }
         }
 
@@ -232,41 +267,39 @@ FileOutput::FileOutput(const Zstring& filepath, AccessFlag access) : //throw Fil
         if (fileHandle == INVALID_HANDLE_VALUE)
         {
             const std::wstring errorMsg = replaceCpy(_("Cannot write file %x."), L"%x", fmtFileName(filepath));
-            std::wstring errorDescr = formatSystemError(L"CreateFile", lastError);
+            std::wstring errorDescr = formatSystemError(L"CreateFile", ec);
 
-            if (lastError == ERROR_SHARING_VIOLATION || //-> enhance error message!
-                lastError == ERROR_LOCK_VIOLATION)
+            if (ec == ERROR_SHARING_VIOLATION || //-> enhance error message!
+                ec == ERROR_LOCK_VIOLATION)
             {
                 const Zstring procList = getLockingProcessNames(filepath); //throw()
                 if (!procList.empty())
                     errorDescr = _("The file is locked by another process:") + L"\n" + procList;
             }
 
-            if (lastError == ERROR_FILE_EXISTS || //confirmed to be used
-                lastError == ERROR_ALREADY_EXISTS) //comment on msdn claims, this one is used on Windows Mobile 6
+            if (ec == ERROR_FILE_EXISTS || //confirmed to be used
+                ec == ERROR_ALREADY_EXISTS) //comment on msdn claims, this one is used on Windows Mobile 6
                 throw ErrorTargetExisting(errorMsg, errorDescr);
-
-            //if (lastError == ERROR_PATH_NOT_FOUND) throw ErrorTargetPathMissing(errorMsg, errorDescr);
+            //if (ec == ERROR_PATH_NOT_FOUND) throw ErrorTargetPathMissing(errorMsg, errorDescr);
 
             throw FileError(errorMsg, errorDescr);
         }
     }
 
 #elif defined ZEN_LINUX || defined ZEN_MAC
-    checkForUnsupportedType(filepath); //throw FileError; writing a named pipe would block forever!
-    fileHandle = ::fopen(filepath.c_str(),
-                         //GNU extension: https://www.securecoding.cert.org/confluence/display/cplusplus/FIO03-CPP.+Do+not+make+assumptions+about+fopen()+and+file+creation
-                         access == ACC_OVERWRITE ? "w,type=record,noseek" : "wx,type=record,noseek");
-    if (!fileHandle)
+    //checkForUnsupportedType(filepath); -> not needed, open() + O_WRONLY should fail fast
+
+    fileHandle = ::open(filepath.c_str(), O_WRONLY | O_CREAT | (access == FileOutput::ACC_CREATE_NEW ? O_EXCL : O_TRUNC),
+                        S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+    if (fileHandle == -1)
     {
-        const int lastError = errno; //copy before directly or indirectly making other system calls!
-        const std::wstring errorMsg = replaceCpy(_("Cannot write file %x."), L"%x", fmtFileName(getFilename()));
-        const std::wstring errorDescr = formatSystemError(L"fopen", lastError);
+        const int ec = errno; //copy before making other system calls!
+        const std::wstring errorMsg = replaceCpy(_("Cannot write file %x."), L"%x", fmtFileName(filepath));
+        const std::wstring errorDescr = formatSystemError(L"open", ec);
 
-        if (lastError == EEXIST)
+        if (ec == EEXIST)
             throw ErrorTargetExisting(errorMsg, errorDescr);
-
-        //if (lastError == ENOENT) throw ErrorTargetPathMissing(errorMsg, errorDescr);
+        //if (ec == ENOENT) throw ErrorTargetPathMissing(errorMsg, errorDescr);
 
         throw FileError(errorMsg, errorDescr);
     }
@@ -279,7 +312,7 @@ FileOutput::~FileOutput()
 #ifdef ZEN_WIN
     ::CloseHandle(fileHandle);
 #elif defined ZEN_LINUX || defined ZEN_MAC
-    ::fclose(fileHandle); //NEVER allow passing nullptr to fclose! -> crash!
+    ::close(fileHandle);
 #endif
 }
 
@@ -287,99 +320,24 @@ FileOutput::~FileOutput()
 void FileOutput::write(const void* buffer, size_t bytesToWrite) //throw FileError
 {
 #ifdef ZEN_WIN
-    const wchar_t functionName[] = L"WriteFile";
     DWORD bytesWritten = 0; //this parameter is NOT optional: http://blogs.msdn.com/b/oldnewthing/archive/2013/04/04/10407417.aspx
     if (!::WriteFile(fileHandle,    //__in         HANDLE hFile,
                      buffer,        //__out        LPVOID lpBuffer,
                      static_cast<DWORD>(bytesToWrite),  //__in         DWORD nNumberOfBytesToWrite,
                      &bytesWritten, //__out_opt    LPDWORD lpNumberOfBytesWritten,
                      nullptr))      //__inout_opt  LPOVERLAPPED lpOverlapped
-#elif defined ZEN_LINUX || defined ZEN_MAC
-    const wchar_t functionName[] = L"fwrite";
-    const size_t bytesWritten = ::fwrite(buffer, 1, bytesToWrite, fileHandle);
-    if (::ferror(fileHandle) != 0) //checks status of stream, not fwrite()!
-#endif
-        throwFileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtFileName(getFilename())), functionName, getLastError());
+        throwFileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtFileName(getFilename())), L"WriteFile", getLastError());
 
     if (bytesWritten != bytesToWrite) //must be fulfilled for synchronous writes!
         throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtFileName(getFilename())), L"Incomplete write."); //user should never see this
-}
 
-
-#if defined ZEN_LINUX || defined ZEN_MAC
-//Compare copy_reg() in copy.c: ftp://ftp.gnu.org/gnu/coreutils/coreutils-5.0.tar.gz
-
-FileInputUnbuffered::FileInputUnbuffered(const Zstring& filepath) : FileInputBase(filepath) //throw FileError
-{
-    checkForUnsupportedType(filepath); //throw FileError; reading a named pipe would block forever!
-
-    fdFile = ::open(filepath.c_str(), O_RDONLY);
-    if (fdFile == -1) //don't check "< 0" -> docu seems to allow "-2" to be a valid file handle
-        throwFileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtFileName(filepath)), L"open", getLastError());
-}
-
-
-FileInputUnbuffered::~FileInputUnbuffered() { ::close(fdFile); }
-
-
-size_t FileInputUnbuffered::read(void* buffer, size_t bytesToRead) //throw FileError; returns actual number of bytes read
-{
-    assert(!eof());
-    if (bytesToRead == 0) return 0; //[!]
-
-    ssize_t bytesRead = 0;
-    do
-    {
-        bytesRead = ::read(fdFile, buffer, bytesToRead);
-    }
-    while (bytesRead < 0 && errno == EINTR);
-
-    if (bytesRead < 0)
-        throwFileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtFileName(getFilename())), L"read", getLastError());
-    else if (bytesRead == 0) //"zero indicates end of file"
-        setEof();
-    else if (bytesRead > static_cast<ssize_t>(bytesToRead)) //better safe than sorry
-        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtFileName(getFilename())), L"buffer overflow"); //user should never see this
-    //if ::read is interrupted (EINTR) right in the middle, it will return successfully with "bytesRead < bytesToRead"!
-
-    return bytesRead;
-}
-
-
-FileOutputUnbuffered::FileOutputUnbuffered(const Zstring& filepath, mode_t mode) : FileOutputBase(filepath) //throw FileError, ErrorTargetExisting
-{
-    //checkForUnsupportedType(filepath); -> not needed, open() + O_EXCL shoul fail fast
-
-    //overwrite is: O_CREAT | O_WRONLY | O_TRUNC
-    fdFile = ::open(filepath.c_str(), O_CREAT | O_WRONLY | O_EXCL, mode & (S_IRWXU | S_IRWXG | S_IRWXO));
-    if (fdFile == -1)
-    {
-        const int lastError = errno; //copy before making other system calls!
-        const std::wstring errorMsg = replaceCpy(_("Cannot write file %x."), L"%x", fmtFileName(filepath));
-        const std::wstring errorDescr = formatSystemError(L"open", lastError);
-
-        if (lastError == EEXIST)
-            throw ErrorTargetExisting(errorMsg, errorDescr);
-
-        //if (lastError == ENOENT) throw ErrorTargetPathMissing(errorMsg, errorDescr);
-
-        throw FileError(errorMsg, errorDescr);
-    }
-}
-
-FileOutputUnbuffered::FileOutputUnbuffered(int fd, const Zstring& filepath) : FileOutputBase(filepath), fdFile(fd) {}
-
-FileOutputUnbuffered::~FileOutputUnbuffered() { ::close(fdFile); }
-
-
-void FileOutputUnbuffered::write(const void* buffer, size_t bytesToWrite) //throw FileError
-{
+#elif defined ZEN_LINUX || defined ZEN_MAC
     while (bytesToWrite > 0)
     {
         ssize_t bytesWritten = 0;
         do
         {
-            bytesWritten = ::write(fdFile, buffer, bytesToWrite);
+            bytesWritten = ::write(fileHandle, buffer, bytesToWrite);
         }
         while (bytesWritten < 0 && errno == EINTR);
 
@@ -393,9 +351,9 @@ void FileOutputUnbuffered::write(const void* buffer, size_t bytesToWrite) //thro
         if (bytesWritten > static_cast<ssize_t>(bytesToWrite)) //better safe than sorry
             throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtFileName(getFilename())), L"buffer overflow"); //user should never see this
 
-        //if ::write is interrupted (EINTR) right in the middle, it will return successfully with "bytesWritten < bytesToWrite"!
+        //if ::write() is interrupted (EINTR) right in the middle, it will return successfully with "bytesWritten < bytesToWrite"!
         buffer = static_cast<const char*>(buffer) + bytesWritten; //suppress warning about pointer arithmetics on void*
         bytesToWrite -= bytesWritten;
     }
-}
 #endif
+}

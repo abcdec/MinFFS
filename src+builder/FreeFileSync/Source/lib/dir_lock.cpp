@@ -3,20 +3,6 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
-// **************************************************************************
-// * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.13        *
-// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
-// *                          --EXPERIMENTAL--                              *
-// * This program is experimental and not recommended for general use.      *
-// * Please consider using the original FreeFileSync program unless there   *
-// * are specific needs to use this experimental MinFFS version.            *
-// *                          --EXPERIMENTAL--                              *
-// * This modified program is distributed in the hope that it will be       *
-// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
-// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
-// * General Public License for more details.                               *
-// **************************************************************************
 #include "dir_lock.h"
 #include <utility>
 #include <wx/log.h>
@@ -568,7 +554,8 @@ bool tryLock(const Zstring& lockfilepath) //throw FileError
     ZEN_ON_SCOPE_EXIT(::umask(oldMask));
 
     //O_EXCL contains a race condition on NFS file systems: http://linux.die.net/man/2/open
-    const int fileHandle = ::open(lockfilepath.c_str(), O_CREAT | O_WRONLY | O_EXCL, S_IRWXU | S_IRWXG | S_IRWXO);
+    const int fileHandle = ::open(lockfilepath.c_str(), O_CREAT | O_EXCL | O_WRONLY,
+                                  S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
     if (fileHandle == -1)
     {
         if (errno == EEXIST)
@@ -577,16 +564,17 @@ bool tryLock(const Zstring& lockfilepath) //throw FileError
             throwFileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtFileName(lockfilepath)), L"open", getLastError());
     }
     ScopeGuard guardLockFile = zen::makeGuard([&] { removeFile(lockfilepath); });
-    FileOutputUnbuffered fileOut(fileHandle, lockfilepath); //pass handle ownership
+    FileOutput fileOut(fileHandle, lockfilepath); //pass handle ownership
 #endif
 
     //write housekeeping info: user, process info, lock GUID
-    BinaryStream binStream;
+    BinaryStream binStream = [&]
     {
         BinStreamOut streamOut;
         LockInformation(FromCurrentProcess()).toStream(streamOut);
-        binStream = streamOut.get();
-    }
+        return streamOut.get();
+    }();
+
     if (!binStream.empty())
         fileOut.write(&*binStream.begin(), binStream.size()); //throw FileError
 
@@ -705,7 +693,7 @@ DirLock::DirLock(const Zstring& lockfilepath, DirLockCallback* callback) //throw
                             &volName[0],          //__out  LPTSTR lpszVolumePathName,
                             bufferSize))          //__in   DWORD cchBufferLength
     {
-        DWORD dt = ::GetDriveType(&volName[0]);
+        const DWORD dt = ::GetDriveType(&volName[0]);
         if (dt == DRIVE_CDROM)
             return; //we don't need a lock for a CD ROM
     }

@@ -18,7 +18,6 @@
 // * General Public License for more details.                               *
 // **************************************************************************
 
-
 #ifndef WARN_STATIC_HEADER_08724567834560832745
 #define WARN_STATIC_HEADER_08724567834560832745
 

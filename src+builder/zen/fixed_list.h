@@ -60,8 +60,8 @@ public:
     const_iterator begin() const { return firstInsert; }
     const_iterator end  () const { return const_iterator(); }
 
-    const_iterator cbegin() const { return firstInsert; }
-    const_iterator cend  () const { return const_iterator(); }
+    //const_iterator cbegin() const { return firstInsert; }
+    //const_iterator cend  () const { return const_iterator(); }
 
     reference       front()       { return firstInsert->val; }
     const_reference front() const { return firstInsert->val; }

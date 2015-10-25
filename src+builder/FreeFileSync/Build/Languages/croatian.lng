@@ -619,8 +619,8 @@ Naredba će biti pokrenuta ako se:
 <source>FreeFileSync is up to date.</source>
 <target>FreeFileSync je ažuran.</target>
 
-<source>Unable to connect to FreeFileSync.org.</source>
-<target>Nije moguće povezivanje s FreeFileSync.org.</target>
+<source>Unable to connect to www.freefilesync.org.</source>
+<target>Nije moguće povezivanje s www.freefilesync.org.</target>
 
 <source>Cannot find current FreeFileSync version number online. Do you want to check manually?</source>
 <target>Ne mogu pronaći trenutnu verziju FreeFileSync-a online. Da li želite ručno potražiti?</target>

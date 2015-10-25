@@ -53,7 +53,7 @@ DirectionSet zen::extractDirections(const DirectionConfig& cfg)
     switch (cfg.var)
     {
         case DirectionConfig::TWOWAY:
-            throw std::logic_error("there are no predefined directions for automatic mode!");
+            throw std::logic_error("there are no predefined directions for automatic mode! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
 
         case DirectionConfig::MIRROR:
             output.exLeftSideOnly  = SyncDirection::RIGHT;

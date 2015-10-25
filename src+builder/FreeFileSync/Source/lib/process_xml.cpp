@@ -1022,7 +1022,8 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& config)
     config.gui.externelApplications = XmlGlobalSettings().gui.externelApplications;
 
     //last update check
-    inGui["LastOnlineCheck"](config.gui.lastUpdateCheck);
+    inGui["LastOnlineCheck"  ](config.gui.lastUpdateCheck);
+	inGui["LastOnlineVersion"](config.gui.lastOnlineVersion);
 
     //batch specific global settings
     //XmlIn inBatch = in["Batch"];
@@ -1396,7 +1397,8 @@ void writeConfig(const XmlGlobalSettings& config, XmlOut& out)
     outGui["ExternalApplications"](config.gui.externelApplications);
 
     //last update check
-    outGui["LastOnlineCheck"](config.gui.lastUpdateCheck);
+    outGui["LastOnlineCheck"  ](config.gui.lastUpdateCheck);
+	outGui["LastOnlineVersion"](config.gui.lastOnlineVersion);
 
     //batch specific global settings
     //XmlOut outBatch = out["Batch"];

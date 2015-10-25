@@ -3,24 +3,9 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
-// **************************************************************************
-// * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.13        *
-// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
-// *                          --EXPERIMENTAL--                              *
-// * This program is experimental and not recommended for general use.      *
-// * Please consider using the original FreeFileSync program unless there   *
-// * are specific needs to use this experimental MinFFS version.            *
-// *                          --EXPERIMENTAL--                              *
-// * This modified program is distributed in the hope that it will be       *
-// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
-// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
-// * General Public License for more details.                               *
-// **************************************************************************
 
 #ifndef BOOST_THREAD_WRAP_H_78963234
 #define BOOST_THREAD_WRAP_H_78963234
-
 
 //temporary solution until C++11 thread becomes fully available (considering std::thread's non-interruptibility and std::async craziness, this may be NEVER)
 #include <memory>
@@ -38,7 +23,7 @@
 #endif
 #ifdef _MSC_VER
     #pragma warning(push)
-    #pragma warning(disable : 4702 4913) //unreachable code; user defined binary operator ',' exists but no overload could convert all operands, default built-in binary operator ',' used
+    #pragma warning(disable: 4702 4913) //unreachable code; user defined binary operator ',' exists but no overload could convert all operands, default built-in binary operator ',' used
 #endif
 
 #include <boost/thread.hpp>
@@ -91,6 +76,7 @@ private:
     std::shared_ptr<AsyncResult> asyncResult;
     size_t jobsTotal_;
 };
+
 
 
 

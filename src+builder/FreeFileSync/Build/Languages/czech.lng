@@ -619,8 +619,8 @@ Příkaz je spuštěn když:
 <source>FreeFileSync is up to date.</source>
 <target>FreeFileSync je aktuální.</target>
 
-<source>Unable to connect to FreeFileSync.org.</source>
-<target>Není možné se připojit k FreeFileSync.org.</target>
+<source>Unable to connect to www.freefilesync.org.</source>
+<target>Není možné se připojit k www.freefilesync.org.</target>
 
 <source>Cannot find current FreeFileSync version number online. Do you want to check manually?</source>
 <target>Současná verze FreeFileSync nebyla nalezena online! Chcete verzi zkontrolovat ručně?</target>

@@ -91,7 +91,8 @@ private:
     void removeObsoleteCfgHistoryItems(const std::vector<Zstring>& filepaths);
     void removeCfgHistoryItems(const std::vector<Zstring>& filepaths);
 
-    void addAddFolderPair(const std::vector<zen::FolderPairEnh>& newPairs, bool addFront = false);
+    void insertAddFolderPair(const std::vector<zen::FolderPairEnh>& newPairs, size_t pos);
+    void moveAddFolderPairUp(size_t pos);
     void removeAddFolderPair(size_t pos);
     void setAddFolderPairs(const std::vector<zen::FolderPairEnh>& newPairs);
 
@@ -220,9 +221,13 @@ private:
     void filterItems(const std::vector<zen::FileSystemObject*>& selection, bool include);
     void filterPhrase(const Zstring& phrase, bool include, bool addNewLine);
 
-    void OnAddFolderPair      (wxCommandEvent& event) override;
+    void OnTopFolderPairAdd   (wxCommandEvent& event) override;
+    void OnTopFolderPairRemove(wxCommandEvent& event) override;
     void OnRemoveFolderPair   (wxCommandEvent& event);
-    void OnRemoveTopFolderPair(wxCommandEvent& event) override;
+    void OnShowFolderPairOptions(wxCommandEvent& event);
+
+    void onTopFolderPairKeyEvent(wxKeyEvent& event);
+    void onAddFolderPairKeyEvent(wxKeyEvent& event);
 
     void applyFilterConfig();
     void applySyncConfig();
@@ -244,6 +249,7 @@ private:
     void OnMenuFindItem      (wxCommandEvent& event) override;
     void OnMenuCheckVersion  (wxCommandEvent& event) override;
     void OnMenuCheckVersionAutomatically(wxCommandEvent& event) override;
+    void OnMenuDownloadNewVersion       (wxCommandEvent& event);
     void OnMenuAbout         (wxCommandEvent& event) override;
     void OnShowHelp          (wxCommandEvent& event) override;
     void OnMenuQuit          (wxCommandEvent& event) override { Close(); }
@@ -252,7 +258,7 @@ private:
 
     void switchProgramLanguage(int langID);
 
-    void clearGrid();
+    void clearGrid(ptrdiff_t pos = -1);
 
     typedef int MenuItemID;
     typedef int LanguageID;

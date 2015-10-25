@@ -29,45 +29,28 @@ Zstring addStatusToLogfilename(const Zstring& logfilepath, const std::wstring& s
     size_t pos = logfilepath.rfind(Zstr('.'));
     if (pos != Zstring::npos)
         return Zstring(logfilepath.begin(), logfilepath.begin() + pos) +
-               utfCvrtTo<Zstring>(L" (" + status + L")") +
+               utfCvrtTo<Zstring>(L" [" + status + L"]") +
                Zstring(logfilepath.begin() + pos, logfilepath.end());
     assert(false);
     return logfilepath;
 }
 
 
-class FindLogfiles : public TraverseCallback
-{
-public:
-    FindLogfiles(const Zstring& prefix, std::vector<Zstring>& logfiles, const std::function<void()>& onUpdateStatus) : prefix_(prefix), logfiles_(logfiles), onUpdateStatus_(onUpdateStatus) {}
-
-private:
-    void onFile(const Zchar* shortName, const Zstring& filePath, const FileInfo& details) override
-    {
-        const Zstring fileName(shortName);
-        if (startsWith(fileName, prefix_) && endsWith(fileName, Zstr(".log")))
-            logfiles_.push_back(filePath);
-
-        if (onUpdateStatus_)
-            onUpdateStatus_();
-    }
-
-    TraverseCallback* onDir(const Zchar* shortName, const Zstring& dirpath)                            override { return nullptr; } //DON'T traverse into subdirs
-    HandleLink  onSymlink(const Zchar* shortName, const Zstring& linkpath, const SymlinkInfo& details) override { return LINK_SKIP; }
-    HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                           override { assert(false); return ON_ERROR_IGNORE; } //errors are not really critical in this context
-    HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zchar* shortName)   override { assert(false); return ON_ERROR_IGNORE; } //
-
-    const Zstring prefix_;
-    std::vector<Zstring>& logfiles_;
-    const std::function<void()> onUpdateStatus_;
-};
-
-
 void limitLogfileCount(const Zstring& logdir, const std::wstring& jobname, size_t maxCount, const std::function<void()>& onUpdateStatus) //noexcept
 {
     std::vector<Zstring> logFiles;
-    FindLogfiles traverseCallback(utfCvrtTo<Zstring>(jobname), logFiles, onUpdateStatus); //noexcept
-    traverseFolder(logdir, traverseCallback);
+    const Zstring prefix = utfCvrtTo<Zstring>(jobname);
+
+    traverseFolder(logdir, [&](const FileInfo& fi)
+    {
+        const Zstring fileName(fi.shortName);
+        if (startsWith(fileName, prefix) && endsWith(fileName, Zstr(".log")))
+            logFiles.push_back(fi.fullPath);
+
+        if (onUpdateStatus)
+            onUpdateStatus();
+    },
+    nullptr, nullptr, [&](const std::wstring& errorMsg) { assert(false); }); //errors are not really critical in this context
 
     if (logFiles.size() <= maxCount)
         return;
@@ -94,6 +77,9 @@ std::unique_ptr<FileOutput> prepareNewLogfile(const Zstring& logfileDirectory, /
 
     //create logfile directory if required
     makeDirectory(logfileDir); //throw FileError
+
+    //const std::string colon = "\xcb\xb8"; //="modifier letter raised colon" => regular colon is forbidden in file names on Windows and OS X
+    //=> too many issues, most notably cmd.exe is not Unicode-awere: http://sourceforge.net/p/freefilesync/discussion/open-discussion/thread/c559a5fb/
 
     //assemble logfile name
     const Zstring body = appendSeparator(logfileDir) + utfCvrtTo<Zstring>(jobName) + Zstr(" ") + formatTime<Zstring>(Zstr("%Y-%m-%d %H%M%S"), timeStamp);
@@ -264,7 +250,8 @@ BatchStatusHandler::~BatchStatusHandler()
                 renameFile(oldLogfilepath, addStatusToLogfilename(oldLogfilepath, _("Stopped"))); //throw FileError
             else if (totalErrors > 0)
                 renameFile(oldLogfilepath, addStatusToLogfilename(oldLogfilepath, _("Error"))); //throw FileError
-            //status "warning" is not important enough to show up in log file name
+            else if (totalWarnings > 0)
+                renameFile(oldLogfilepath, addStatusToLogfilename(oldLogfilepath, _("Warning"))); //throw FileError
         }
         catch (FileError&) { assert(false); }
     }

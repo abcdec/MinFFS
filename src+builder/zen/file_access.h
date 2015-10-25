@@ -34,7 +34,7 @@ std::uint64_t getFreeDiskSpace(const Zstring& path); //throw FileError
 bool removeFile(const Zstring& filepath); //throw FileError; return "false" if file is not existing
 void removeDirectory(const Zstring& directory, //throw FileError
                      const std::function<void (const Zstring& filepath)>& onBeforeFileDeletion = nullptr,  //optional;
-                     const std::function<void (const Zstring& dirpath)>&  onBeforeDirDeletion  = nullptr); //one call for each *existing* object!
+                     const std::function<void (const Zstring& dirpath )>& onBeforeDirDeletion  = nullptr); //one call for each *existing* object!
 
 //rename file or directory: no copying!!!
 void renameFile(const Zstring& oldName, const Zstring& newName); //throw FileError, ErrorDifferentVolume, ErrorTargetExisting

@@ -12,6 +12,7 @@
 #include <wx/image.h>
 #include <wx/mstream.h>
 #include <zen/utf.h>
+#include "image_tools.h"
 
 using namespace zen;
 
@@ -48,7 +49,7 @@ public:
 
     void init(const Zstring& filepath);
 
-    const wxBitmap& getImage(const wxString& name) const;
+    const wxBitmap&    getImage    (const wxString& name) const;
     const wxAnimation& getAnimation(const wxString& name) const;
 
 private:
@@ -84,7 +85,15 @@ void GlobalResources::init(const Zstring& filepath)
 
             //generic image loading
             if (endsWith(name, L".png"))
-                bitmaps.emplace(name, wxImage(streamIn, wxBITMAP_TYPE_PNG));
+            {
+                wxImage img(streamIn, wxBITMAP_TYPE_PNG);
+
+                //end this alpha/no-alpha/mask/wxDC::DrawBitmap/RTL/high-contrast-scheme interoperability nightmare here and now!!!!
+				//=> there's only one type of png image: with alpha channel, no mask!!!
+				 convertToVanillaImage(img);
+
+                bitmaps.emplace(name, img);
+            }
             else if (endsWith(name, L".gif"))
                 loadAnimFromZip(streamIn, anims[name]);
         }

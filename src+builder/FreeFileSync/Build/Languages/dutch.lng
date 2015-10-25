@@ -615,8 +615,8 @@ De opdracht wordt geactiveerd als:
 <source>FreeFileSync is up to date.</source>
 <target>FreeFileSync is actueel.</target>
 
-<source>Unable to connect to FreeFileSync.org.</source>
-<target>Kan geen verbinding maken met FreeFileSync.org.</target>
+<source>Unable to connect to www.freefilesync.org.</source>
+<target>Kan geen verbinding maken met www.freefilesync.org.</target>
 
 <source>Cannot find current FreeFileSync version number online. Do you want to check manually?</source>
 <target>Kan online niet het actuele FreeFileSync versienummer vinden. Wilt u handmatig controleren?</target>

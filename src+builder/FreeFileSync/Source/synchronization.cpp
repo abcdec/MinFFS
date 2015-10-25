@@ -22,7 +22,6 @@
 #include <memory>
 #include <deque>
 #include <stdexcept>
-#include <wx/file.h> //get rid!?
 #include <zen/format_unit.h>
 #include <zen/scope_guard.h>
 #include <zen/process_priority.h>
@@ -38,11 +37,15 @@
 #include "lib/cmp_filetime.h"
 #include "lib/status_handler_impl.h"
 #include "lib/versioning.h"
+#include "lib/binary.h"
 
 #ifdef ZEN_WIN
     #include <zen/long_path_prefix.h>
     #include <zen/perf.h>
     #include "lib/shadow.h"
+
+#elif defined ZEN_LINUX || defined ZEN_MAC
+    #include <fcntl.h>  //open, close
 #endif
 
 using namespace zen;
@@ -322,6 +325,150 @@ bool significantDifferenceDetected(const SyncStatistics& folderPairStat)
 
 //#################################################################################################################
 
+class RecycleSession
+{
+public:
+    RecycleSession(const Zstring baseDirPf) : baseDirPf_(baseDirPf) {}
+
+    bool recycleItem(const Zstring& fullPath, const Zstring& relPath); //throw FileError
+    void tryCleanup(const std::function<void (const Zstring& currentItem)>& notifyDeletionStatus /*optional; currentItem may be empty*/); //throw FileError
+
+private:
+    const Zstring baseDirPf_;  //ends with path separator
+
+#ifdef ZEN_WIN
+    Zstring getOrCreateRecyclerTempDirPf(); //throw FileError
+
+    std::vector<Zstring> toBeRecycled; //full path of files located in temporary folder, waiting for batch-recycling
+    Zstring recyclerTmpDir; //temporary folder holding files/folders for *deferred* recycling
+#endif
+};
+
+
+#ifdef ZEN_WIN
+//create + returns temporary directory postfixed with file name separator
+//to support later cleanup if automatic deletion fails for whatever reason
+Zstring RecycleSession::getOrCreateRecyclerTempDirPf() //throw FileError
+{
+    assert(!baseDirPf_.empty());
+    if (baseDirPf_.empty())
+        return Zstring();
+
+    if (recyclerTmpDir.empty())
+        recyclerTmpDir = [&]
+    {
+        assert(endsWith(baseDirPf_, FILE_NAME_SEPARATOR));
+        /*
+        -> this naming convention is too cute and confusing for end users:
+
+        //1. generate random directory name
+        static std::mt19937 rng(std::time(nullptr)); //don't use std::default_random_engine which leaves the choice to the STL implementer!
+        //- the alternative std::random_device may not always be available and can even throw an exception!
+        //- seed with second precision is sufficient: collisions are handled below
+
+        const Zstring chars(Zstr("abcdefghijklmnopqrstuvwxyz")
+                            Zstr("1234567890"));
+        std::uniform_int_distribution<size_t> distrib(0, chars.size() - 1); //takes closed range
+
+        auto generatePath = [&]() -> Zstring //e.g. C:\Source\3vkf74fq.ffs_tmp
+        {
+            Zstring path = baseDirPf;
+            for (int i = 0; i < 8; ++i)
+                path += chars[distrib(rng)];
+            return path + TEMP_FILE_ENDING;
+        };
+        */
+
+        //ensure unique ownership:
+        Zstring dirpath = baseDirPf_ + Zstr("RecycleBin") + TEMP_FILE_ENDING;
+        for (int i = 0;; ++i)
+            try
+            {
+                makeDirectory(dirpath, /*bool failIfExists*/ true); //throw FileError, ErrorTargetExisting
+                return dirpath;
+            }
+            catch (const ErrorTargetExisting&)
+            {
+                if (i == 10) throw; //avoid endless recursion in pathological cases
+                dirpath = baseDirPf_ + Zstr("RecycleBin") + Zchar('_') + numberTo<Zstring>(i) + TEMP_FILE_ENDING;
+            }
+    }();
+
+    //assemble temporary recycle bin directory with random name and .ffs_tmp ending
+    return appendSeparator(recyclerTmpDir);
+}
+#endif
+
+
+bool RecycleSession::recycleItem(const Zstring& itemPath, const Zstring& relPath) //throw FileError
+{
+#ifdef ZEN_WIN
+    const Zstring tmpPath = getOrCreateRecyclerTempDirPf() + relPath; //throw FileError
+    bool deleted = false;
+
+    auto moveToTempDir = [&]
+    {
+        try
+        {
+            //performance optimization: Instead of moving each object into recycle bin separately,
+            //we rename them one by one into a temporary directory and batch-recycle this directory after sync
+            renameFile(itemPath, tmpPath); //throw FileError, ErrorDifferentVolume
+            this->toBeRecycled.push_back(tmpPath);
+            deleted = true;
+        }
+        catch (ErrorDifferentVolume&) //MoveFileEx() returns ERROR_PATH_NOT_FOUND *before* considering ERROR_NOT_SAME_DEVICE! => we have to create tmpParentDir anyway to find out!
+        {
+            deleted = recycleOrDelete(itemPath); //throw FileError
+        }
+    };
+
+    try
+    {
+        moveToTempDir(); //throw FileError, ErrorDifferentVolume
+    }
+    catch (FileError&)
+    {
+        if (somethingExists(itemPath))
+        {
+            const Zstring tmpParentDir = beforeLast(tmpPath, FILE_NAME_SEPARATOR); //what if C:\ ?
+            if (!dirExists(tmpParentDir))
+            {
+                makeDirectory(tmpParentDir); //throw FileError -> may legitimately fail on Linux if permissions are missing
+                moveToTempDir(); //throw FileError -> this should work now!
+            }
+            else
+                throw;
+        }
+    }
+    return deleted;
+
+#elif defined ZEN_LINUX || defined ZEN_MAC
+    return recycleOrDelete(itemPath); //throw FileError
+#endif
+}
+
+
+void RecycleSession::tryCleanup(const std::function<void (const Zstring& currentItem)>& notifyDeletionStatus) //throw FileError
+{
+#ifdef ZEN_WIN
+    if (!toBeRecycled.empty())
+    {
+        //move content of temporary directory to recycle bin in a single call
+        recycleOrDelete(toBeRecycled, notifyDeletionStatus); //throw FileError
+        toBeRecycled.clear();
+    }
+
+    //clean up temp directory itself (should contain remnant empty directories only)
+    if (!recyclerTmpDir.empty())
+    {
+        removeDirectory(recyclerTmpDir); //throw FileError
+        recyclerTmpDir.clear();
+    }
+#endif
+}
+
+//#################################################################################################################
+
 class DeletionHandling //abstract deletion variants: permanently, recycle bin, user-defined directory
 {
 public:
@@ -347,7 +494,7 @@ public:
     }
 
     //clean-up temporary directory (recycle bin optimization)
-    void tryCleanup(bool allowUserCallback = true); //throw FileError; throw X -> call this in non-exceptional coding, i.e. somewhere after sync!
+    void tryCleanup(bool allowUserCallback); //throw FileError; throw X -> call this in non-exceptional coding, i.e. somewhere after sync!
 
     template <class Function> void removeFileWithCallback (const Zstring& filepath, const Zstring& relativePath, Function onNotifyItemDeletion, const std::function<void(std::int64_t bytesDelta)>& onNotifyFileCopy); //
     template <class Function> void removeDirWithCallback  (const Zstring& dirpath,  const Zstring& relativePath, Function onNotifyItemDeletion, const std::function<void(std::int64_t bytesDelta)>& onNotifyFileCopy); //throw FileError
@@ -369,20 +516,15 @@ private:
     };
 
     ProcessCallback& procCallback_;
-    const Zstring baseDirPf_;  //ends with path separator
     const Zstring versioningDir_;
     const VersioningStyle versioningStyle_;
     const TimeComp timeStamp_;
 
-#ifdef ZEN_WIN
-    Zstring getOrCreateRecyclerTempDirPf(); //throw FileError
-    Zstring recyclerTmpDir; //temporary folder holding files/folders for *deferred* recycling
-    std::vector<Zstring> toBeRecycled; //full path of files located in temporary folder, waiting for batch-recycling
-#endif
-
-    //magage three states: allow dynamic fallback from recycler to permanent deletion
+    //manage three states: allow dynamic fallback from recycler to permanent deletion
     const DeletionPolicy deletionPolicy_;
     std::unique_ptr<FileVersioner> versioner; //used for DELETE_TO_VERSIONING; throw FileError in constructor => create on demand!
+
+    RecycleSession recycler;
 
     //buffer status texts:
     std::wstring txtRemovingFile;
@@ -401,11 +543,11 @@ DeletionHandling::DeletionHandling(DeletionPolicy handleDel, //nothrow!
                                    const Zstring& baseDirPf, //with separator postfix
                                    ProcessCallback& procCallback) :
     procCallback_(procCallback),
-    baseDirPf_(baseDirPf),
     versioningDir_(versioningDir),
     versioningStyle_(versioningStyle),
     timeStamp_(timeStamp),
     deletionPolicy_(handleDel),
+    recycler(baseDirPf),
     txtMovingFile  (_("Moving file %x to %y")),
     txtMovingFolder(_("Moving folder %x to %y"))
 {
@@ -432,62 +574,6 @@ DeletionHandling::DeletionHandling(DeletionPolicy handleDel, //nothrow!
 }
 
 
-#ifdef ZEN_WIN
-//create + returns temporary directory postfixed with file name separator
-//to support later cleanup if automatic deletion fails for whatever reason
-Zstring DeletionHandling::getOrCreateRecyclerTempDirPf() //throw FileError
-{
-    assert(!baseDirPf_.empty());
-    if (baseDirPf_.empty())
-        return Zstring();
-
-    if (recyclerTmpDir.empty())
-    {
-        recyclerTmpDir = [&]
-        {
-            assert(endsWith(baseDirPf_, FILE_NAME_SEPARATOR));
-            /*
-            -> this naming convention is too cute and confusing for end users:
-
-            //1. generate random directory name
-            static std::mt19937 rng(std::time(nullptr)); //don't use std::default_random_engine which leaves the choice to the STL implementer!
-            //- the alternative std::random_device may not always be available and can even throw an exception!
-            //- seed with second precision is sufficient: collisions are handled below
-
-            const Zstring chars(Zstr("abcdefghijklmnopqrstuvwxyz")
-                                Zstr("1234567890"));
-            std::uniform_int_distribution<size_t> distrib(0, chars.size() - 1); //takes closed range
-
-            auto generatePath = [&]() -> Zstring //e.g. C:\Source\3vkf74fq.ffs_tmp
-            {
-                Zstring path = baseDirPf;
-                for (int i = 0; i < 8; ++i)
-                    path += chars[distrib(rng)];
-                return path + TEMP_FILE_ENDING;
-            };
-            */
-
-            //ensure unique ownership:
-            Zstring dirpath = baseDirPf_ + Zstr("RecycleBin") + TEMP_FILE_ENDING;
-            for (int i = 0;; ++i)
-                try
-                {
-                    makeDirectory(dirpath, /*bool failIfExists*/ true); //throw FileError, ErrorTargetExisting
-                    return dirpath;
-                }
-                catch (const ErrorTargetExisting&)
-                {
-                    if (i == 10) throw; //avoid endless recursion in pathological cases
-                    dirpath = baseDirPf_ + Zstr("RecycleBin") + Zchar('_') + numberTo<Zstring>(i) + TEMP_FILE_ENDING;
-                }
-        }();
-    }
-    //assemble temporary recycle bin directory with random name and .ffs_tmp ending
-    return appendSeparator(recyclerTmpDir);
-}
-#endif
-
-
 void DeletionHandling::tryCleanup(bool allowUserCallback) //throw FileError; throw X
 {
     switch (deletionPolicy_)
@@ -496,33 +582,22 @@ void DeletionHandling::tryCleanup(bool allowUserCallback) //throw FileError; thr
             break;
 
         case DELETE_TO_RECYCLER:
-#ifdef ZEN_WIN
-            if (!toBeRecycled.empty())
+        {
+            auto notifyDeletionStatus = [&](const Zstring& currentItem)
             {
-                auto notifyDeletionStatus = [&](const Zstring& currentItem)
-                {
-                    if (!currentItem.empty())
-                        procCallback_.reportStatus(replaceCpy(txtRemovingFile, L"%x", fmtFileName(currentItem))); //throw ?
-                    else
-                        procCallback_.requestUiRefresh(); //throw ?
-                };
-
-                //move content of temporary directory to recycle bin in a single call
-                if (allowUserCallback)
-                    recycleOrDelete(toBeRecycled, notifyDeletionStatus); //throw FileError
+                if (!currentItem.empty())
+                    procCallback_.reportStatus(replaceCpy(txtRemovingFile, L"%x", fmtFileName(currentItem))); //throw ?
                 else
-                    recycleOrDelete(toBeRecycled, nullptr); //throw FileError
-                toBeRecycled.clear();
-            }
+                    procCallback_.requestUiRefresh(); //throw ?
+            };
 
-            //clean up temp directory itself (should contain remnant empty directories only)
-            if (!recyclerTmpDir.empty())
-            {
-                removeDirectory(recyclerTmpDir); //throw FileError
-                recyclerTmpDir.clear();
-            }
-#endif
-            break;
+            //move content of temporary directory to recycle bin in a single call
+            if (allowUserCallback)
+                recycler.tryCleanup(notifyDeletionStatus); //throw FileError
+            else
+                recycler.tryCleanup(nullptr); //throw FileError
+        }
+        break;
 
         case DELETE_TO_VERSIONING:
             //if (versioner.get())
@@ -563,52 +638,9 @@ void DeletionHandling::removeDirWithCallback(const Zstring& dirpath,
         break;
 
         case DELETE_TO_RECYCLER:
-        {
-#ifdef ZEN_WIN
-            const Zstring targetDir = getOrCreateRecyclerTempDirPf() + relativePath; //throw FileError
-            bool deleted = false;
-
-            auto moveToTempDir = [&]
-            {
-                try
-                {
-                    //performance optimization: Instead of moving each object into recycle bin separately,
-                    //we rename them one by one into a temporary directory and batch-recycle this directory after sync
-                    renameFile(dirpath, targetDir); //throw FileError, ErrorDifferentVolume
-                    this->toBeRecycled.push_back(targetDir);
-                    deleted = true;
-                }
-                catch (ErrorDifferentVolume&) //MoveFileEx() returns ERROR_PATH_NOT_FOUND *before* considering ERROR_NOT_SAME_DEVICE! => we have to create targetDir in any case!
-                {
-                    deleted = recycleOrDelete(dirpath); //throw FileError
-                }
-            };
-
-            try
-            {
-                moveToTempDir(); //throw FileError, ErrorDifferentVolume
-            }
-            catch (FileError&)
-            {
-                if (somethingExists(dirpath))
-                {
-                    const Zstring targetSuperDir = beforeLast(targetDir, FILE_NAME_SEPARATOR); //what if C:\ ?
-                    if (!dirExists(targetSuperDir))
-                    {
-                        makeDirectory(targetSuperDir); //throw FileError -> may legitimately fail on Linux if permissions are missing
-                        moveToTempDir(); //throw FileError -> this should work now!
-                    }
-                    else
-                        throw;
-                }
-            }
-#elif defined ZEN_LINUX || defined ZEN_MAC
-            const bool deleted = recycleOrDelete(dirpath); //throw FileError
-#endif
-            if (deleted)
+            if (recycler.recycleItem(dirpath, relativePath)) //throw FileError
                 onNotifyItemDeletion(); //moving to recycler is ONE logical operation, irrespective of the number of child elements!
-        }
-        break;
+            break;
 
         case DELETE_TO_VERSIONING:
         {
@@ -646,48 +678,7 @@ void DeletionHandling::removeFileWithCallback(const Zstring& filepath,
                 break;
 
             case DELETE_TO_RECYCLER:
-#ifdef ZEN_WIN
-                {
-                    const Zstring targetFile = getOrCreateRecyclerTempDirPf() + relativePath; //throw FileError
-
-                    auto moveToTempDir = [&]
-                    {
-                        try
-                        {
-                            //performance optimization: Instead of moving each object into recycle bin separately,
-                            //we rename them one by one into a temporary directory and batch-recycle this directory after sync
-                            renameFile(filepath, targetFile); //throw FileError, ErrorDifferentVolume
-                            this->toBeRecycled.push_back(targetFile);
-                            deleted = true;
-                        }
-                        catch (ErrorDifferentVolume&) //MoveFileEx() returns ERROR_PATH_NOT_FOUND *before* considering ERROR_NOT_SAME_DEVICE! => we have to create targetDir in any case!
-                        {
-                            deleted = recycleOrDelete(filepath); //throw FileError
-                        }
-                    };
-
-                    try
-                    {
-                        moveToTempDir(); //throw FileError, ErrorDifferentVolume
-                    }
-                    catch (FileError&)
-                    {
-                        if (somethingExists(filepath))
-                        {
-                            const Zstring targetDir = beforeLast(targetFile, FILE_NAME_SEPARATOR);
-                            if (!dirExists(targetDir))
-                            {
-                                makeDirectory(targetDir); //throw FileError -> may legitimately fail on Linux if permissions are missing
-                                moveToTempDir(); //throw FileError -> this should work now!
-                            }
-                            else
-                                throw;
-                        }
-                    }
-                }
-#elif defined ZEN_LINUX || defined ZEN_MAC
-                deleted = recycleOrDelete(filepath); //throw FileError
-#endif
+                deleted = recycler.recycleItem(filepath, relativePath); //throw FileError
                 break;
 
             case DELETE_TO_VERSIONING:
@@ -807,9 +798,9 @@ public:
 #ifdef TODO_MinFFS_SHADOW_COPY_ENABLE
                           shadow::ShadowCopy* shadowCopyHandler,
 #endif//TODO_MinFFS_SHADOW_COPY_ENABLE
+#endif
                           DeletionHandling& delHandlingLeft,
                           DeletionHandling& delHandlingRight) :
-#endif
         procCallback_(procCallback),
 #ifdef ZEN_WIN
 #ifdef TODO_MinFFS_SHADOW_COPY_ENABLE
@@ -882,8 +873,6 @@ private:
                                           const Zstring& targetFile,
                                           const std::function<void()>& onDeleteTargetFile,
                                           const std::function<void(std::int64_t bytesDelta)>& onNotifyFileCopy) const; //throw FileError
-
-    void verifyFiles(const Zstring& source, const Zstring& target, const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus) const; //throw FileError
 
     template <SelectedSide side>
     DeletionHandling& getDelHandling();
@@ -1785,6 +1774,53 @@ void SynchronizeFolderPair::synchronizeFolderInt(DirPair& dirObj, SyncOperation 
 
 //###########################################################################################
 
+//--------------------- data verification -------------------------
+void verifyFiles(const Zstring& sourceFile, const Zstring& targetFile, const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus)  //throw FileError
+{
+    try
+    {
+        //do like "copy /v": 1. flush target file buffers, 2. read again as usual (using OS buffers)
+        // => it seems OS buffered are not invalidated by this: snake oil???
+        {
+#ifdef ZEN_WIN
+            const HANDLE fileHandle = ::CreateFile(applyLongPathPrefix(targetFile).c_str(), //_In_      LPCTSTR lpFileName,
+                                                   GENERIC_WRITE |        //_In_      DWORD dwDesiredAccess,
+                                                   GENERIC_READ,          //=> request read-access, too, just like "copy /v" command
+                                                   FILE_SHARE_READ | FILE_SHARE_DELETE,     //_In_      DWORD dwShareMode,
+                                                   nullptr,               //_In_opt_  LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+                                                   OPEN_EXISTING,         //_In_      DWORD dwCreationDisposition,
+                                                   FILE_ATTRIBUTE_NORMAL, //_In_      DWORD dwFlagsAndAttributes,
+                                                   nullptr);              //_In_opt_  HANDLE hTemplateFile
+            if (fileHandle == INVALID_HANDLE_VALUE)
+                throwFileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtFileName(targetFile)), L"CreateFile", getLastError());
+            ZEN_ON_SCOPE_EXIT(::CloseHandle(fileHandle));
+
+            if (!::FlushFileBuffers(fileHandle))
+                throwFileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtFileName(targetFile)), L"FlushFileBuffers", getLastError());
+
+#elif defined ZEN_LINUX || defined ZEN_MAC
+            const int fileHandle = ::open(targetFile.c_str(), O_WRONLY);
+            if (fileHandle == -1)
+                throwFileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtFileName(targetFile)), L"open", getLastError());
+            ZEN_ON_SCOPE_EXIT(::close(fileHandle));
+
+            if (::fsync(fileHandle) != 0)
+                throwFileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtFileName(targetFile)), L"fsync", getLastError());
+#endif
+        } //close file handles
+
+        if (onUpdateStatus) onUpdateStatus(0);
+
+        if (!filesHaveSameContent(sourceFile, targetFile, onUpdateStatus)) //throw FileError
+            throw FileError(replaceCpy(replaceCpy(_("%x and %y have different content."), L"%x", L"\n" + fmtFileName(sourceFile)), L"%y", L"\n" + fmtFileName(targetFile)));
+    }
+    catch (const FileError& e) //add some context to error message
+    {
+        throw FileError(_("Data verification error:"), e.toString());
+    }
+}
+
+
 InSyncAttributes SynchronizeFolderPair::copyFileWithCallback(const Zstring& sourceFile, //throw FileError
                                                              const Zstring& targetFile,
                                                              const std::function<void()>& onDeleteTargetFile,
@@ -1837,7 +1873,7 @@ InSyncAttributes SynchronizeFolderPair::copyFileWithCallback(const Zstring& sour
                 procCallback_.reportStatus(replaceCpy(_("Creating a Volume Shadow Copy for %x..."), L"%x", fmtFileName(volumeName)));
             });
         }
-        catch (const FileError& e2) //enhance error massage
+        catch (const FileError& e2) //enhance error message
         {
             throw FileError(e1.toString(), e2.toString());
         }
@@ -1851,52 +1887,6 @@ InSyncAttributes SynchronizeFolderPair::copyFileWithCallback(const Zstring& sour
 #else
     return copyOperation(sourceFile);
 #endif
-}
-
-//--------------------- data verification -------------------------
-void SynchronizeFolderPair::verifyFiles(const Zstring& source, const Zstring& target, const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus) const //throw FileError
-{
-    static std::vector<char> memory1(1024 * 1024); //1024 kb seems to be a reasonable buffer size
-    static std::vector<char> memory2(1024 * 1024);
-
-    warn_static("redesign: access still buffered:")
-
-#ifdef ZEN_WIN
-    wxFile file1(applyLongPathPrefix(source).c_str(), wxFile::read); //don't use buffered file input for verification!
-#elif defined ZEN_LINUX || defined ZEN_MAC
-    wxFile file1(::open(source.c_str(), O_RDONLY)); //utilize UTF-8 filepath
-#endif
-    if (!file1.IsOpened())
-        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtFileName(source)) + L" (open)");
-
-#ifdef ZEN_WIN
-    wxFile file2(applyLongPathPrefix(target).c_str(), wxFile::read); //don't use buffered file input for verification!
-#elif defined ZEN_LINUX || defined ZEN_MAC
-    wxFile file2(::open(target.c_str(), O_RDONLY)); //utilize UTF-8 filepath
-#endif
-    if (!file2.IsOpened()) //NO cleanup necessary for (wxFile) file1
-        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtFileName(target)) + L" (open)");
-
-    do
-    {
-        const size_t length1 = file1.Read(&memory1[0], memory1.size());
-        if (file1.Error())
-            throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtFileName(source)));
-
-        const size_t length2 = file2.Read(&memory2[0], memory2.size());
-        if (file2.Error())
-            throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtFileName(target)));
-
-        if (length1 != length2 || ::memcmp(&memory1[0], &memory2[0], length1) != 0)
-            throw FileError(replaceCpy(replaceCpy(_("Data verification error: %x and %y have different content."), L"%x", L"\n" + fmtFileName(source)), L"%y", L"\n" + fmtFileName(target)));
-
-        if (onUpdateStatus)
-            onUpdateStatus(length1);
-    }
-    while (!file1.Eof());
-
-    if (!file2.Eof())
-        throw FileError(replaceCpy(replaceCpy(_("Data verification error: %x and %y have different content."), L"%x", L"\n" + fmtFileName(source)), L"%y", L"\n" + fmtFileName(target)));
 }
 
 //###########################################################################################
@@ -2051,7 +2041,7 @@ void zen::synchronize(const TimeComp& timeStamp,
                     ++item.second.writes;
     };
 
-    std::vector<std::pair<Zstring, Zstring>>  significantDiffPairs;
+    std::vector<std::pair<Zstring, Zstring>> significantDiffPairs;
 
     std::vector<std::pair<Zstring, std::pair<std::int64_t, std::int64_t>>> diskSpaceMissing; //dirpath / space required / space available
 
@@ -2117,7 +2107,7 @@ void zen::synchronize(const TimeComp& timeStamp,
                 incWriteCount(j->getBaseDirPf<LEFT_SIDE>());
         }
 
-        //check empty input fields: this only makes sense if empty field is source (and no DB files need to be created)
+        //check for empty target folder paths: this only makes sense if empty field is source (and no DB files need to be created)
         if ((j->getBaseDirPf<LEFT_SIDE >().empty() && (writeLeft  || folderPairCfg.saveSyncDB_)) ||
             (j->getBaseDirPf<RIGHT_SIDE>().empty() && (writeRight || folderPairCfg.saveSyncDB_)))
         {
@@ -2141,8 +2131,7 @@ void zen::synchronize(const TimeComp& timeStamp,
         {
             if (!baseDirPf.empty())
                 //PERMANENT network drop: avoid data loss when source directory is not found AND user chose to ignore errors (else we wouldn't arrive here)
-                if (folderPairStat.getCreate() + folderPairStat.getUpdate() == 0 &&
-                folderPairStat.getDelete() > 0) //deletions only... (respect filtered items!)
+                if (folderPairStat.getDelete() > 0) //check deletions only... (respect filtered items!)
                     //folderPairStat.getConflict() == 0 && -> there COULD be conflicts for <automatic> if directory existence check fails, but loading sync.ffs_db succeeds
                     //https://sourceforge.net/tracker/?func=detail&atid=1093080&aid=3531351&group_id=234430 -> fixed, but still better not consider conflicts!
                     if (!wasExisting) //avoid race-condition: we need to evaluate existence status from time of comparison!
@@ -2346,7 +2335,7 @@ void zen::synchronize(const TimeComp& timeStamp,
             if (jobType[folderIndex] == FolderPairJobType::PROCESS)
             {
                 //guarantee removal of invalid entries (where element is empty on both sides)
-                ZEN_ON_SCOPE_EXIT(BaseDirPair::removeEmpty(*j););
+                ZEN_ON_SCOPE_EXIT(BaseDirPair::removeEmpty(*j));
 
                 bool copyPermissionsFp = false;
                 tryReportingError([&]
@@ -2399,8 +2388,8 @@ void zen::synchronize(const TimeComp& timeStamp,
                 syncFP.startSync(*j);
 
                 //(try to gracefully) cleanup temporary Recycle bin folders and versioning -> will be done in ~DeletionHandling anyway...
-                tryReportingError([&] { delHandlerL.tryCleanup(); /*throw FileError*/}, callback); //throw X?
-                tryReportingError([&] { delHandlerR.tryCleanup(); /*throw FileError*/}, callback); //throw X?
+                tryReportingError([&] { delHandlerL.tryCleanup(true /*allowUserCallback*/); /*throw FileError*/}, callback); //throw X?
+                tryReportingError([&] { delHandlerR.tryCleanup(true                      ); /*throw FileError*/}, callback); //throw X?
             }
 
             //(try to gracefully) write database file

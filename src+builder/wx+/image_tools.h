@@ -33,10 +33,10 @@ wxImage stackImages(const wxImage& img1, const wxImage& img2, ImageStackLayout d
 
 wxImage createImageFromText(const wxString& text, const wxFont& font, const wxColor& col);
 
+wxBitmap layOver(const wxBitmap& foreground, const wxBitmap& background); //merge
 
 wxImage greyScale(const wxImage& img); //greyscale + brightness adaption
 wxBitmap greyScale(const wxBitmap& bmp); //
-wxBitmap layOver(const wxBitmap& foreground, const wxBitmap& background); //merge
 
 //void moveImage(wxImage& img, int right, int up);
 void adjustBrightness(wxImage& img, int targetLevel);
@@ -44,6 +44,8 @@ double getAvgBrightness(const wxImage& img); //in [0, 255]
 void brighten(wxImage& img, int level); //level: delta per channel in points
 
 bool isEqual(const wxBitmap& lhs, const wxBitmap& rhs); //pixel-wise equality (respecting alpha channel)
+
+void convertToVanillaImage(wxImage& img); //add alpha channel if missing + remove mask if existing
 
 //wxColor gradient(const wxColor& from, const wxColor& to, double fraction); //maps fraction within [0, 1] to an intermediate color
 
@@ -147,15 +149,15 @@ void adjustBrightness(wxImage& img, int targetLevel)
 inline
 wxBitmap layOver(const wxBitmap& foreground, const wxBitmap& background)
 {
-    wxBitmap output = background;
+    assert(foreground.HasAlpha() == background.HasAlpha()); //we don't support mixed-mode brittleness!
+
+    wxBitmap output(background.ConvertToImage()); //attention: wxBitmap/wxImage use ref-counting without copy on write!
     {
-        wxMemoryDC dc;
-        dc.SelectObject(output);
+        wxMemoryDC dc(output);
 
         const int offsetX = (background.GetWidth () - foreground.GetWidth ()) / 2;
         const int offsetY = (background.GetHeight() - foreground.GetHeight()) / 2;
-        dc.DrawBitmap(foreground, offsetX, offsetY, true);
-        dc.SelectObject(wxNullBitmap);
+        dc.DrawBitmap(foreground, offsetX, offsetY);
     }
     return output;
 }
@@ -179,13 +181,14 @@ bool isEqual(const wxBitmap& lhs, const wxBitmap& rhs)
     if (imLhs.HasAlpha() != imRhs.HasAlpha())
         return false;
 
-    if (imLhs.HasAlpha())
-    {
+	if (!std::equal(imLhs.GetData(), imLhs.GetData() + pixelCount * 3, imRhs.GetData()))
+		return false;
+
+	if (imLhs.HasAlpha())
         if (!std::equal(imLhs.GetAlpha(), imLhs.GetAlpha() + pixelCount, imRhs.GetAlpha()))
             return false;
-    }
 
-    return std::equal(imLhs.GetData(), imLhs.GetData() + pixelCount * 3, imRhs.GetData());
+    return true;
 }
 
 /*

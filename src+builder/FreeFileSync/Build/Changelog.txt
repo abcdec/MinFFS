@@ -1,5 +1,44 @@
-FreeFileSync 6.13
+FreeFileSync 6.15
 -----------------
+Revert to log file naming convention without colon character
+Prevent endless recursion when traversing into folder on corrupt file system
+Fixed view filter button rendering issue for RTL languages
+Fixed grid losing far scroll positions when increasing icon sizes
+Flush file buffers before verifying file copy
+Update existing items when retrying failed folder traversal
+Harmonized bitmap file loading by removing format variance
+Fixed invalid argument error when setting file times (Linux)
+Fixed application hang when loading icon for named pipe (Linux)
+Improved file copy read-ahead performance (Linux)
+Use native file I/O for stream operations (Linux, OS X)
+Fixed file copy creating zero-sized files (OS X)
+Automatically create Minidump files during an application crash (Windows)
+Check for missing service pack to help diagnose crash (Windows 7)
+New menu item with download link after a version update
+Work around C-function memory race condition when formatting time
+Added Hindi language
+
+
+FreeFileSync 6.14 [2015-02-10]
+------------------------------
+New buttons allow changing the order of folder pairs
+New keyboard shortcuts for rearranging folder pairs
+Preserve comparison results when deleting a specific folder pair
+Allow inserting new folder pairs into the middle of the list
+Append status to log file names when warnings occur
+Don't interrupt immediate comparison when starting a .ffs_gui file for slow devices
+Work around wxWidgets bug eating up command keys in text boxes (Linux)
+Fixed incorrect parameter error when checking recycle bin on drive mounted with Paragon ExtFS (Windows)
+Use colon as time stamp seperator in log file names
+Refactored basic low-level file traversal routine
+Optimized file icon startup procedure
+Fixed occasional failure to set modification times on Samba shares (OS X)
+Transfer creation times during file copy (OS X)
+Support copying file times with nano-second precision (OS X)
+
+
+FreeFileSync 6.13 [2015-01-11]
+------------------------------
 Fixed crash when failing to create log file during batch run
 Show directory traversal errors as conflict category on grid
 Improved file filter behavior for certain edge cases when updating the database
@@ -1051,7 +1090,7 @@ Fixed resource loading if installation folder is not working directory (Linux bu
 Consolidated batch creation dialog
 <Automatic> mode: Detect conflict when a directory shall be deleted while new sub-elements are to be copied
 Automatically mark left behind temporary files (*.ffs_tmp) for deletion with next sync
-New Project website: http://freefilesync.sourceforge.net
+New Project website: freefilesync.sourceforge.net
 A lot of small GUI fixes
 Updated translation files
 

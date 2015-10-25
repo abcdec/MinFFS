@@ -122,12 +122,16 @@ struct DirContainer
 
     void addSubFile(const Zstring& shortName, const FileDescriptor& fileData)
     {
-        files.emplace(shortName, fileData);
+        auto rv = files.emplace(shortName, fileData);
+        if (!rv.second) //update entry if already existing (e.g. during folder traverser "retry")
+            rv.first->second = fileData;
     }
 
     void addSubLink(const Zstring& shortName, const LinkDescriptor& linkData)
     {
-        links.emplace(shortName, linkData);
+        auto rv = links.emplace(shortName, linkData);
+        if (!rv.second)
+            rv.first->second = linkData;
     }
 };
 
@@ -236,13 +240,9 @@ public:
                 int fileTimeTolerance,
                 unsigned int optTimeShiftHours) :
 #ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable : 4355) //"The this pointer is valid only within nonstatic member functions. It cannot be used in the initializer list for a base class."
+#pragma warning(suppress: 4355) //"The this pointer is valid only within nonstatic member functions. It cannot be used in the initializer list for a base class."
 #endif
         HierarchyObject(Zstring(), *this),
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
         filter_(filter), cmpVar_(cmpVar), fileTimeTolerance_(fileTimeTolerance), optTimeShiftHours_(optTimeShiftHours),
         baseDirPfL     (dirPostfixedLeft ),
         baseDirPfR     (dirPostfixedRight),
@@ -465,7 +465,7 @@ public:
         FileSystemObject(shortNameLeft, shortNameRight, parentObj, static_cast<CompareFilesResult>(defaultCmpResult)),
         HierarchyObject(getPairRelativePath() + FILE_NAME_SEPARATOR, parentObj.getRoot()),
         syncOpBuffered(SO_DO_NOTHING),
-        syncOpUpToDate(false) {}
+        haveBufferedSyncOp(false) {}
 
     SyncOperation getSyncOperation() const override;
 
@@ -475,10 +475,10 @@ private:
     void flip         () override;
     void removeObjectL() override;
     void removeObjectR() override;
-    void notifySyncCfgChanged() override { syncOpUpToDate = false; FileSystemObject::notifySyncCfgChanged(); HierarchyObject::notifySyncCfgChanged(); }
+    void notifySyncCfgChanged() override { haveBufferedSyncOp = false; FileSystemObject::notifySyncCfgChanged(); HierarchyObject::notifySyncCfgChanged(); }
 
     mutable SyncOperation syncOpBuffered; //determining sync-op for directory may be expensive as it depends on child-objects -> buffer it
-    mutable bool syncOpUpToDate;          //
+    mutable bool haveBufferedSyncOp;      //
 };
 
 //------------------------------------------------------------------
