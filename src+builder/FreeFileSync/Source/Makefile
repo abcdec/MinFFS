@@ -54,6 +54,7 @@ CPP_LIST+=ui/sync_cfg.cpp
 CPP_LIST+=ui/taskbar.cpp
 CPP_LIST+=ui/triple_splitter.cpp
 CPP_LIST+=ui/tray_icon.cpp
+CPP_LIST+=lib/deep_file_traverser.cpp
 CPP_LIST+=lib/binary.cpp
 CPP_LIST+=lib/db_file.cpp
 CPP_LIST+=lib/dir_lock.cpp

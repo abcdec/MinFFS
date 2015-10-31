@@ -7,6 +7,24 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
+<source>Cannot copy attributes from %x to %y.</source>
+<target>Die Attribute können nicht von %x nach %y kopiert werden.</target>
+
+<source>Cannot copy permissions from %x to %y.</source>
+<target>Die Berechtigungen können nicht von %x nach %y kopiert werden.</target>
+
+<source>Move down</source>
+<target>Nach unten</target>
+
+<source>Move up</source>
+<target>Nach oben</target>
+
+<source>Arrange folder pair</source>
+<target>Ordnerpaar anordnen</target>
+
+<source>Cannot find file %x.</source>
+<target>Die Datei %x wurde nicht gefunden.</target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>Beide Seiten wurden seit der letzten Synchronisation verändert.</target>
 
@@ -54,9 +72,6 @@
 
 <source>Syntax error</source>
 <target>Syntaxfehler</target>
-
-<source>Cannot open file %x.</source>
-<target>Die Datei %x kann nicht geöffnet werden.</target>
 
 <source>File %x does not contain a valid configuration.</source>
 <target>Die Datei %x enthält keine gültige Konfiguration.</target>
@@ -615,8 +630,8 @@ Die Befehlszeile wird ausgelöst, wenn:
 <source>FreeFileSync is up to date.</source>
 <target>FreeFileSync ist auf dem neuesten Stand.</target>
 
-<source>Unable to connect to FreeFileSync.org.</source>
-<target>Es kann keine Verbindung zu FreeFileSync.org aufgebaut werden.</target>
+<source>Unable to connect to www.freefilesync.org.</source>
+<target>Es kann keine Verbindung zu www.freefilesync.org aufgebaut werden.</target>
 
 <source>Cannot find current FreeFileSync version number online. Do you want to check manually?</source>
 <target>Die aktuelle FreeFileSync Versionsnummer wurde online nicht gefunden. Möchten Sie manuell prüfen?</target>
@@ -862,7 +877,7 @@ Die Befehlszeile wird ausgelöst, wenn:
 <target>Maximum:</target>
 
 <source>Select filter rules to exclude certain files from synchronization. Enter file paths relative to their corresponding folder pair.</source>
-<target>Wählen Sie Filterregeln aus, um einzelne Dateien von der Synchronisation auszuschließen. Geben Sie Dateipfade relativ zu ihrem zugehörigen Ordnerpaar an.</target>
+<target>Wählen Sie Filterregeln aus, um einzelne Dateien von der Synchronisation auszuschließen. Geben Sie Dateipfade relativ zum zugehörigen Ordnerpaar an.</target>
 
 <source>C&lear</source>
 <target>&Löschen</target>
@@ -1082,6 +1097,9 @@ Dadurch wird ein konsistenter Datenstand auch im schweren Fehlerfall garantiert.
 <source>&Preferences...</source>
 <target>&Einstellungen...</target>
 
+<source>Main Bar</source>
+<target>Hauptleiste</target>
+
 <source>Folder Pairs</source>
 <target>Ordnerpaare</target>
 
@@ -1096,9 +1114,6 @@ Dadurch wird ein konsistenter Datenstand auch im schweren Fehlerfall garantiert.
 
 <source>Overview</source>
 <target>Übersicht</target>
-
-<source>Main Bar</source>
-<target>Hauptleiste</target>
 
 <source>Confirm</source>
 <target>Bestätigen</target>
@@ -1286,17 +1301,14 @@ Dadurch wird ein konsistenter Datenstand auch im schweren Fehlerfall garantiert.
 <source>Close progress dialog</source>
 <target>Schließe Verlaufsdialog</target>
 
-<source>Standby</source>
-<target>Energie sparen</target>
-
 <source>Log off</source>
 <target>Abmelden</target>
 
+<source>Standby</source>
+<target>Energie sparen</target>
+
 <source>Shut down</source>
 <target>Herunterfahren</target>
-
-<source>Hibernate</source>
-<target>Ruhezustand</target>
 
 <source>Scanning...</source>
 <target>Suche Dateien...</target>
@@ -1498,6 +1510,9 @@ Dadurch wird ein konsistenter Datenstand auch im schweren Fehlerfall garantiert.
 
 <source>Type of item %x is not supported:</source>
 <target>Der Typ des Elements %x wird nicht unterstützt:</target>
+
+<source>Cannot open file %x.</source>
+<target>Die Datei %x kann nicht geöffnet werden.</target>
 
 <source>Cannot resolve symbolic link %x.</source>
 <target>Die symbolische Verknüpfung %x kann nicht aufgelöst werden.</target>

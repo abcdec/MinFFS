@@ -13,8 +13,13 @@
 
 namespace zen
 {
-void checkForUpdateNow(wxWindow* parent);
-void checkForUpdatePeriodically(wxWindow* parent, long& lastUpdateCheck, const std::function<void()>& onBeforeInternetAccess); //-1: check never
+void checkForUpdateNow(wxWindow* parent, wxString& lastOnlineVersion);
+void checkForUpdatePeriodically(wxWindow* parent, long& lastUpdateCheck, wxString& lastOnlineVersion, const std::function<void()>& onBeforeInternetAccess); //-1: check never
+
+bool updateCheckActive(long lastUpdateCheck);
+void disableUpdateCheck(long& lastUpdateCheck);
+
+bool isNewerFreeFileSyncVersion(const wxString& onlineVersion);
 }
 
 #endif // UPDATEVERSION_H_INCLUDED

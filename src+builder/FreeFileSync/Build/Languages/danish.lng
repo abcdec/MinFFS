@@ -615,8 +615,8 @@ Kommandoen udføres hvis:
 <source>FreeFileSync is up to date.</source>
 <target>FreeFileSync er opdateret.</target>
 
-<source>Unable to connect to FreeFileSync.org.</source>
-<target>Kan ikke kontakte FreeFileSync.org.</target>
+<source>Unable to connect to www.freefilesync.org.</source>
+<target>Kan ikke kontakte www.freefilesync.org.</target>
 
 <source>Cannot find current FreeFileSync version number online. Do you want to check manually?</source>
 <target>Kunne ikke finde FreeFileSync's versionsnummer online. Vil du kontrollere manuelt?</target>

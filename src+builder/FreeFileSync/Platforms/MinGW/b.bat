@@ -28,7 +28,7 @@
 
 @IF EXIST MinFFS.exe del MinFFS.exe
 
-mingw32-make.exe -f Makefile-cmdexe.mk
+mingw32-make.exe -f Makefile-cmdexe.mk -j 10
 
 GOTO END
 

@@ -80,7 +80,7 @@ void vector_append(V& vec, const W& vec2)
 template <class V, class W> inline
 void set_append(V& s, const W& s2)
 {
-	s.insert(s2.begin(), s2.end());
+    s.insert(s2.begin(), s2.end());
 }
 
 

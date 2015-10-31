@@ -5,7 +5,7 @@
 // **************************************************************************
 // **************************************************************************
 // * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.13        *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.15        *
 // * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
 // *                          --EXPERIMENTAL--                              *
 // * This program is experimental and not recommended for general use.      *
@@ -17,7 +17,6 @@
 // * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
 // * General Public License for more details.                               *
 // **************************************************************************
-
 
 #ifndef WARN_STATIC_HEADER_08724567834560832745
 #define WARN_STATIC_HEADER_08724567834560832745
@@ -47,6 +46,7 @@ Usage:
 #endif
 
 #else//TODO_MinFFS_WARN_STATIC
-#define warn_static(TXT) {}
+// Do nothing
+#define warn_static(TXT)
 #endif//TODO_MinFFS_WARN_STATIC
 #endif //WARN_STATIC_HEADER_08724567834560832745

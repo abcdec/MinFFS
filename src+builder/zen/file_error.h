@@ -5,7 +5,7 @@
 // **************************************************************************
 // **************************************************************************
 // * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.13        *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.15        *
 // * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
 // *                          --EXPERIMENTAL--                              *
 // * This program is experimental and not recommended for general use.      *
@@ -68,9 +68,8 @@ std::wstring operator+(const std::wstring& lhs, const Zstring& rhs) { return std
 //we musn't put our overloads in namespace std, but namespace zen (+ using directive) is sufficient
 
 
-    
 inline
-std::wstring fmtFileName(const Zstring& filepath)
+    std::wstring fmtFileName(const Zstring& filepath)
 {
     std::wstring output;
     output += L'\"';
@@ -79,15 +78,16 @@ std::wstring fmtFileName(const Zstring& filepath)
     return output;
 }
 
-#ifdef TODO_MinFFS_openDir_DLL_PROTO
-#else//TODO_MinFFS_openDir_DLL_PROTO
+#ifdef MinFFS_PATCH // need to redefine fmtFileName to avoid error in compiling recycler.cpp
+#ifndef TODO_MinFFS_openDir_DLL_PROTO
 inline
-std::wstring fmtFileName(const std::wstring& filepath)
+    std::wstring fmtFileName(const std::wstring& filepath)
 {
     Zstring zstringFilePath(filepath);
     return fmtFileName(zstringFilePath);
-}    
+}
 #endif//TODO_MinFFS_openDir_DLL_PROTO
+#endif//MinFFS_PATCH
 }
 
 #endif //FILEERROR_H_INCLUDED_839567308565656789

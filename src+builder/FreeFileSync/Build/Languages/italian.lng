@@ -615,8 +615,8 @@ Il comando è attivato se:
 <source>FreeFileSync is up to date.</source>
 <target>FreeFileSync è aggiornato.</target>
 
-<source>Unable to connect to FreeFileSync.org.</source>
-<target>Impossibile connettersi al FreeFileSync.org.</target>
+<source>Unable to connect to www.freefilesync.org.</source>
+<target>Impossibile connettersi al www.freefilesync.org.</target>
 
 <source>Cannot find current FreeFileSync version number online. Do you want to check manually?</source>
 <target>Non riesci a trovare l'attuale numero di versione di FreeFileSync on-line. Vuoi controllare manualmente?</target>

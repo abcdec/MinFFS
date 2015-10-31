@@ -3,20 +3,6 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
-// **************************************************************************
-// * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.13        *
-// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
-// *                          --EXPERIMENTAL--                              *
-// * This program is experimental and not recommended for general use.      *
-// * Please consider using the original FreeFileSync program unless there   *
-// * are specific needs to use this experimental MinFFS version.            *
-// *                          --EXPERIMENTAL--                              *
-// * This modified program is distributed in the hope that it will be       *
-// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
-// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
-// * General Public License for more details.                               *
-// **************************************************************************
 
 #include "icon_buffer.h"
 #include <queue>
@@ -50,13 +36,71 @@ const size_t BUFFER_SIZE_MAX = 800; //maximum number of icons to hold in buffer:
 #endif
 
 #ifdef ZEN_WIN
-    const bool isXpOrLater = winXpOrLater(); //VS2010 compiled DLLs are not supported on Win 2000: Popup dialog "DecodePointer not found"
+const bool isXpOrLater = winXpOrLater(); //VS2010 compiled DLLs are not supported on Win 2000: Popup dialog "DecodePointer not found"
 
-    #define DEF_DLL_FUN(name) const auto name = isXpOrLater ? DllFun<thumb::FunType_##name>(thumb::getDllName(), thumb::funName_##name) : DllFun<thumb::FunType_##name>();
-    DEF_DLL_FUN(getIconByIndex);   //
-    DEF_DLL_FUN(getThumbnail);     //let's spare the boost::call_once hustle and allocate statically
-    DEF_DLL_FUN(releaseImageData); //
+#define DEF_DLL_FUN(name) const auto name = isXpOrLater ? DllFun<thumb::FunType_##name>(thumb::getDllName(), thumb::funName_##name) : DllFun<thumb::FunType_##name>();
+DEF_DLL_FUN(getIconByIndex);   //
+DEF_DLL_FUN(getThumbnail);     //let's spare the boost::call_once hustle and allocate statically
+DEF_DLL_FUN(releaseImageData); //
+#undef DEF_DLL_FUN
+
+#elif defined ZEN_LINUX
+wxImage getImageFromPixBuf(const GdkPixbuf* pixbuf)
+{
+    //see: https://developer.gnome.org/gdk-pixbuf/stable/gdk-pixbuf-The-GdkPixbuf-Structure.html
+    if (pixbuf &&
+        ::gdk_pixbuf_get_colorspace(pixbuf) == GDK_COLORSPACE_RGB &&
+        ::gdk_pixbuf_get_bits_per_sample(pixbuf) == 8)
+    {
+        const int width    = ::gdk_pixbuf_get_width (pixbuf);
+        const int height   = ::gdk_pixbuf_get_height(pixbuf);
+        const int channels = ::gdk_pixbuf_get_n_channels(pixbuf);
+        const int stride   = ::gdk_pixbuf_get_rowstride(pixbuf);
+        const unsigned char* rgbaSrc = ::gdk_pixbuf_get_pixels(pixbuf);
+        wxImage image(width, height);
+        unsigned char* rgb = image.GetData();
+
+        if (channels == 3)
+        {
+            assert(!::gdk_pixbuf_get_has_alpha(pixbuf));
+
+            for (int y = 0; y < height; y++)
+            {
+                const unsigned char* srcLine = rgbaSrc + y * stride;
+                for (int x = 0; x < width; x++)
+                {
+                    *rgb++ = *srcLine++;
+                    *rgb++ = *srcLine++;
+                    *rgb++ = *srcLine++;
+                }
+            }
+            return image;
+        }
+        else if (channels == 4)
+        {
+            assert(::gdk_pixbuf_get_has_alpha(pixbuf));
+            image.SetAlpha();
+            unsigned char* alpha = image.GetAlpha();
+
+            for (int y = 0; y < height; y++)
+            {
+                const unsigned char* srcLine = rgbaSrc + y * stride;
+                for (int x = 0; x < width; x++)
+                {
+                    *rgb++   = *srcLine++;
+                    *rgb++   = *srcLine++;
+                    *rgb++   = *srcLine++;
+                    *alpha++ = *srcLine++;
+                }
+            }
+            return image;
+        }
+    }
+    assert(false);
+    return wxImage();
+}
 #endif
+
 
 class IconHolder //handle HICON/GdkPixbuf ownership supporting thread-safe usage (in contrast to wxIcon/wxBitmap)
 {
@@ -71,7 +115,7 @@ public:
 
     explicit IconHolder(HandleType handle = nullptr) : handle_(handle) {} //take ownership!
 
-    IconHolder(IconHolder&& other) : handle_(other.release()) {}
+    IconHolder(IconHolder&& tmp) : handle_(tmp.release()) {}
 
     IconHolder& operator=(IconHolder other) //unifying assignment
     {
@@ -83,7 +127,7 @@ public:
     {
         if (handle_ != nullptr)
 #ifdef ZEN_WIN
-	    releaseImageData(handle_); //should be checked already before creating IconHolder!
+            releaseImageData(handle_); //should be checked already before creating IconHolder!
 #elif defined ZEN_LINUX
             ::g_object_unref(handle_); //superseedes "::gdk_pixbuf_unref"!
 #elif defined ZEN_MAC
@@ -117,6 +161,9 @@ public:
         return wxBitmap(fileIcon);
 
 #elif defined ZEN_LINUX
+        //ZEN_ON_SCOPE_EXIT(IconHolder().swap(*this)); //destroy after extraction
+        //return getImageFromPixBuf(handle_);
+
         return wxBitmap(release()); //ownership passed!
 
 #elif defined ZEN_MAC
@@ -149,7 +196,7 @@ public:
 #if defined ZEN_WIN || defined ZEN_LINUX
 Zstring getFileExtension(const Zstring& filepath)
 {
-    const Zstring shortName = afterLast(filepath, Zchar('\\')); //warning: using windows file name separator!
+    const Zstring shortName = afterLast(filepath, FILE_NAME_SEPARATOR); //returns the whole string if term not found
 
     return contains(shortName, Zchar('.')) ?
            afterLast(filepath, Zchar('.')) :
@@ -159,7 +206,7 @@ Zstring getFileExtension(const Zstring& filepath)
 
 
 #ifdef ZEN_WIN
-const bool wereVistaOrLater = vistaOrLater(); //thread-safety: init at startup
+const bool wereVistaOrLater = vistaOrLater();
 
 
 thumb::IconSizeType getThumbSizeType(IconBuffer::IconSize sz)
@@ -269,26 +316,31 @@ IconHolder getThumbnailImage(const Zstring& filepath, int requestedSize) //retur
         return IconHolder(getThumbnail(filepath.c_str(), requestedSize));
 
 #elif defined ZEN_LINUX
-    gint width  = 0;
-    gint height = 0;
-    if (GdkPixbufFormat* fmt = ::gdk_pixbuf_get_file_info(filepath.c_str(), &width, &height))
-    {
-        (void)fmt;
-        if (width > 0 && height > 0 && requestedSize > 0)
+    struct ::stat fileInfo = {};
+    if (::stat(filepath.c_str(), &fileInfo) == 0)
+        if (!S_ISFIFO(fileInfo.st_mode)) //skip named pipes: else gdk_pixbuf_get_file_info() would hang forever!
         {
-            int trgWidth  = width;
-            int trgHeight = height;
-
-            const int maxExtent = std::max(width, height); //don't stretch small images, but shrink large ones instead!
-            if (requestedSize < maxExtent)
+            gint width  = 0;
+            gint height = 0;
+            if (GdkPixbufFormat* fmt = ::gdk_pixbuf_get_file_info(filepath.c_str(), &width, &height))
             {
-                trgWidth  = width  * requestedSize / maxExtent;
-                trgHeight = height * requestedSize / maxExtent;
+                (void)fmt;
+                if (width > 0 && height > 0 && requestedSize > 0)
+                {
+                    int trgWidth  = width;
+                    int trgHeight = height;
+
+                    const int maxExtent = std::max(width, height); //don't stretch small images, but shrink large ones instead!
+                    if (requestedSize < maxExtent)
+                    {
+                        trgWidth  = width  * requestedSize / maxExtent;
+                        trgHeight = height * requestedSize / maxExtent;
+                    }
+                    if (GdkPixbuf* pixBuf = ::gdk_pixbuf_new_from_file_at_size(filepath.c_str(), trgWidth, trgHeight, nullptr))
+                        return IconHolder(pixBuf); //pass ownership
+                }
             }
-            if (GdkPixbuf* pixBuf = ::gdk_pixbuf_new_from_file_at_size(filepath.c_str(), trgWidth, trgHeight, nullptr))
-                return IconHolder(pixBuf); //pass ownership
         }
-    }
 
 #elif defined ZEN_MAC
     try
@@ -382,11 +434,11 @@ IconHolder getAssociatedIcon(const Zstring& filepath, IconBuffer::IconSize sz)
 
 #elif defined ZEN_LINUX
     GFile* file = ::g_file_new_for_path(filepath.c_str()); //documented to "never fail"
-    ZEN_ON_SCOPE_EXIT(::g_object_unref(file);)
+    ZEN_ON_SCOPE_EXIT(::g_object_unref(file));
 
     if (GFileInfo* fileInfo = ::g_file_query_info(file, G_FILE_ATTRIBUTE_STANDARD_ICON, G_FILE_QUERY_INFO_NONE, nullptr, nullptr))
     {
-        ZEN_ON_SCOPE_EXIT(::g_object_unref(fileInfo);)
+        ZEN_ON_SCOPE_EXIT(::g_object_unref(fileInfo));
         if (GIcon* gicon = ::g_file_info_get_icon(fileInfo)) //not owned!
             return iconHolderFromGicon(gicon, sz);
     }
@@ -416,9 +468,9 @@ public:
         while (filesToLoad.empty())
             conditionNewFiles.timed_wait(dummy, boost::posix_time::milliseconds(100)); //interruption point!
 
-        Zstring filepath = filesToLoad.back(); //yes, not std::bad_alloc exception-safe, but bad_alloc is not relevant for us
+        Zstring filepath = filesToLoad.back(); //
         filesToLoad.pop_back();                //
-        return filepath;
+        return filepath;                       //yes, not std::bad_alloc exception-safe, but bad_alloc is not relevant for us
     }
 
     void setWorkload(const std::vector<Zstring>& newLoad) //context of main thread
@@ -515,14 +567,14 @@ public:
 private:
     struct IconData;
 
-#if defined ZEN_WIN || defined ZEN_LINUX
-    typedef std::map<Zstring, IconData, LessFilename> FileIconMap;
-    IconData& refData(FileIconMap::iterator it) { return it->second; }
-    static IconData makeValueObject() { return IconData(); }
-#elif defined ZEN_MAC //workaround libc++ limitation for incomplete types: http://llvm.org/bugs/show_bug.cgi?id=17701
+#ifdef __clang__ //workaround libc++ limitation for incomplete types: http://llvm.org/bugs/show_bug.cgi?id=17701
     typedef std::map<Zstring, std::unique_ptr<IconData>, LessFilename> FileIconMap;
     static IconData& refData(FileIconMap::iterator it) { return *(it->second); }
     static std::unique_ptr<IconData> makeValueObject() { return make_unique<IconData>(); }
+#else
+    typedef std::map<Zstring, IconData, LessFilename> FileIconMap;
+    IconData& refData(FileIconMap::iterator it) { return it->second; }
+    static IconData makeValueObject() { return IconData(); }
 #endif
 
     //call while holding lock:
@@ -533,7 +585,7 @@ private:
 
         if (firstInsertPos != iconList.end())
             refData(firstInsertPos).prev_ = iconList.end();
-        else //BUFFER_SIZE_MAX > 0, but still for completeness:
+        else //priority list size > BUFFER_SIZE_MAX in this context, but still for completeness:
             lastInsertPos = iconList.end();
     }
 
@@ -639,15 +691,13 @@ void WorkerThread::operator()() //thread entry
         return;
     }
     ZEN_ON_SCOPE_EXIT(::CoUninitialize());
-    
+
     //2. Initialize system image list
     typedef BOOL (WINAPI* FileIconInitFun)(BOOL fRestoreCache);
     const SysDllFun<FileIconInitFun> fileIconInit(L"Shell32.dll", reinterpret_cast<LPCSTR>(660)); //MS requires and documents this magic number
-
     assert(fileIconInit);
     if (fileIconInit)
         fileIconInit(false); //TRUE to restore the system image cache from disk; FALSE otherwise.
-
 #endif
 
     while (true)

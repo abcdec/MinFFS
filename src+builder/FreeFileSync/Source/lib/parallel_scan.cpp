@@ -3,28 +3,14 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
-// **************************************************************************
-// * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.13        *
-// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
-// *                          --EXPERIMENTAL--                              *
-// * This program is experimental and not recommended for general use.      *
-// * Please consider using the original FreeFileSync program unless there   *
-// * are specific needs to use this experimental MinFFS version.            *
-// *                          --EXPERIMENTAL--                              *
-// * This modified program is distributed in the hope that it will be       *
-// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
-// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
-// * General Public License for more details.                               *
-// **************************************************************************
 
 #include "parallel_scan.h"
-#include <zen/file_traverser.h>
 #include <zen/file_error.h>
 #include <zen/thread.h> //includes <boost/thread.hpp>
 #include <zen/scope_guard.h>
 #include <zen/fixed_list.h>
 #include <boost/detail/atomic_count.hpp>
+#include "deep_file_traverser.h"
 #include "db_file.h"
 #include "lock_holder.h"
 
@@ -326,9 +312,10 @@ public:
         relNameParentPf_(relNameParentPf),
         output_(output) {}
 
-    void        onFile   (const Zchar* shortName, const Zstring& filepath, const FileInfo&    details) override;
-    HandleLink  onSymlink(const Zchar* shortName, const Zstring& linkpath, const SymlinkInfo& details) override;
-    TraverseCallback* onDir(const Zchar* shortName, const Zstring& dirpath)                            override;
+    virtual void              onFile   (const FileInfo&    fi) override;
+    virtual TraverseCallback* onDir    (const DirInfo&     di) override;
+    virtual HandleLink        onSymlink(const SymlinkInfo& li) override;
+
     void releaseDirTraverser(TraverseCallback* trav)                                                   override;
 
     HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                           override;
@@ -341,11 +328,11 @@ private:
 };
 
 
-void DirCallback::onFile(const Zchar* shortName, const Zstring& filepath, const FileInfo& details)
+void DirCallback::onFile(const FileInfo& fi)
 {
     boost::this_thread::interruption_point();
 
-    const Zstring fileNameShort(shortName);
+    const Zstring fileNameShort(fi.shortName);
 
     //do not list the database file(s) sync.ffs_db, sync.x64.ffs_db, etc. or lock files
     if (endsWith(fileNameShort, SYNC_DB_FILE_ENDING) ||
@@ -353,7 +340,7 @@ void DirCallback::onFile(const Zchar* shortName, const Zstring& filepath, const 
         return;
 
     //update status information no matter whether object is excluded or not!
-    cfg.acb_.reportCurrentFile(filepath, cfg.threadID_);
+    cfg.acb_.reportCurrentFile(fi.fullPath, cfg.threadID_);
 
     //------------------------------------------------------------------------------------
     //apply filter before processing (use relative name!)
@@ -371,58 +358,21 @@ void DirCallback::onFile(const Zchar* shortName, const Zstring& filepath, const 
     	Linux: retrieveFileID takes about 50% longer in VM! (avoidable because of redundant stat() call!)
     */
 
-    output_.addSubFile(fileNameShort, FileDescriptor(details.lastWriteTime, details.fileSize, details.id, details.symlinkInfo != nullptr));
+    output_.addSubFile(fileNameShort, FileDescriptor(fi.lastWriteTime, fi.fileSize, fi.id, fi.symlinkInfo != nullptr));
 
     cfg.acb_.incItemsScanned(); //add 1 element to the progress indicator
 }
 
 
-DirCallback::HandleLink DirCallback::onSymlink(const Zchar* shortName, const Zstring& linkpath, const SymlinkInfo& details)
-{
-    boost::this_thread::interruption_point();
-    //update status information no matter whether object is excluded or not!
-    cfg.acb_.reportCurrentFile(linkpath, cfg.threadID_);
-
-    switch (cfg.handleSymlinks_)
-    {
-        case SYMLINK_EXCLUDE:
-            return LINK_SKIP;
-
-        case SYMLINK_DIRECT:
-            if (cfg.filterInstance->passFileFilter(relNameParentPf_ + shortName)) //always use file filter: Link type may not be "stable" on Linux!
-            {
-                output_.addSubLink(shortName, LinkDescriptor(details.lastWriteTime));
-                cfg.acb_.incItemsScanned(); //add 1 element to the progress indicator
-            }
-            return LINK_SKIP;
-
-        case SYMLINK_FOLLOW:
-            //filter symlinks before trying to follow them: handle user-excluded broken symlinks!
-            //since we don't know what type the symlink will resolve to, only do this when both variants agree:
-            if (!cfg.filterInstance->passFileFilter(relNameParentPf_ + shortName))
-            {
-                bool subObjMightMatch = true;
-                if (!cfg.filterInstance->passDirFilter(relNameParentPf_ + shortName, &subObjMightMatch))
-                    if (!subObjMightMatch)
-                        return LINK_SKIP;
-            }
-            return LINK_FOLLOW;
-    }
-
-    assert(false);
-    return LINK_SKIP;
-}
-
-
-TraverseCallback* DirCallback::onDir(const Zchar* shortName, const Zstring& dirpath)
+TraverseCallback* DirCallback::onDir(const DirInfo& di)
 {
     boost::this_thread::interruption_point();
 
     //update status information no matter whether object is excluded or not!
-    cfg.acb_.reportCurrentFile(dirpath, cfg.threadID_);
+    cfg.acb_.reportCurrentFile(di.fullPath, cfg.threadID_);
 
     //------------------------------------------------------------------------------------
-    const Zstring& relPath = relNameParentPf_ + shortName;
+    const Zstring& relPath = relNameParentPf_ + di.shortName;
 
     //apply filter before processing (use relative name!)
     bool subObjMightMatch = true;
@@ -431,11 +381,49 @@ TraverseCallback* DirCallback::onDir(const Zchar* shortName, const Zstring& dirp
         return nullptr; //do NOT traverse subdirs
     //else: attention! ensure directory filtering is applied later to exclude actually filtered directories
 
-    DirContainer& subDir = output_.addSubDir(shortName);
+    DirContainer& subDir = output_.addSubDir(di.shortName);
     if (passFilter)
         cfg.acb_.incItemsScanned(); //add 1 element to the progress indicator
 
     return new DirCallback(cfg, relPath + FILE_NAME_SEPARATOR, subDir); //releaseDirTraverser() is guaranteed to be called in any case
+}
+
+
+DirCallback::HandleLink DirCallback::onSymlink(const SymlinkInfo& si)
+{
+    boost::this_thread::interruption_point();
+
+    //update status information no matter whether object is excluded or not!
+    cfg.acb_.reportCurrentFile(si.fullPath, cfg.threadID_);
+
+    switch (cfg.handleSymlinks_)
+    {
+        case SYMLINK_EXCLUDE:
+            return LINK_SKIP;
+
+        case SYMLINK_DIRECT:
+            if (cfg.filterInstance->passFileFilter(relNameParentPf_ + si.shortName)) //always use file filter: Link type may not be "stable" on Linux!
+            {
+                output_.addSubLink(si.shortName, LinkDescriptor(si.lastWriteTime));
+                cfg.acb_.incItemsScanned(); //add 1 element to the progress indicator
+            }
+            return LINK_SKIP;
+
+        case SYMLINK_FOLLOW:
+            //filter symlinks before trying to follow them: handle user-excluded broken symlinks!
+            //since we don't know what type the symlink will resolve to, only do this when both variants agree:
+            if (!cfg.filterInstance->passFileFilter(relNameParentPf_ + si.shortName))
+            {
+                bool subObjMightMatch = true;
+                if (!cfg.filterInstance->passDirFilter(relNameParentPf_ + si.shortName, &subObjMightMatch))
+                    if (!subObjMightMatch)
+                        return LINK_SKIP;
+            }
+            return LINK_FOLLOW;
+    }
+
+    assert(false);
+    return LINK_SKIP;
 }
 
 
@@ -512,7 +500,7 @@ public:
                               dirOutput_.dirCont);
 
         //get all files and folders from directoryPostfixed (and subdirectories)
-        traverseFolder(dirKey_.dirpath_, traverser); //exceptions may be thrown!
+        deepTraverseFolder(dirKey_.dirpath_, traverser); //exceptions may be thrown!
     }
 
 private:

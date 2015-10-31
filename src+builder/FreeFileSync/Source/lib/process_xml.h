@@ -263,6 +263,7 @@ struct XmlGlobalSettings
         FileIconSize iconSize;
 
         long lastUpdateCheck; //time of last update check
+		wxString lastOnlineVersion;
 
         ViewFilterDefault viewFilterDefault;
         wxString guiPerspectiveLast; //used by wxAuiManager

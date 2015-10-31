@@ -5,7 +5,7 @@
 // **************************************************************************
 // **************************************************************************
 // * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.13        *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.15        *
 // * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
 // *                          --EXPERIMENTAL--                              *
 // * This program is experimental and not recommended for general use.      *
@@ -106,7 +106,7 @@ private:
 #else
         std::cerr << message;
 #endif
-        throw std::logic_error("Memory leak! " + message);
+		throw std::logic_error("Memory leak! " + message + "\n" + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
     }
 
     std::mutex lockActStrings;
@@ -179,7 +179,7 @@ int cmpFileName(const Zstring& lhs, const Zstring& rhs)
                                             static_cast<int>(rhs.size()), //__in  int cchCount2,
                                             true);                        //__in  BOOL bIgnoreCase
         if (rv <= 0)
-            throw std::runtime_error("Error comparing strings (CompareStringOrdinal).");
+			throw std::runtime_error("Error comparing strings (CompareStringOrdinal). " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
         else
             return rv - 2; //convert to C-style string compare result
     }
@@ -205,7 +205,7 @@ int cmpFileName(const Zstring& lhs, const Zstring& rhs)
                               static_cast<int>(minSize), //__in   int cchSrc,
                               strOut,                    //__out  LPTSTR lpDestStr,
                               static_cast<int>(minSize)) == 0) //__in   int cchDest
-                throw std::runtime_error("Error comparing strings (LCMapString).");
+			throw std::runtime_error("Error comparing strings (LCMapString). " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
         };
 
         auto eval = [&](wchar_t* bufL, wchar_t* bufR)
@@ -252,7 +252,7 @@ Zstring makeUpperCopy(const Zstring& str)
                       len,                      //__in   int cchSrc,
                       &*output.begin(),         //__out  LPTSTR lpDestStr,
                       len) == 0)                //__in   int cchDest
-        throw std::runtime_error("Error comparing strings (LCMapString).");
+				throw std::runtime_error("Error comparing strings (LCMapString). " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
 
     return output;
 }

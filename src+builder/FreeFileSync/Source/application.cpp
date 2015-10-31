@@ -5,7 +5,7 @@
 // **************************************************************************
 // **************************************************************************
 // * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.13        *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.15        *
 // * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
 // *                          --EXPERIMENTAL--                              *
 // * This program is experimental and not recommended for general use.      *
@@ -248,7 +248,7 @@ void Application::onEnterEventLoop(wxEvent& event)
 
 
 int Application::OnRun()
-{	
+{
     auto processException = [](const std::wstring& msg)
     {
         //it's not always possible to display a message box, e.g. corrupted stack, however low-level file output works!

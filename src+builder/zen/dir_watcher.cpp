@@ -369,29 +369,6 @@ std::vector<DirWatcher::Entry> DirWatcher::getChanges(const std::function<void()
 
 
 #elif defined ZEN_LINUX
-namespace
-{
-class DirsOnlyTraverser : public zen::TraverseCallback
-{
-public:
-    DirsOnlyTraverser(std::vector<Zstring>& dirs) : dirs_(dirs) {}
-
-    void              onFile   (const Zchar* shortName, const Zstring& filepath, const FileInfo& details   ) override {}
-    HandleLink        onSymlink(const Zchar* shortName, const Zstring& linkpath, const SymlinkInfo& details) override { return LINK_SKIP; }
-    TraverseCallback* onDir    (const Zchar* shortName, const Zstring& dirpath                             ) override
-    {
-        dirs_.push_back(dirpath);
-        return this;
-    }
-    HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                         override { throw FileError(msg); }
-    HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zchar* shortName) override { throw FileError(msg); }
-
-private:
-    std::vector<Zstring>& dirs_;
-};
-}
-
-
 struct DirWatcher::Pimpl
 {
     Pimpl() : notifDescr() {}
@@ -411,10 +388,11 @@ DirWatcher::DirWatcher(const Zstring& directory) : //throw FileError
         dirpathFmt.resize(dirpathFmt.size() - 1);
 
     std::vector<Zstring> fullDirList { dirpathFmt };
-    {
-        DirsOnlyTraverser traverser(fullDirList); //throw FileError
-        zen::traverseFolder(dirpathFmt, traverser); //don't traverse into symlinks (analog to windows build)
-    }
+
+traverseFolder(dirpathFmt, nullptr, 
+				[&](const DirInfo& di ){ fullDirList.push_back(di.fullPath); }, 
+				nullptr, //don't traverse into symlinks (analog to windows build)
+[&](const std::wstring& errorMsg){ throw FileError(errorMsg); });
 
     //init
     pimpl_->basedirpath = directory;
@@ -545,6 +523,7 @@ void eventCallback(ConstFSEventStreamRef streamRef,
         //events are aggregated => it's possible to see a single event with flags
         //kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemModified | kFSEventStreamEventFlagItemRemoved
 
+		//https://developer.apple.com/library/mac/documentation/Darwin/Reference/FSEvents_Ref/index.html#//apple_ref/doc/constant_group/FSEventStreamEventFlags
         if (eventFlags[i] & kFSEventStreamEventFlagItemCreated ||
             eventFlags[i] & kFSEventStreamEventFlagMount)
             changedFiles.emplace_back(DirWatcher::ACTION_CREATE, paths[i]);

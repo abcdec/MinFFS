@@ -59,7 +59,8 @@ bool zen::manualProgramUpdateRequired()
 #if defined ZEN_WIN || defined ZEN_MAC
     return true;
 #elif defined ZEN_LINUX
-    return isPortableVersion(); //locally installed version is updated by system
+    return true;
+    //return isPortableVersion(); //locally installed version is updated by Launchpad
 #endif
 }
 

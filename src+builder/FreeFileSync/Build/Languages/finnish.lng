@@ -615,8 +615,8 @@ Käsky suoritetaan jos:
 <source>FreeFileSync is up to date.</source>
 <target>FreeFileSync on ajan tasalla.</target>
 
-<source>Unable to connect to FreeFileSync.org.</source>
-<target>Ei yhteyttä FreeFileSync.org:iin.</target>
+<source>Unable to connect to www.freefilesync.org.</source>
+<target>Ei yhteyttä www.freefilesync.org:iin.</target>
 
 <source>Cannot find current FreeFileSync version number online. Do you want to check manually?</source>
 <target>Nykyistä FreeFileSyncin versiota ei löydy verkosta. Suoritetaanko manuaalinen haku?</target>

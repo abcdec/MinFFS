@@ -159,9 +159,9 @@ SyncOperation FileSystemObject::getSyncOperation() const
 
 SyncOperation DirPair::getSyncOperation() const
 {
-    if (!syncOpUpToDate)
+    if (!haveBufferedSyncOp)
     {
-        syncOpUpToDate = true;
+        haveBufferedSyncOp = true;
         //redetermine...
 
         //suggested operation *not* considering child elements

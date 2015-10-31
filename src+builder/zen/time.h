@@ -3,6 +3,20 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
+// **************************************************************************
+// * This file is modified from its original source file distributed by the *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.15        *
+// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
+// *                          --EXPERIMENTAL--                              *
+// * This program is experimental and not recommended for general use.      *
+// * Please consider using the original FreeFileSync program unless there   *
+// * are specific needs to use this experimental MinFFS version.            *
+// *                          --EXPERIMENTAL--                              *
+// * This modified program is distributed in the hope that it will be       *
+// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
+// * General Public License for more details.                               *
+// **************************************************************************
 
 #ifndef ZEN_TIME_HEADER_845709281432434
 #define ZEN_TIME_HEADER_845709281432434
@@ -89,12 +103,11 @@ struct std::tm toClibTimeComponents(const TimeComp& comp)
     ctc.tm_min   = comp.minute;      //0-59
     ctc.tm_sec   = comp.second;      //0-61
     ctc.tm_isdst = -1;               //> 0 if DST is active, == 0 if DST is not active, < 0 if the information is not available
-
     return ctc;
 }
 
 inline
-TimeComp toZenTimeComponents(const struct std::tm& ctc)
+TimeComp toZenTimeComponents(const struct ::tm& ctc)
 {
     TimeComp comp;
     comp.year   = ctc.tm_year + 1900;
@@ -219,7 +232,7 @@ String formatTime(const String2& format, const TimeComp& comp, UserDefinedFormat
     std::mktime(&ctc); // unfortunately std::strftime() needs all elements of "struct tm" filled, e.g. tm_wday, tm_yday
     //note: although std::mktime() explicitly expects "local time", calculating weekday and day of year *should* be time-zone and DST independent
 
-    CharType buffer[256];
+	CharType buffer[256] = {};
     const size_t charsWritten = strftimeWrap(buffer, 256, strBegin(format), &ctc);
     return String(buffer, charsWritten);
 }
@@ -236,16 +249,26 @@ String formatTime(FormatType, const TimeComp& comp, PredefinedFormatTag)
 inline
 TimeComp localTime(time_t utc)
 {
-#ifdef _MSC_VER
-    struct tm lt = {};
-    errno_t rv = ::localtime_s(&lt, &utc); //more secure?
-    if (rv != 0)
+    struct ::tm lt = {};
+
+	//use thread-safe variants of localtime()!
+#ifdef MinFFS_PATCH
+    // No localtime_s in MinGW. Use localtime() which is thread safe.
+    struct ::tm *ltp = ::localtime(&utc);
+    if (ltp == nullptr) {
         return TimeComp();
-    return implementation::toZenTimeComponents(lt);
+    }
+    lt = *ltp;
 #else
-    struct tm* lt = std::localtime(&utc); //returns nullptr for invalid time_t on Visual 2010!!! (testvalue "-1")
-    return lt ? implementation::toZenTimeComponents(*lt) : TimeComp();
+#ifdef ZEN_WIN
+    if (::localtime_s(&lt, &utc) != 0)
+#else
+	if (::localtime_r(&utc, &lt) == nullptr)
 #endif
+        return TimeComp();
+#endif//MinFFS_PATCH
+
+    return implementation::toZenTimeComponents(lt);
 }
 
 

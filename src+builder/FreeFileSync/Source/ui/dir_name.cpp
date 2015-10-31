@@ -5,7 +5,7 @@
 // **************************************************************************
 // **************************************************************************
 // * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.13        *
+// * FreeFileSync project: http://www.freefilesync.org/ version 6.15        *
 // * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
 // *                          --EXPERIMENTAL--                              *
 // * This program is experimental and not recommended for general use.      *
@@ -228,9 +228,10 @@ void DirectoryName<NameControl>::onSelectDir(wxCommandEvent& event)
             wchar_t* selectedFolder = nullptr;
             wchar_t* errorMsg       = nullptr;
             bool cancelled = false;
+#ifdef TODO_MinFFS_freestring_fixup
             ZEN_ON_SCOPE_EXIT(freeString(selectedFolder));
             ZEN_ON_SCOPE_EXIT(freeString(errorMsg));
-
+#endif//TODO_MinFFS_freestring_fixup
             const ifile::GuidProxy guid = { '\x0', '\x4a', '\xf9', '\x31', '\xb4', '\x92', '\x40', '\xa0',
                                             '\x8d', '\xc2', '\xc', '\xa5', '\xef', '\x59', '\x6e', '\x3b'
                                           }; //some random GUID => have Windows save IFileDialog state separately from other file/dir pickers!
@@ -280,6 +281,7 @@ void DirectoryName<NameControl>::setPath(const wxString& dirpath)
 {
     setDirectoryName(dirpath, &dirpath_, dirpath_, staticText_);
 }
+
 
 //explicit template instantiations
 namespace zen

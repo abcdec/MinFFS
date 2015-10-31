@@ -623,7 +623,7 @@ Ukaz se sproži če:
 <source>FreeFileSync is up to date.</source>
 <target>FreeFileSync je posodobljen.</target>
 
-<source>Unable to connect to FreeFileSync.org.</source>
+<source>Unable to connect to www.freefilesync.org.</source>
 <target></target>
 
 <source>Cannot find current FreeFileSync version number online. Do you want to check manually?</source>

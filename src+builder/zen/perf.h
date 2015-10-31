@@ -48,9 +48,9 @@ public:
 
         const std::int64_t delta = 1000 * dist(startTime, now) / ticksPerSec_;
 #ifdef ZEN_WIN
-        std::ostringstream ss;
-        ss << delta << " ms";
-        ::MessageBoxA(nullptr, ss.str().c_str(), "Timer", 0);
+        std::wostringstream ss;
+        ss << delta << L" ms";
+        ::MessageBox(nullptr, ss.str().c_str(), L"Timer", MB_OK);
 #else
         std::clog << "Perf: duration: " << delta << " ms\n";
 #endif
