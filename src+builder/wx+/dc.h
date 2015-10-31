@@ -48,7 +48,7 @@ public:
         auto it = refDcToAreaMap().find(&dc);
         if (it != refDcToAreaMap().end())
         {
-            oldRect = zen::make_unique<wxRect>(it->second);
+            oldRect = std::make_unique<wxRect>(it->second);
 
             wxRect tmp = r;
             tmp.Intersect(*oldRect);    //better safe than sorry
@@ -98,7 +98,7 @@ public:
     {
         const wxSize clientSize = wnd.GetClientSize();
         if (!buffer_ || clientSize != wxSize(buffer->GetWidth(), buffer->GetHeight()))
-            buffer = zen::make_unique<wxBitmap>(clientSize.GetWidth(), clientSize.GetHeight());
+            buffer = std::make_unique<wxBitmap>(clientSize.GetWidth(), clientSize.GetHeight());
 
         SelectObject(*buffer);
 

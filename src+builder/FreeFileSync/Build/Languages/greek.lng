@@ -55,8 +55,8 @@
 <source>Syntax error</source>
 <target>Σφάλμα σύνταξης</target>
 
-<source>Cannot open file %x.</source>
-<target>Δεν είναι δυνατό το άνοιγμα του αρχείου %x.</target>
+<source>Cannot find file %x.</source>
+<target>Το αρχείο %x δεν μπορεί να βρεθεί.</target>
 
 <source>File %x does not contain a valid configuration.</source>
 <target>Το αρχείο %x δεν περιέχει μια έγκυρη διάταξη.</target>
@@ -86,16 +86,16 @@
 <target>υποκατάλογος</target>
 
 <source>Path to an alternate GlobalSettings.xml file.</source>
-<target>Διαδρομή σε ένα εναλλακτικό αρχείο GlobalSettings.xml</target>
+<target>Διαδρομή σε ένα εναλλακτικό αρχείο GlobalSettings.xml.</target>
 
 <source>Any number of FreeFileSync .ffs_gui and/or .ffs_batch configuration files.</source>
-<target>Οποιοσδήποτε αριθμός αρχείων διάταξης .ffs_gui ή/και .ffs_batch του FreeFileSync</target>
+<target>Οποιοσδήποτε αριθμός αρχείων διάταξης .ffs_gui ή/και .ffs_batch του FreeFileSync.</target>
 
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>Οποιοσδήποτε αριθμός από εναλλακτικά ζεύγη υποκαταλόγων για το πολύ ένα αρχείο ρυθμίσεων.</target>
 
-<source>Open configuration for edit without executing.</source>
-<target>Άνοιγμα των ρυθμίσεων προς επεξεργασία χωρίς εκτέλεση.</target>
+<source>Open configuration for editing without executing it.</source>
+<target>Άνοιγμα της διάταξης για διόρθωση χωρίς να εκτελεστεί.</target>
 
 <source>Cannot find the following folders:</source>
 <target>Οι ακόλουθοι υποκατάλογοι δεν ήταν δυνατό να βρεθούν:</target>
@@ -202,6 +202,86 @@
 <source>Update attributes on right</source>
 <target>Ενημέρωση των στοιχείων στα δεξιά</target>
 
+<source>Cannot read file %x.</source>
+<target>Δεν μπορεί να γίνει ανάγνωση του αρχείου %x.</target>
+
+<source>
+Unexpected size of data stream.
+Expected: %x bytes
+Actual: %y bytes
+</source>
+<target>
+Μη αναμενόμενο μέγεθος της ροής δεδομένων.
+Αναμενόμενο: %x bytes
+Βρέθηκε: %y bytes
+</target>
+
+<source>Cannot write permissions of %x.</source>
+<target>Δεν μπορεί να γίνει εγγραφή των αδειών προσπέλασης του %x.</target>
+
+<source>Operation not supported for different base folder types.</source>
+<target>Η λειτουργία δεν υποστηρίζεται για διαφορετικούς τύπους βασικών υποκαταλόγων.</target>
+
+<source>Cannot write file %x.</source>
+<target>Δεν μπορεί να γίνει εγγραφή του αρχείου %x.</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>Αδυναμία αντιγραφής του συμβολικού δεσμού %x στο %y.</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>Δεν μπορεί το αρχείο %x να μεταφερθεί στο %y.</target>
+
+<source>Cannot enumerate directory %x.</source>
+<target>Δεν είναι δυνατή η καταλογογράφηση του υποκαταλόγου %x.</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>Δεν μπορεί να γίνει ανάγνωση των χαρακτηριστικών του αρχείου %x.</target>
+
+<source>Cannot find %x.</source>
+<target>Το %x δεν μπορεί να βρεθεί.</target>
+
+<source>Cannot open file %x.</source>
+<target>Δεν είναι δυνατό το άνοιγμα του αρχείου %x.</target>
+
+<source>Cannot find device %x.</source>
+<target>Η συσχευή %x δεν μπορεί να βρεθεί.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Δεν μπορεί να υπολογιστεί ο ελεύθερος χώρος του δίσκου %x.</target>
+
+<source>Cannot create directory %x.</source>
+<target>Δεν μπορεί να δημιουργηθεί ο υποκατάλογος %x.</target>
+
+<source>Cannot delete directory %x.</source>
+<target>Δεν μπορεί να διαγραφεί ο υποκατάλογος %x.</target>
+
+<source>Cannot delete file %x.</source>
+<target>Δεν μπορεί να διαγραφεί το αρχείο %x.</target>
+
+<source>Cannot write modification time of %x.</source>
+<target>Δεν μπορεί να γίνει εγγραφή της ώρας τροποποίησης του %x.</target>
+
+<source>Cannot determine final path for %x.</source>
+<target>Δεν μπορεί να προσδιοριστεί η τελική διαδρομή για το %x.</target>
+
+<source>Cannot resolve symbolic link %x.</source>
+<target>Ο συμβολικός δεσμός %x δεν μπορεί να επιλυθεί.</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>Δεν ήταν δυνατή η μεταφορά του %x στον κάδο ανακύκλωσης.</target>
+
+<source>Cannot open directory %x.</source>
+<target>Δεν είναι δυνατό το άνοιγμα του υποκαταλόγου %x.</target>
+
+<source>Incorrect command line:</source>
+<target>Εσφαλμένη γραμμή εντολών:</target>
+
+<source>Error Code %x:</source>
+<target>Κωδικός Σφάλματος %x:</target>
+
+<source>Failed to connect to SFTP server %x.</source>
+<target>Αποτυχία σύνδεσης με τον διακομιστή SFTP %x.</target>
+
 <source>
 <pluralform>1 byte</pluralform>
 <pluralform>%x bytes</pluralform>
@@ -224,7 +304,7 @@
 <target>Το αρχείο %x δεν ήταν δυνατόν να φορτωθεί.</target>
 
 <source>Database file %x is incompatible.</source>
-<target>Το αρχείο βάσης δεδομένων %x δεν είναι συμβατό</target>
+<target>Το αρχείο βάσης δεδομένων %x δεν είναι συμβατό.</target>
 
 <source>Initial synchronization:</source>
 <target>Αρχικός συγχρονισμός:</target>
@@ -235,20 +315,14 @@
 <source>Database file is corrupt:</source>
 <target>Το αρχείο βάσης δεδομένων είναι αλλοιωμένο:</target>
 
-<source>Cannot write file %x.</source>
-<target>Δεν μπορεί να γίνει εγγραφή του αρχείου %x.</target>
-
-<source>Cannot read file %x.</source>
-<target>Δεν μπορεί να γίνει ανάγνωση του αρχείου %x.</target>
-
 <source>Database files do not share a common session.</source>
 <target>Τα αρχεία βάσης δεδομένων δεν έχουν χρησιμοποιηθεί από κοινού σε συγχρονισμό.</target>
 
 <source>Searching for folder %x...</source>
 <target>Αναζήτηση του υποκαταλόγου %x...</target>
 
-<source>Cannot read file attributes of %x.</source>
-<target>Δεν μπορεί να γίνει ανάγνωση των χαρακτηριστικών του αρχείου %x.</target>
+<source>Time out while searching for folder %x.</source>
+<target>Λήξη χρονικού ορίου αναζήτησης του υποκαταλόγου %x.</target>
 
 <source>Cannot get process information.</source>
 <target>Δεν μπορούν να ληφθούν πληροφορίες για τις τρέχουσες διαδικασίες.</target>
@@ -337,6 +411,15 @@
 <source>Unable to create time stamp for versioning:</source>
 <target>Δεν ήταν δυνατή η δημιουργία χρονικής σήμανσης για τη διατήρηση παλιών εκδόσεων:</target>
 
+<source>Drag && drop</source>
+<target>Μεταφορά && Απόθεση</target>
+
+<source>Cannot find folder %x.</source>
+<target>Ο υποκατάλογος %x δεν μπορεί να βρεθεί.</target>
+
+<source>Select a folder</source>
+<target>Επιλογή υποκαταλόγου</target>
+
 <source>&Open...</source>
 <target>Ά&νοιγμα...</target>
 
@@ -385,9 +468,6 @@
 <source>Browse</source>
 <target>Αναζήτηση</target>
 
-<source>Select a folder</source>
-<target>Επιλογή υποκαταλόγου</target>
-
 <source>Idle time (in seconds):</source>
 <target>Λανθάνων χρόνος (σε δευτερόλεπτα):</target>
 
@@ -395,7 +475,7 @@
 <target>Λανθάνων χρόνος μεταξύ τελευταίας αλλαγής που ανιχνεύθηκε και εκτέλεσης της εντολής</target>
 
 <source>Command line:</source>
-<target>Γραμμή εντολών</target>
+<target>Γραμμή εντολών:</target>
 
 <source>
 The command is triggered if:
@@ -440,9 +520,6 @@ The command is triggered if:
 
 <source>&Quit</source>
 <target>Έ&ξοδος</target>
-
-<source>Incorrect command line:</source>
-<target>Εσφαλμένη γραμμή εντολών:</target>
 
 <source>&Retry</source>
 <target>&Επανάληψη</target>
@@ -498,17 +575,17 @@ The command is triggered if:
 <source>Updating attributes of %x</source>
 <target>Ενημέρωση των χαρακτηριστικών αρχείου του %x</target>
 
+<source>%x and %y have different content.</source>
+<target>Τα %x και %y έχουν διαφορετικό περιεχόμενο.</target>
+
+<source>Data verification error:</source>
+<target>Σφάλμα επαλήθευσης δεδομένων:</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>Δημιουργία Σκιώδους Αντίγραφου Τόμου για το %x...</target>
 
-<source>Data verification error: %x and %y have different content.</source>
-<target>Σφάλμα επαλήθευσης δεδομένων: το %x και το %y έχουν διαφορετικό περιεχόμενο.</target>
-
 <source>Target folder %x already existing.</source>
 <target>Ο υποκατάλογος-στόχος %x υπάρχει ήδη.</target>
-
-<source>Cannot find folder %x.</source>
-<target>Ο υποκατάλογος %x δεν μπορεί να βρεθεί.</target>
 
 <source>Target folder input field must not be empty.</source>
 <target>Το πεδίο εισαγωγής του υποκαταλόγου-στόχου πρέπει να μην είναι κενό.</target>
@@ -522,8 +599,8 @@ The command is triggered if:
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>Τα ακόλουθα στοιχεία έχουν ανεπίλυτες διενέξεις και δε θα συγχρονιστούν:</target>
 
-<source>The following folders are significantly different. Make sure you are matching the correct folders for synchronization.</source>
-<target>Οι ακόλουθοι υποκατάλογοι είναι σημαντικά διαφορετικοί. Σιγουρευτείτε ότι έχετε επιλέξει τους κατάλληλους υποκαταλόγους για συγχρονισμό.</target>
+<source>The following folders are significantly different. Make sure you have selected the correct folders for synchronization.</source>
+<target>Οι παρακάτω υποκατάλογοι έχουν σημαντικές διαφορές. Σιγουρευτείτε ότι έχετε επιλέξει να συγχρονίσετε τους σωστούς υποκαταλόγους.</target>
 
 <source>Not enough free disk space available in:</source>
 <target>Δεν υπάρχει αρκετός διαθέσιμος χώρος στο δίσκο:</target>
@@ -535,7 +612,7 @@ The command is triggered if:
 <target>Διαθέσιμος:</target>
 
 <source>Multiple folder pairs write to a common subfolder. Please review your configuration.</source>
-<target>Πολλά ζεύγη υποκαταλόγων γράφουν σε έναν κοινό υποκατάλογο. Παρακαλούμε ελέγξτε ξανά τις ρυθμίσεις.</target>
+<target>Πολλά ζεύγη υποκαταλόγων γράφουν σε έναν κοινό υποκατάλογο. Παρακαλούμε ελέγξτε ξανά τη διάταξη που επιλέξατε.</target>
 
 <source>Synchronizing folder pair:</source>
 <target>Συγχρονίζεται το ζευγάρι υποκαταλόγων:</target>
@@ -549,11 +626,17 @@ The command is triggered if:
 <source>Synchronization stopped</source>
 <target>Ο συγχρονισμός διακόπηκε</target>
 
+<source>Stopped</source>
+<target>Διεκόπη</target>
+
 <source>Synchronization completed with errors</source>
 <target>Ο συγχρονισμός ολοκληρώθηκε με σφάλματα</target>
 
 <source>Synchronization completed with warnings</source>
 <target>Ο συγχρονισμός ολοκληρώθηκε με προειδοποιήσεις</target>
+
+<source>Warning</source>
+<target>Προειδοποίηση</target>
 
 <source>Nothing to synchronize</source>
 <target>Δεν υπάρχει τίποτα προς συγχρονισμό</target>
@@ -563,9 +646,6 @@ The command is triggered if:
 
 <source>Cleaning up old log files...</source>
 <target>Καθαρισμός των παλιών αρχείων καταγραφής...</target>
-
-<source>Stopped</source>
-<target>Διεκόπη</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>Μπορείτε να επιστρέψετε στο κύριο παράθυρο του FreeFileSync για να επιλύσετε αυτό το θέμα.</target>
@@ -657,9 +737,6 @@ The command is triggered if:
 <source>Action</source>
 <target>Ενέργεια</target>
 
-<source>Drag && drop</source>
-<target>Μεταφορά && Απόθεση</target>
-
 <source>Local comparison settings</source>
 <target>Τοπικές ρυθμίσεις σύγκρισης</target>
 
@@ -689,6 +766,9 @@ The command is triggered if:
 
 <source>Local Synchronization Settings</source>
 <target>Τοπικές Ρυθμίσεις Συγχρονισμού</target>
+
+<source>The selected folder %x cannot be used with FreeFileSync. Please select a folder on a local file system, network or an MTP device.</source>
+<target>Ο επιλεγμένος υποκατάλογος %x δεν μπορεί να χρησιμοποιηθεί από το FreeFileSync. Παρακαλούμε επιλέξτε έναν υποκατάλογο στο τοπικό σύστημα αρχείων, δίκτυο ή σε μια συσκευή MTP.</target>
 
 <source>&New</source>
 <target>&Δημιουργία</target>
@@ -724,7 +804,7 @@ The command is triggered if:
 <target>&Γλώσσα</target>
 
 <source>&Find...</source>
-<target>Εύ&ρεση</target>
+<target>Εύ&ρεση...</target>
 
 <source>&Reset layout</source>
 <target>&Αρχικοποίηση εμφάνισης</target>
@@ -758,6 +838,9 @@ The command is triggered if:
 
 <source>Remove folder pair</source>
 <target>Διαγραφή του ζεύγους υποκαταλόγων</target>
+
+<source>Select SFTP folder</source>
+<target>Επιλογή υποκαταλόγου SFTP</target>
 
 <source>Swap sides</source>
 <target>Ανταλλαγή πλευρών</target>
@@ -816,8 +899,8 @@ The command is triggered if:
 <source>Identify equal files by comparing the file content.</source>
 <target>Αναγνώριση των ταυτόσημων αρχείων με σύγκριση του περιεχομένου τους.</target>
 
-<source>Ignore time shift (in hours)</source>
-<target>Αγνόηση χρονικής μετατόπισης (σε ώρες)</target>
+<source>&Ignore time shift (in hours)</source>
+<target>&Παράβλεψη χρονικής διαφοράς (σε ώρες)</target>
 
 <source>Consider file times with specified offset as equal</source>
 <target>Αρχεία με τη συγκεκριμένη χρονική διαφορά θα θεωρούνται ίδια</target>
@@ -825,14 +908,14 @@ The command is triggered if:
 <source>Handle daylight saving time</source>
 <target>Διαχείριση θερινής ώρας</target>
 
-<source>Include symbolic links:</source>
-<target>Συμπερίληψη των συμβολικών δεσμών:</target>
+<source>Include &symbolic links:</source>
+<target>Συμπερίληψη των &συμβολικών δεσμών:</target>
 
-<source>Direct</source>
-<target>Ως δεσμοί</target>
+<source>&Follow</source>
+<target><Α&κολούθηση</target>
 
-<source>Follow</source>
-<target>Ως περιεχόμενο</target>
+<source>&Direct</source>
+<target>Άμε&ση αξιολόγηση</target>
 
 <source>More information</source>
 <target>Περισσότερες πληροφορίες</target>
@@ -859,7 +942,7 @@ The command is triggered if:
 <target>Ελάχιστο:</target>
 
 <source>Maximum:</source>
-<target>Μέγιστο</target>
+<target>Μέγιστο:</target>
 
 <source>Select filter rules to exclude certain files from synchronization. Enter file paths relative to their corresponding folder pair.</source>
 <target>Επιλογή κανόνων φιλτραρίσματος, ώστε να αποκλειστούν ορισμένα αρχεία από το συγχρονισμό. Εισάγετε τις διαδρομές των αρχείων σχετικά με το αντίστοιχο ζεύγος υποκαταλόγων.</target>
@@ -871,14 +954,14 @@ The command is triggered if:
 <target>Ανίχνευση των αρχείων που μεταφέρθηκαν</target>
 
 <source>
-- Detection active after initial sync
-- Requires and creates database files
 - Not supported by all file systems
+- Requires and creates database files
+- Detection not available for first sync
 </source>
 <target>
-- Η ανίχνευση είναι ενεργή μετά από τον αρχικό συγχρονισμό
-- Απαιτεί και δημιουργεί αρχεία βάσεων δεδομένων
 - Δεν υποστηρίζεται από όλα τα συστήματα αρχείων
+- Απαιτεί και δημιουργεί αρχεία βάσης δεδομένων
+- Η ανίχνευση δεν είναι διαθέσιμη κατά τον πρώτο συγχρονισμό
 </target>
 
 <source>Detect synchronization directions with the help of database files</source>
@@ -926,6 +1009,27 @@ The command is triggered if:
 <source>OK</source>
 <target>OK</target>
 
+<source>Enter your SFTP login details:</source>
+<target>Εισάγετε τα στοιχεία σύνδεσης SFTP:</target>
+
+<source>Server name or IP address:</source>
+<target>Όνομα του διακομιστή ή διεύθυνση IP:</target>
+
+<source>Examples:</source>
+<target>Παραδείγματα:</target>
+
+<source>User name:</source>
+<target>Όνομα χρήστη:</target>
+
+<source>Password:</source>
+<target>Συνθηματικό:</target>
+
+<source>&Show password</source>
+<target>&Εμφάνιση συνθηματικού</target>
+
+<source>Directory on server:</source>
+<target>Υποκατάλογος στον διακομιστή:</target>
+
 <source>Start synchronization now?</source>
 <target>Να ξεκινήσει ο συγχρονισμός τώρα;</target>
 
@@ -934,6 +1038,9 @@ The command is triggered if:
 
 <source>&Don't show this dialog again</source>
 <target>&Να μην εμφανιστεί ξανά αυτό το μήνυμα</target>
+
+<source>Arrange folder pair</source>
+<target>Οργάνωση του ζεύγους υποκαταλόγων:</target>
 
 <source>Items found:</source>
 <target>Βρέθηκαν στοιχεία:</target>
@@ -1046,8 +1153,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Source code written in C++ using:</source>
 <target>Ο πηγαίος κώδικας γράφτηκε σε C++ χρησιμοποιώντας τα:</target>
 
-<source>If you like FreeFileSync</source>
-<target>Αν σας αρέσει το FreeFileSync</target>
+<source>If you like FreeFileSync:</source>
+<target>Αν σας αρέσει το FreeFileSync:</target>
 
 <source>Donate with PayPal</source>
 <target>Κάντε μια δωρεά μέσω PayPal</target>
@@ -1067,6 +1174,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Many thanks for localization:</source>
 <target>Πολλές ευχαριστίες για τις μεταφράσεις:</target>
 
+<source>SSH File Transfer Protocol</source>
+<target>SSH File Transfer Protocol</target>
+
 <source>Save as Batch Job</source>
 <target>Αποθήκευση ως Δέσμη Εργασιών</target>
 
@@ -1079,8 +1189,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Select Time Span</source>
 <target>Επιλογή Χρονικού Εύρους</target>
 
-<source>&Preferences...</source>
-<target>&Προτιμήσεις...</target>
+<source>&Preferences</source>
+<target>&Προτιμήσεις</target>
+
+<source>Main Bar</source>
+<target>Κύρια Γραμμή</target>
 
 <source>Folder Pairs</source>
 <target>Ζεύγη Υποκαταλόγων</target>
@@ -1096,9 +1209,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Overview</source>
 <target>Σύνοψη</target>
-
-<source>Main Bar</source>
-<target>Κύρια Γραμμή</target>
 
 <source>Confirm</source>
 <target>Επιβεβαίωση</target>
@@ -1208,8 +1318,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Do&n't save</source>
 <target>Να &μην αποθηκευθούν</target>
 
-<source>Delete selected configurations</source>
-<target>Διαγραφή επιλεγμένων διατάξεων</target>
+<source>Remove entry from list</source>
+<target>Αφαίρεση καταχώρησης από τον κατάλογο</target>
 
 <source>Synchronization Settings</source>
 <target>Ρυθμίσεις συγχρονισμού</target>
@@ -1262,8 +1372,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show filtered or temporarily excluded files</source>
 <target>Εμφάνιση φιλτραρισμένων ή προσωρινά εξαιρεθέντων αρχείων</target>
 
-<source>Set as default</source>
-<target>Ορισμός ως προεπιλογής</target>
+<source>Save as default</source>
+<target>Αποθήκευση ως προεπιλογής</target>
 
 <source>Filter</source>
 <target>Φίλτρο</target>
@@ -1273,6 +1383,12 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Cannot find %x</source>
 <target>Δεν μπορεί να βρεθεί το %x</target>
+
+<source>Move up</source>
+<target>Μετακίνηση προς τα πάνω</target>
+
+<source>Move down</source>
+<target>Μετακίνηση προς τα κάτω</target>
 
 <source>Comma-separated values</source>
 <target>Αρχείο χωρισμένο με κόμματα</target>
@@ -1286,17 +1402,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Close progress dialog</source>
 <target>Κλείσιμο του παράθυρου αναφοράς</target>
 
-<source>Standby</source>
-<target>Αναστολή λειτουργίας</target>
-
 <source>Log off</source>
 <target>Αποσύνδεση</target>
 
+<source>Standby</source>
+<target>Αναστολή λειτουργίας</target>
+
 <source>Shut down</source>
 <target>Τερματισμός λειτουργίας</target>
-
-<source>Hibernate</source>
-<target>Αδρανοποίηση</target>
 
 <source>Scanning...</source>
 <target>Ανίχνευση...</target>
@@ -1306,9 +1419,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Info</source>
 <target>Πληροφορίες</target>
-
-<source>Warning</source>
-<target>Προειδοποίηση</target>
 
 <source>Select all</source>
 <target>Επιλογή όλων</target>
@@ -1355,8 +1465,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Preferences</source>
 <target>Προτιμήσεις</target>
 
-<source>Copy NTFS permissions</source>
-<target>Αντιγραφή αδειών προσπέλασης NTFS</target>
+<source>Copy DACL, SACL, Owner, Group</source>
+<target>Αντιγραφή των DACL, SACL, Κατόχου, Ομάδας</target>
 
 <source>Integrate external applications into context menu. The following macros are available:</source>
 <target>Ένταξη εξωτερικών εφαρμογών στο μενού περιβάλλοντος. Οι ακόλουθες μακροεντολές είναι διαθέσιμες:</target>
@@ -1451,26 +1561,20 @@ This guarantees a consistent state even in case of a serious error.
 <source>Percentage</source>
 <target>Ποσοστό</target>
 
+<source>Unable to register to receive system messages.</source>
+<target>Δεν μπορεί να καταχωρηθεί η λήψη μηνυμάτων συστήματος.</target>
+
+<source>Unable to register device notifications for %x.</source>
+<target>Δεν μπορούν να καταχωρηθεί η ειδοποίηση για τη συσκευή %x.</target>
+
 <source>Cannot monitor directory %x.</source>
 <target>Δεν είναι δυνατή η παρακολύθηση του υποκαταλόγου %x.</target>
-
-<source>Cannot delete file %x.</source>
-<target>Δεν μπορεί να διαγραφεί το αρχείο %x.</target>
 
 <source>The file is locked by another process:</source>
 <target>Το αρχείο είναι κλειδωμένο από μια άλλη διαδικασία:</target>
 
-<source>Cannot move file %x to %y.</source>
-<target>Δεν μπορεί το αρχείο %x να μεταφερθεί στο %y.</target>
-
-<source>Cannot delete directory %x.</source>
-<target>Δεν μπορεί να διαγραφεί ο υποκατάλογος %x.</target>
-
 <source>Cannot write file attributes of %x.</source>
 <target>Δεν μπορεί να γίνει εγγραφή των χαρακτηριστικών αρχείου του %x.</target>
-
-<source>Cannot write modification time of %x.</source>
-<target>Δεν μπορεί να γίνει εγγραφή της ώρας τροποποίησης του %x.</target>
 
 <source>Cannot read security context of %x.</source>
 <target>Δεν μπορεί να αναγνωσθεί το περιβάλλον ασφαλείας του %x.</target>
@@ -1481,32 +1585,20 @@ This guarantees a consistent state even in case of a serious error.
 <source>Cannot read permissions of %x.</source>
 <target>Δεν μπορούν να αναγνωσθούν οι άδειες προσπέλασης του %x.</target>
 
-<source>Cannot write permissions of %x.</source>
-<target>Δεν μπορεί να γίνει εγγραφή των αδειών προσπέλασης του %x.</target>
-
-<source>Cannot create directory %x.</source>
-<target>Δεν μπορεί να δημιουργηθεί ο υποκατάλογος %x.</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>Αδυναμία αντιγραφής του συμβολικού δεσμού %x στο %y.</target>
+<source>Cannot copy permissions from %x to %y.</source>
+<target>Δεν μπορούν να αντιγραφούν οι άδειες προσπέλασης του %x στο %y.</target>
 
 <source>Cannot find system function %x.</source>
 <target>Δεν ανευρίσκεται η λειτουργία συστήματος %x.</target>
+
+<source>Cannot copy attributes from %x to %y.</source>
+<target>Δεν μπορούν να αντιγραφούν τα χαρακτηριστικά του %x στο %y.</target>
 
 <source>Cannot copy file %x to %y.</source>
 <target>Δεν μπορεί να αντιγραφεί το αρχείο %x στο %y.</target>
 
 <source>Type of item %x is not supported:</source>
 <target>Ο τύπος του στοιχείου %x δεν υποστηρίζεται:</target>
-
-<source>Cannot resolve symbolic link %x.</source>
-<target>Ο συμβολικός δεσμός %x δεν μπορεί να επιλυθεί</target>
-
-<source>Cannot open directory %x.</source>
-<target>Δεν είναι δυνατό το άνοιγμα του υποκαταλόγου %x.</target>
-
-<source>Cannot enumerate directory %x.</source>
-<target>Δεν είναι δυνατή η καταλογογράφηση του υποκαταλόγου %x.</target>
 
 <source>%x TB</source>
 <target>%x TB</target>
@@ -1541,9 +1633,6 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>%x μέρες</pluralform>
 </target>
 
-<source>Unable to register to receive system messages.</source>
-<target>Δεν μπορεί να καταχωρηθεί η λήψη μηνυμάτων συστήματος.</target>
-
 <source>Cannot set privilege %x.</source>
 <target>Τα δικαιώματα %x δεν μπορούν να οριστούν.</target>
 
@@ -1553,29 +1642,20 @@ This guarantees a consistent state even in case of a serious error.
 <source>Cannot change process I/O priorities.</source>
 <target>Δεν μπορούν να αλλάξουν οι προτεραιότητες I/O της διεργασίας.</target>
 
-<source>Unable to move %x to the recycle bin.</source>
-<target>Δεν ήταν δυνατή η μεταφορά του %x στον κάδο ανακύκλωσης.</target>
-
 <source>Checking recycle bin failed for folder %x.</source>
 <target>Ο έλεγχος του κάδου ανακύκλωσης απέτυχε για τον υποκατάλογο %x.</target>
 
-<source>Cannot determine final path for %x.</source>
-<target>Δεν μπορεί να προσδιοριστεί η τελική διαδρομή για το %x.</target>
+<source>The following XML elements could not be read:</source>
+<target>Τα ακόλουθα στοιχεία XML δεν ήταν δυνατό να αναγνωσθούν:</target>
 
-<source>Error Code %x:</source>
-<target>Κωδικός Σφάλματος %x</target>
-
-<source>Cannot read the following XML elements:</source>
-<target>Δεν ήταν δυνατό να αναγνωσθούν τα ακόλουθα στοιχεία XML:</target>
-
-<source>Configuration file %x loaded partially only.</source>
-<target>Το αρχείο διάταξης %x έχει φορτωθεί μόνο κατά ένα μέρος.</target>
+<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
+<target>Το αρχείο διάταξης %x είναι ατελές. Τα στοιχεία που λείπουν θα αντικατασταθούν με τις προεπιλεγμένες τιμές τους.</target>
 
 <source>Prepare installation</source>
 <target>Προετοιμασία εγκατάστασης</target>
 
 <source>Choose which components you want to install.</source>
-<target>Επιλέξτε ποια στοιχεία θέλετε να εγκαταστήσετε</target>
+<target>Επιλέξτε ποια στοιχεία θέλετε να εγκαταστήσετε.</target>
 
 <source>Select installation type:</source>
 <target>Επιλογή τύπου εγκατάστασης:</target>

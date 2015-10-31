@@ -18,14 +18,14 @@
 //Exception class used to abort the "compare" and "sync" process
 class GuiAbortProcess {};
 
-//classes handling sync and compare error as well as status information
+//classes handling sync and compare errors as well as status feedback
 
-//CompareStatusHandler(CompareProgressDialog) will internally process Window messages! disable GUI controls to avoid unexpected callbacks!
-class CompareStatusHandler : private wxEvtHandler, public zen::StatusHandler //throw GuiAbortProcess
+//StatusHandlerTemporaryPanel(CompareProgressDialog) will internally process Window messages! disable GUI controls to avoid unexpected callbacks!
+class StatusHandlerTemporaryPanel : private wxEvtHandler, public zen::StatusHandler //throw GuiAbortProcess
 {
 public:
-    CompareStatusHandler(MainDialog& dlg);
-    ~CompareStatusHandler();
+    StatusHandlerTemporaryPanel(MainDialog& dlg);
+    ~StatusHandlerTemporaryPanel();
 
     void initNewPhase(int objectsTotal, std::int64_t dataTotal, Phase phaseID) override;
     void forceUiRefresh() override;
@@ -45,19 +45,19 @@ private:
 };
 
 
-//SyncStatusHandler(SyncProgressDialog) will internally process Window messages! disable GUI controls to avoid unexpected callbacks!
-class SyncStatusHandler : public zen::StatusHandler
+//StatusHandlerFloatingDialog(SyncProgressDialog) will internally process Window messages! disable GUI controls to avoid unexpected callbacks!
+class StatusHandlerFloatingDialog : public zen::StatusHandler
 {
 public:
-    SyncStatusHandler(wxFrame* parentDlg,
-                      size_t lastSyncsLogFileSizeMax,
-                      xmlAccess::OnGuiError handleError,
-                      size_t automaticRetryCount,
-                      size_t automaticRetryDelay,
-                      const std::wstring& jobName,
-                      const Zstring& onCompletion,
-                      std::vector<Zstring>& onCompletionHistory);
-    ~SyncStatusHandler();
+    StatusHandlerFloatingDialog(wxFrame* parentDlg,
+                                size_t lastSyncsLogFileSizeMax,
+                                xmlAccess::OnGuiError handleError,
+                                size_t automaticRetryCount,
+                                size_t automaticRetryDelay,
+                                const std::wstring& jobName,
+                                const Zstring& onCompletion,
+                                std::vector<Zstring>& onCompletionHistory);
+    ~StatusHandlerFloatingDialog();
 
     void initNewPhase       (int objectsTotal, std::int64_t dataTotal, Phase phaseID) override;
     void updateProcessedData(int objectsDelta, std::int64_t dataDelta               ) override;
@@ -80,7 +80,7 @@ private:
     const size_t automaticRetryCount_;
     const size_t automaticRetryDelay_;
     const std::wstring jobName_;
-    const int64_t startTime_; //don't use wxStopWatch: may overflow after a few days due to ::QueryPerformanceCounter()
+    const time_t startTime_; //don't use wxStopWatch: may overflow after a few days due to ::QueryPerformanceCounter()
 };
 
 

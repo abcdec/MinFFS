@@ -29,26 +29,47 @@ enum class SyncConfigPanel
     SYNC       = 2, //
 };
 
-struct MiscGlobalCfg
+struct LocalPairConfig
 {
-    xmlAccess::OnGuiError& handleError; //in/out param
+    std::wstring folderPairName; //read-only!
+    std::shared_ptr<const CompConfig> altCmpConfig;  //optional
+    std::shared_ptr<const SyncConfig> altSyncConfig; //
+    FilterConfig localFilter;
+};
 
-    Zstring& onCompletionCommand;       //
-    std::vector<Zstring>& onCompletionHistory;
-    size_t onCompletionHistoryMax;
+
+struct MiscSyncConfig
+{
+    xmlAccess::OnGuiError handleError;
+    Zstring onCompletionCommand;
+    std::vector<Zstring> onCompletionHistory;
+};
+
+
+struct GlobalSyncConfig
+{
+    CompConfig   cmpConfig;
+    SyncConfig   syncCfg;
+    FilterConfig filter;
+    MiscSyncConfig miscCfg;
 };
 
 
 ReturnSyncConfig::ButtonPressed showSyncConfigDlg(wxWindow* parent,
                                                   SyncConfigPanel panelToShow,
-                                                  bool* useAlternateCmpCfg,  //optional parameter
-                                                  CompConfig&   cmpCfg,
-                                                  FilterConfig& filterCfg,
-                                                  bool* useAlternateSyncCfg,  //
-                                                  SyncConfig&   syncCfg,
-                                                  CompareVariant globalCmpVar,
-                                                  MiscGlobalCfg* miscCfg, //
-                                                  const wxString& title);
+                                                  int localPairIndexToShow, //< 0 to show global config
+
+                                                  std::vector<LocalPairConfig>& folderPairConfig,
+
+                                                  CompConfig&   globalCmpConfig,
+                                                  SyncConfig&   globalSyncCfg,
+                                                  FilterConfig& globalFilter,
+
+                                                  xmlAccess::OnGuiError& handleError,
+                                                  Zstring& onCompletionCommand,
+                                                  std::vector<Zstring>& onCompletionHistory,
+
+                                                  size_t onCompletionHistoryMax);
 }
 
 #endif //SYNCCONFIG_H_INCLUDED_31289470134253425

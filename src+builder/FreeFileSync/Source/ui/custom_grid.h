@@ -12,6 +12,7 @@
 #include "column_attr.h"
 #include "../lib/icon_buffer.h"
 
+
 namespace zen
 {
 //setup grid to show grid view within three components:

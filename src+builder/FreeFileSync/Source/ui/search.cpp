@@ -20,7 +20,7 @@ public:
     bool operator()(const wxString& phrase) const { return contains(phrase, textToFind_); }
 
 private:
-    wxString textToFind_;
+    const wxString textToFind_;
 };
 
 
@@ -28,7 +28,7 @@ template <>
 class ContainsMatch<false>
 {
 public:
-    ContainsMatch(const wxString& textToFind) : textToFind_(textToFind) { textToFind_.MakeUpper(); }
+    ContainsMatch(const wxString& textToFind) : textToFind_(textToFind.Upper()) {}
     bool operator()(wxString&& phrase) const
     {
         //wxWidgets::MakeUpper() is inefficient! But performance is not THAT important for this high-level search functionality
@@ -37,7 +37,7 @@ public:
     }
 
 private:
-    wxString textToFind_;
+    const wxString textToFind_;
 };
 
 //###########################################################################################
@@ -51,7 +51,7 @@ ptrdiff_t findRow(const Grid& grid, //return -1 if no matching row found
     if (auto prov = grid.getDataProvider())
     {
         std::vector<Grid::ColumnAttribute> colAttr = grid.getColumnConfig();
-        vector_remove_if(colAttr, [](const Grid::ColumnAttribute& ca) { return !ca.visible_; });
+        erase_if(colAttr, [](const Grid::ColumnAttribute& ca) { return !ca.visible_; });
         if (!colAttr.empty())
         {
             const ContainsMatch<respectCase> containsMatch(searchString);

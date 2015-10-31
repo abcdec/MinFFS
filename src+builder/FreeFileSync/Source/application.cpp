@@ -33,8 +33,10 @@
 #include "ui/batch_status_handler.h"
 #include "ui/main_dlg.h"
 #include "ui/switch_to_gui.h"
+#include "lib/help_provider.h"
 #include "lib/process_xml.h"
 #include "lib/error_log.h"
+#include "lib/resolve_path.h"
 
 #ifdef ZEN_WIN
     #include <zen/win_ver.h>
@@ -53,7 +55,7 @@ IMPLEMENT_APP(Application)
 
 #ifdef _MSC_VER
 //catch CRT floating point errors: http://msdn.microsoft.com/en-us/library/k3backsw.aspx
-int _matherr(struct _exception* except)
+int _matherr(_Inout_ struct _exception* except)
 {
     assert(false);
     return 0; //use default action
@@ -63,20 +65,6 @@ int _matherr(struct _exception* except)
 
 namespace
 {
-/*
-boost::thread::id mainThreadId = boost::this_thread::get_id();
-
-void onTerminationRequested()
-{
-std::wstring msg = boost::this_thread::get_id() == mainThreadId ?
-                   L"Termination requested in main thread!\n\n" :
-                   L"Termination requested in worker thread!\n\n";
-msg += L"Please file a bug report at: http://sourceforge.net/projects/freefilesync";
-
-wxSafeShowMessage(_("An exception occurred"), msg);
-std::abort();
-}
-*/
 #ifdef ZEN_WIN
 void enableCrashingOnCrashes() //should be needed for 32-bit code only: http://randomascii.wordpress.com/2012/07/05/when-even-crashing-doesnt-work
 {
@@ -157,9 +145,6 @@ const wxEventType EVENT_ENTER_EVENT_LOOP = wxNewEventType();
 
 bool Application::OnInit()
 {
-    //-> this seems rather useless:
-    //std::set_terminate(onTerminationRequested); //unlike wxWidgets uncaught exception handling, this works for all worker threads
-
 #ifdef ZEN_WIN
     enableCrashingOnCrashes();
 #ifdef _MSC_VER
@@ -204,6 +189,7 @@ bool Application::OnInit()
 
 int Application::OnExit()
 {
+    uninitializeHelp();
     releaseWxLocale();
     return wxApp::OnExit();
 }
@@ -265,12 +251,13 @@ int Application::OnRun()
         processException(utfCvrtTo<std::wstring>(e.what()));
         return FFS_RC_EXCEPTION;
     }
-    catch (...) //catch the rest
+    /* -> let it crash and create mini dump!!!
+    catch (...)
     {
         processException(L"Unknown error.");
         return FFS_RC_EXCEPTION;
     }
-
+    */
     return returnCode;
 }
 
@@ -313,8 +300,8 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
     auto equalNoCase = [](const Zstring& lhs, const Zstring& rhs) { return utfCvrtTo<wxString>(lhs).CmpNoCase(utfCvrtTo<wxString>(rhs)) == 0; };
 
     //parse command line arguments
-    std::vector<Zstring> leftDirs;
-    std::vector<Zstring> rightDirs;
+    std::vector<Zstring> dirPathPhrasesLeft;
+    std::vector<Zstring> dirPathPhrasesRight;
     std::vector<std::pair<Zstring, XmlType>> configFiles; //XmlType: batch or GUI files only
     Opt<Zstring> globalConfigFile;
     bool openForEdit = false;
@@ -346,7 +333,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                     notifyError(replaceCpy(_("A directory path is expected after %x."), L"%x", utfCvrtTo<std::wstring>(optionLeftDir)), _("Syntax error"));
                     return;
                 }
-                leftDirs.push_back(*it);
+                dirPathPhrasesLeft.push_back(*it);
             }
             else if (equalNoCase(*it, optionRightDir))
             {
@@ -355,41 +342,42 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                     notifyError(replaceCpy(_("A directory path is expected after %x."), L"%x", utfCvrtTo<std::wstring>(optionRightDir)), _("Syntax error"));
                     return;
                 }
-                rightDirs.push_back(*it);
+                dirPathPhrasesRight.push_back(*it);
             }
             else
             {
-                Zstring filepath = *it;
-                if (!fileExists(filepath)) //...be a little tolerant
+                Zstring filePath = getResolvedFilePath(*it);
+
+                if (!fileExists(filePath)) //...be a little tolerant
                 {
-                    if (fileExists(filepath + Zstr(".ffs_batch")))
-                        filepath += Zstr(".ffs_batch");
-                    else if (fileExists(filepath + Zstr(".ffs_gui")))
-                        filepath += Zstr(".ffs_gui");
-                    else if (fileExists(filepath + Zstr(".xml")))
-                        filepath += Zstr(".xml");
+                    if (fileExists(filePath + Zstr(".ffs_batch")))
+                        filePath += Zstr(".ffs_batch");
+                    else if (fileExists(filePath + Zstr(".ffs_gui")))
+                        filePath += Zstr(".ffs_gui");
+                    else if (fileExists(filePath + Zstr(".xml")))
+                        filePath += Zstr(".xml");
                     else
                     {
-                        notifyError(replaceCpy(_("Cannot find file %x."), L"%x", fmtFileName(filepath)), std::wstring());
+                        notifyError(replaceCpy(_("Cannot find file %x."), L"%x", fmtPath(filePath)), std::wstring());
                         return;
                     }
                 }
 
                 try
                 {
-                    switch (getXmlType(filepath)) //throw FileError
+                    switch (getXmlType(filePath)) //throw FileError
                     {
                         case XML_TYPE_GUI:
-                            configFiles.emplace_back(filepath, XML_TYPE_GUI);
+                            configFiles.emplace_back(filePath, XML_TYPE_GUI);
                             break;
                         case XML_TYPE_BATCH:
-                            configFiles.emplace_back(filepath, XML_TYPE_BATCH);
+                            configFiles.emplace_back(filePath, XML_TYPE_BATCH);
                             break;
                         case XML_TYPE_GLOBAL:
-                            globalConfigFile = filepath;
+                            globalConfigFile = filePath;
                             break;
                         case XML_TYPE_OTHER:
-                            notifyError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtFileName(filepath)), std::wstring());
+                            notifyError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)), std::wstring());
                             return;
                     }
                 }
@@ -401,7 +389,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
             }
     }
 
-    if (leftDirs.size() != rightDirs.size())
+    if (dirPathPhrasesLeft.size() != dirPathPhrasesRight.size())
     {
         notifyError(_("Unequal number of left and right directories specified."), _("Syntax error"));
         return;
@@ -409,14 +397,14 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
 
     auto hasNonDefaultConfig = [](const FolderPairEnh& fp)
     {
-        return !(fp == FolderPairEnh(fp.dirpathPhraseLeft,
-                                     fp.dirpathPhraseRight,
+        return !(fp == FolderPairEnh(fp.folderPathPhraseLeft_,
+                                     fp.folderPathPhraseRight_,
                                      nullptr, nullptr, FilterConfig()));
     };
 
     auto replaceDirectories = [&](MainConfiguration& mainCfg)
     {
-        if (!leftDirs.empty())
+        if (!dirPathPhrasesLeft.empty())
         {
             //check if config at folder-pair level is present: this probably doesn't make sense when replacing/adding the user-specified directories
             if (hasNonDefaultConfig(mainCfg.firstPair) || std::any_of(mainCfg.additionalPairs.begin(), mainCfg.additionalPairs.end(), hasNonDefaultConfig))
@@ -426,14 +414,14 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
             }
 
             mainCfg.additionalPairs.clear();
-            for (size_t i = 0; i < leftDirs.size(); ++i)
+            for (size_t i = 0; i < dirPathPhrasesLeft.size(); ++i)
                 if (i == 0)
                 {
-                    mainCfg.firstPair.dirpathPhraseLeft  = leftDirs [0];
-                    mainCfg.firstPair.dirpathPhraseRight = rightDirs[0];
+                    mainCfg.firstPair.folderPathPhraseLeft_  = dirPathPhrasesLeft [0];
+                    mainCfg.firstPair.folderPathPhraseRight_ = dirPathPhrasesRight[0];
                 }
                 else
-                    mainCfg.additionalPairs.emplace_back(leftDirs[i], rightDirs[i],
+                    mainCfg.additionalPairs.emplace_back(dirPathPhrasesLeft[i], dirPathPhrasesRight[i],
                                                          nullptr, nullptr, FilterConfig());
         }
         return true;
@@ -446,7 +434,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
     if (configFiles.empty())
     {
         //gui mode: default startup
-        if (leftDirs.empty())
+        if (dirPathPhrasesLeft.empty())
             runGuiMode(globalConfigFilePath);
         //gui mode: default config with given directories
         else
@@ -513,7 +501,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
     //gui mode: merged configs
     else
     {
-        if (!leftDirs.empty())
+        if (!dirPathPhrasesLeft.empty())
         {
             notifyError(_("Directories cannot be set for more than one configuration file."), _("Syntax error"));
             return;
@@ -577,7 +565,7 @@ void showSyntaxHelp()
                                                  _("Any number of alternative directory pairs for at most one config file.") + L"\n\n" +
 
                                                  L"-Edit" + L"\n" +
-                                                 _("Open configuration for edit without executing.")));
+                                                 _("Open configuration for editing without executing it.")));
 }
 
 
@@ -622,10 +610,10 @@ void runBatchMode(const Zstring& globalConfigFile, const XmlBatchConfig& batchCf
     //regular check for program updates -> disabled for batch
     //if (batchCfg.showProgress && manualProgramUpdateRequired())
     //    checkForUpdatePeriodically(globalCfg.lastUpdateCheck);
+    //WinInet not working when FFS is running as a service!!! https://support.microsoft.com/en-us/kb/238425
 
     try //begin of synchronization process (all in one try-catch block)
     {
-
         const TimeComp timeStamp = localTime();
 
         const SwitchToGui switchBatchToGui(globalConfigFile, globalCfg, referenceFile, batchCfg); //prepare potential operational switch
@@ -634,7 +622,7 @@ void runBatchMode(const Zstring& globalConfigFile, const XmlBatchConfig& batchCf
         BatchStatusHandler statusHandler(!batchCfg.runMinimized, //throw BatchAbortProcess
                                          extractJobName(referenceFile),
                                          timeStamp,
-                                         batchCfg.logFileDirectory,
+                                         batchCfg.logFolderPathPhrase,
                                          batchCfg.logfilesCountLimit,
                                          globalCfg.lastSyncsLogFileSizeMax,
                                          batchCfg.handleError,
@@ -662,19 +650,17 @@ void runBatchMode(const Zstring& globalConfigFile, const XmlBatchConfig& batchCf
         std::unique_ptr<LockHolder> dirLocks;
 
         //COMPARE DIRECTORIES
-        FolderComparison folderCmp;
-        compare(globalCfg.optDialogs,
-                allowPwPrompt,
-                globalCfg.runWithBackgroundPriority,
-                globalCfg.createLockFile,
-                dirLocks,
-                cmpConfig,
-                folderCmp,
-                statusHandler);
+        FolderComparison cmpResult = compare(globalCfg.optDialogs,
+                                             allowPwPrompt, //allowUserInteraction
+                                             globalCfg.runWithBackgroundPriority,
+                                             globalCfg.createLockFile,
+                                             dirLocks,
+                                             cmpConfig,
+                                             statusHandler);
 
         //START SYNCHRONIZATION
         const std::vector<FolderPairSyncCfg> syncProcessCfg = extractSyncCfg(batchCfg.mainCfg);
-        if (syncProcessCfg.size() != folderCmp.size())
+        if (syncProcessCfg.size() != cmpResult.size())
             throw std::logic_error("Programming Error: Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
 
         synchronize(timeStamp,
@@ -685,7 +671,7 @@ void runBatchMode(const Zstring& globalConfigFile, const XmlBatchConfig& batchCf
                     globalCfg.failsafeFileCopy,
                     globalCfg.runWithBackgroundPriority,
                     syncProcessCfg,
-                    folderCmp,
+                    cmpResult,
                     statusHandler);
     }
     catch (BatchAbortProcess&) {} //exit used by statusHandler

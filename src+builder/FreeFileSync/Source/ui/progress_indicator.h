@@ -33,7 +33,7 @@ private:
 };
 
 
-//SyncStatusHandler will internally process Window messages => disable GUI controls to avoid unexpected callbacks!
+//StatusHandlerFloatingDialog will internally process Window messages => disable GUI controls to avoid unexpected callbacks!
 
 struct SyncProgressDialog
 {

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<link rel="stylesheet" type="text/css" href="base.css" >
+	<title>External Applications</title>
+</head>
+
+<body>
+	<h1>External Applications</h1>
+
+	<p>
+		When you double-click on one of the rows on the main dialog, FreeFileSync opens the operating system's file browser 
+		by default. On Windows it calls <span class="command-line">explorer /select, &quot;%item_path%&quot;</span>, on 
+		Linux <span class="command-line">xdg-open &quot;%item_folder%&quot;</span> and on OS X <span class="command-line">open -R &quot;%item_path%&quot;</span>.
+	</p>
+
+	<p>
+		You can customize this behavior and integrate other external applications into FreeFileSync:
+		Navigate to <b>Menu &rarr; Tools &rarr; Options: Customize context menu</b>
+		and add or replace a command. The first entry is executed when double-clicking a row on main grid or pressing ENTER while all other entries can be accessed via the
+		context menu shown after a right mouse click. In addition to regular <a href="macros.html">Macros</a>, the following specific macros are available:
+	</p>
+
+	<div class="box-outer"><div class="greybox"><div class="box-inner">
+		<table style="border-spacing:0;">
+			<tr>
+				<th><b>Macro</b></th>
+				<th><b>Description</b></th>
+			</tr>
+			<tr>
+				<td><div class="command-line">%item_path%</div></td>
+				<td>Full file or folder name</td>
+			</tr>
+			<tr>
+				<td><div class="command-line">%item_folder%</div></td>
+				<td>Folder part only</td>
+			</tr>
+			<tr>
+				<td><div class="command-line">%item2_path%</div></td>
+				<td>Counterpart of %item_path% on the opposite grid</td>
+			</tr>
+			<tr>
+				<td><div class="command-line">%item2_folder%</div></td>
+				<td>Counterpart of %item_folder% on the opposite grid</td>
+			</tr>
+		</table>
+	</div></div></div>		
+	<br>
+	<br>
+
+	<h2>Examples:</h2>
+
+	<ul>
+		<li>Start visual content comparison tool:<br>
+		<div class="command-line">&quot;C:\Program Files (x86)\WinMerge\WinMergeU.exe&quot; &quot;%item_path%&quot; &quot;%item2_path%&quot;</div><br>
+		
+		<li>Show file in Windows Explorer:<br>
+		<div class="command-line">explorer /select, &quot;%item_path%&quot;</div><br>
+		
+		<li>Open file with associated application:<br>
+		<div class="command-line">&quot;%item_path%&quot;</div><br>
+		
+		<li>Open console for directory:<br>
+		<div class="command-line">cmd /k cd /D &quot;%item_folder%&quot;</div>
+	</ul>
+
+	<div class="box-outer"><div class="bluebox"><div class="box-inner">
+		<b>Note</b><br>
+		You need to protect macros with quotation marks if they can resolve to a file path containing space characters.		
+	</div></div></div>	
+</body>
+</html>

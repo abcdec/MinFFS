@@ -13,18 +13,19 @@
 #include "../structures.h"
 #include "../file_hierarchy.h"
 
+
 namespace zen
 {
 struct DirectoryKey
 {
-    DirectoryKey(const Zstring& dirpath,
+    DirectoryKey(const ABF& baseFolder,
                  const HardFilter::FilterRef& filter,
                  SymLinkHandling handleSymlinks) :
-        dirpath_(dirpath),
+        baseFolder_(&baseFolder),
         filter_(filter),
         handleSymlinks_(handleSymlinks) {}
 
-    Zstring dirpath_;
+    const ABF* baseFolder_; //always bound!
     HardFilter::FilterRef filter_; //filter interface: always bound by design!
     SymLinkHandling handleSymlinks_;
 };
@@ -35,9 +36,10 @@ bool operator<(const DirectoryKey& lhs, const DirectoryKey& rhs)
     if (lhs.handleSymlinks_ != rhs.handleSymlinks_)
         return lhs.handleSymlinks_ < rhs.handleSymlinks_;
 
-    const int cmpName = cmpFileName(lhs.dirpath_, rhs.dirpath_);
-    if (cmpName != 0)
-        return cmpName < 0;
+    if (ABF::LessItemPath()(lhs.baseFolder_, rhs.baseFolder_))
+        return true;
+    if (ABF::LessItemPath()(rhs.baseFolder_, lhs.baseFolder_))
+        return false;
 
     return *lhs.filter_ < *rhs.filter_;
 }
@@ -47,10 +49,10 @@ struct DirectoryValue
 {
     DirContainer dirCont;
     //relative names (or empty string for root) for directories that could not be read (completely), e.g. access denied, or temporal network drop
-    std::map<Zstring, std::wstring, LessFilename> failedDirReads;  //with corresponding error message
+    std::map<Zstring, std::wstring, LessFilePath> failedDirReads; //with corresponding error message
 
     //relative names (never empty) for failure to read single file/dir/symlink with corresponding error message
-    std::map<Zstring, std::wstring, LessFilename> failedItemReads;
+    std::map<Zstring, std::wstring, LessFilePath> failedItemReads;
 };
 
 
@@ -73,7 +75,7 @@ public:
 void fillBuffer(const std::set<DirectoryKey>& keysToRead, //in
                 std::map<DirectoryKey, DirectoryValue>& buf, //out
                 FillBufferCallback& callback,
-                size_t updateInterval); //unit: [ms]
+                size_t updateIntervalMs); //unit: [ms]
 }
 
 #endif // PARALLEL_SCAN_H_INCLUDED

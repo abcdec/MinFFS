@@ -12,6 +12,7 @@
 #include <functional>
 #include "file_error.h"
 
+
 namespace zen
 {
 //Windows: ReadDirectoryChangesW http://msdn.microsoft.com/en-us/library/aa365465(v=vs.85).aspx
@@ -21,22 +22,23 @@ namespace zen
 //watch directory including subdirectories
 /*
 !Note handling of directories!:
-	Windows: removal of top watched directory is NOT notified (e.g. brute force usb stick removal)
-	         however manual unmount IS notified (e.g. usb stick removal, then re-insert), but watching is stopped!
-			 Renaming of top watched directory handled incorrectly: Not notified(!) + additional changes in subfolders
-			 now do report FILE_ACTION_MODIFIED for directory (check that should prevent this fails!)
+    Windows: removal of top watched directory is NOT notified when watching the dir handle, e.g. brute force usb stick removal,
+             (watchting for GUID_DEVINTERFACE_WPD OTOH works fine!)
+             however manual unmount IS notified (e.g. usb stick removal, then re-insert), but watching is stopped!
+             Renaming of top watched directory handled incorrectly: Not notified(!) + additional changes in subfolders
+             now do report FILE_ACTION_MODIFIED for directory (check that should prevent this fails!)
 
     Linux: newly added subdirectories are reported but not automatically added for watching! -> reset Dirwatcher!
-	       removal of top watched directory is NOT notified!
+           removal of top watched directory is NOT notified!
 
-	OS X: everything works as expected; renaming of top level folder is also detected
+    OS X: everything works as expected; renaming of top level folder is also detected
 
-	Overcome all issues portably: check existence of top watched directory externally + reinstall watch after changes in directory structure (added directories) are detected
+    Overcome all issues portably: check existence of top watched directory externally + reinstall watch after changes in directory structure (added directories) are detected
 */
 class DirWatcher
 {
 public:
-    DirWatcher(const Zstring& directory); //throw FileError
+    DirWatcher(const Zstring& dirPath); //throw FileError
     ~DirWatcher();
 
     enum ActionType
@@ -61,6 +63,8 @@ public:
 private:
     DirWatcher           (const DirWatcher&) = delete;
     DirWatcher& operator=(const DirWatcher&) = delete;
+
+    const Zstring baseDirPath;
 
     struct Pimpl;
     std::unique_ptr<Pimpl> pimpl_;

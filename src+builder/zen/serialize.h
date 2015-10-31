@@ -12,6 +12,7 @@
 #include "string_base.h"
 #include "file_io.h"
 
+
 namespace zen
 {
 //high-performance unformatted serialization (avoiding wxMemoryOutputStream/wxMemoryInputStream inefficiencies)
@@ -25,12 +26,13 @@ binary container for data storage: must support "basic" std::vector interface (e
 
 //binary container reference implementations
 typedef Zbase<char> Utf8String; //ref-counted + COW text stream + guaranteed performance: exponential growth
-class BinaryStream;             //ref-counted       byte stream + guaranteed performance: exponential growth -> no COW, but 12% faster than Utf8String (due to no null-termination?)
+class ByteArray;                //ref-counted       byte stream + guaranteed performance: exponential growth -> no COW, but 12% faster than Utf8String (due to no null-termination?)
 
-class BinaryStream //essentially a std::vector<char> with ref-counted semantics, but no COW! => *almost* value type semantics, but not quite
+
+class ByteArray //essentially a std::vector<char> with ref-counted semantics, but no COW! => *almost* value type semantics, but not quite
 {
 public:
-    BinaryStream() : buffer(std::make_shared<std::vector<char>>()) {}
+    ByteArray() : buffer(std::make_shared<std::vector<char>>()) {}
 
     typedef std::vector<char>::value_type value_type;
     typedef std::vector<char>::iterator iterator;
@@ -46,7 +48,7 @@ public:
     size_t size() const { return buffer->size(); }
     bool empty() const { return buffer->empty(); }
 
-    inline friend bool operator==(const BinaryStream& lhs, const BinaryStream& rhs) { return *lhs.buffer == *rhs.buffer; }
+    inline friend bool operator==(const ByteArray& lhs, const ByteArray& rhs) { return *lhs.buffer == *rhs.buffer; }
 
 private:
     std::shared_ptr<std::vector<char>> buffer; //always bound!
@@ -65,7 +67,7 @@ template <class BinContainer> BinContainer loadBinStream(const Zstring& filepath
 -----------------------------
 struct BinInputStream
 {
-    const void* requestRead(size_t len); //expect external read of len bytes
+    size_t read(void* data, size_t len); //return "len" bytes unless end of stream!
 };
 
 ------------------------------
@@ -73,58 +75,62 @@ struct BinInputStream
 ------------------------------
 struct BinOutputStream
 {
-    void* requestWrite(size_t len); //expect external write of len bytes
+    void write(const void* data, size_t len);
 };
 */
 
-//binary input/output stream reference implementation
-class UnexpectedEndOfStreamError {};
+//binary input/output stream reference implementations:
 
-struct BinStreamIn //throw UnexpectedEndOfStreamError
+template <class BinContainer>
+struct MemoryStreamIn
 {
-    BinStreamIn(const BinaryStream& cont) : buffer(cont), pos(0) {} //this better be cheap!
+    MemoryStreamIn(const BinContainer& cont) : buffer(cont), pos(0) {} //this better be cheap!
 
-    const void* requestRead(size_t len) //throw UnexpectedEndOfStreamError
+    size_t read(void* data, size_t len) //return "len" bytes unless end of stream!
     {
-        if (len == 0) return nullptr; //don't allow for possibility to access empty buffer
-        if (pos + len > buffer.size())
-            throw UnexpectedEndOfStreamError();
-        size_t oldPos = pos;
-        pos += len;
-        return &*buffer.begin() + oldPos;
+        static_assert(sizeof(typename BinContainer::value_type) == 1, ""); //expect: bytes
+        const size_t bytesRead = std::min(len, buffer.size() - pos);
+        auto itFirst = buffer.begin() + pos;
+        std::copy(itFirst, itFirst + bytesRead, static_cast<char*>(data));
+        pos += bytesRead;
+        return bytesRead;
     }
 
 private:
-    BinaryStream buffer;
+    const BinContainer buffer;
     size_t pos;
 };
 
-struct BinStreamOut
+template <class BinContainer>
+struct MemoryStreamOut
 {
-    void* requestWrite(size_t len)
+    void write(const void* data, size_t len)
     {
-        if (len == 0) return nullptr; //don't allow for possibility to access empty buffer
+        static_assert(sizeof(typename BinContainer::value_type) == 1, ""); //expect: bytes
         const size_t oldSize = buffer.size();
         buffer.resize(oldSize + len);
-        return &*buffer.begin() + oldSize;
+        std::copy(static_cast<const char*>(data), static_cast<const char*>(data) + len, buffer.begin() + oldSize);
     }
 
-    BinaryStream get() { return buffer; }
+    const BinContainer& ref() const { return buffer; }
 
 private:
-    BinaryStream buffer;
+    BinContainer buffer;
 };
 
 //----------------------------------------------------------------------
 //functions based on binary stream abstraction
+template <class BinInputStream, class BinOutputStream>
+void copyStream(BinInputStream& streamIn, BinOutputStream& streamOut, const std::function<void(std::int64_t bytesDelta)>& onNotifyCopyStatus); //optional
+
 template <class N, class BinOutputStream> void writeNumber   (BinOutputStream& stream, const N& num);                 //
 template <class C, class BinOutputStream> void writeContainer(BinOutputStream& stream, const C& str);                 //throw ()
 template <         class BinOutputStream> void writeArray    (BinOutputStream& stream, const void* data, size_t len); //
 
 //----------------------------------------------------------------------
-
-template <class N, class BinInputStream> N    readNumber   (BinInputStream& stream); //
-template <class C, class BinInputStream> C    readContainer(BinInputStream& stream); //throw UnexpectedEndOfStreamError (corrupted data)
+class UnexpectedEndOfStreamError {};
+template <class N, class BinInputStream> N    readNumber   (BinInputStream& stream); //throw UnexpectedEndOfStreamError (corrupted data)
+template <class C, class BinInputStream> C    readContainer(BinInputStream& stream); //
 template <         class BinInputStream> void readArray    (BinInputStream& stream, void* data, size_t len); //
 
 
@@ -135,31 +141,35 @@ template <         class BinInputStream> void readArray    (BinInputStream& stre
 
 
 //-----------------------implementation-------------------------------
+template <class BinInputStream, class BinOutputStream> inline
+void copyStream(BinInputStream& streamIn, BinOutputStream& streamOut, size_t blockSize,
+                const std::function<void(std::int64_t bytesDelta)>& onNotifyCopyStatus) //optional
+{
+    assert(blockSize > 0);
+    std::vector<char> buffer(blockSize);
+    for (;;)
+    {
+        const size_t bytesRead = streamIn.read(&buffer[0], buffer.size());
+        streamOut.write(&buffer[0], bytesRead);
+
+        if (onNotifyCopyStatus)
+            onNotifyCopyStatus(bytesRead); //throw X!
+
+        if (bytesRead != buffer.size()) //end of file
+            break;
+    }
+}
+
+
 template <class BinContainer> inline
 void saveBinStream(const Zstring& filepath, //throw FileError
                    const BinContainer& cont,
                    const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus) //optional
 {
-    static_assert(sizeof(typename BinContainer::value_type) == 1, ""); //expect: bytes (until further)
-
-    FileOutput fileOut(filepath, zen::FileOutput::ACC_OVERWRITE); //throw FileError
-    if (!cont.empty())
-    {
-        const size_t blockSize = 128 * 1024;
-        auto bytePtr = &*cont.begin();
-        size_t bytesLeft = cont.size();
-
-        while (bytesLeft > blockSize)
-        {
-            fileOut.write(bytePtr, blockSize); //throw FileError
-            bytePtr += blockSize;
-            bytesLeft -= blockSize;
-            if (onUpdateStatus) onUpdateStatus(blockSize);
-        }
-
-        fileOut.write(bytePtr, bytesLeft); //throw FileError
-        if (onUpdateStatus) onUpdateStatus(bytesLeft);
-    }
+    MemoryStreamIn<BinContainer> streamIn(cont);
+    FileOutput streamOut(filepath, zen::FileOutput::ACC_OVERWRITE); //throw FileError, (ErrorTargetExisting)
+    if (onUpdateStatus) onUpdateStatus(0); //throw X!
+    copyStream(streamIn, streamOut, streamOut.optimalBlockSize(), onUpdateStatus); //throw FileError
 }
 
 
@@ -167,34 +177,18 @@ template <class BinContainer> inline
 BinContainer loadBinStream(const Zstring& filepath, //throw FileError
                            const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus) //optional
 {
-    static_assert(sizeof(typename BinContainer::value_type) == 1, ""); //expect: bytes (until further)
-
-    FileInput fileIn(filepath); //throw FileError
-
-    BinContainer contOut;
-    const size_t blockSize = 128 * 1024;
-    do
-    {
-        contOut.resize(contOut.size() + blockSize); //container better implement exponential growth!
-
-        const size_t bytesRead = fileIn.read(&*contOut.begin() + contOut.size() - blockSize, blockSize); //throw FileError
-        if (bytesRead < blockSize)
-            contOut.resize(contOut.size() - (blockSize - bytesRead)); //caveat: unsigned arithmetics
-
-        if (onUpdateStatus) onUpdateStatus(bytesRead);
-    }
-    while (!fileIn.eof());
-
-    return contOut;
+    FileInput streamIn(filepath); //throw FileError, ErrorFileLocked
+    if (onUpdateStatus) onUpdateStatus(0); //throw X!
+    MemoryStreamOut<BinContainer> streamOut;
+    copyStream(streamIn, streamOut, streamIn.optimalBlockSize(), onUpdateStatus); //throw FileError
+    return streamOut.ref();
 }
 
 
 template <class BinOutputStream> inline
 void writeArray(BinOutputStream& stream, const void* data, size_t len)
 {
-    std::copy(static_cast<const char*>(data),
-              static_cast<const char*>(data) + len,
-              static_cast<      char*>(stream.requestWrite(len)));
+    stream.write(data, len);
 }
 
 
@@ -219,9 +213,9 @@ void writeContainer(BinOutputStream& stream, const C& cont) //don't even conside
 template <class BinInputStream> inline
 void readArray(BinInputStream& stream, void* data, size_t len) //throw UnexpectedEndOfStreamError
 {
-    //expect external write of len bytes:
-    const char* const src = static_cast<const char*>(stream.requestRead(len)); //throw UnexpectedEndOfStreamError
-    std::copy(src, src + len, static_cast<char*>(data));
+    const size_t bytesRead = stream.read(data, len);
+    if (bytesRead < len)
+        throw UnexpectedEndOfStreamError();
 }
 
 

@@ -79,23 +79,6 @@ Zstring xmlAccess::getGlobalConfigFile()
 }
 
 
-void xmlAccess::OptionalDialogs::resetDialogs()
-{
-    warningDependentFolders        = true;
-    warningFolderPairRaceCondition = true;
-    warningSignificantDifference   = true;
-    warningNotEnoughDiskSpace      = true;
-    warningUnresolvedConflicts     = true;
-    warningDatabaseError           = true;
-    warningRecyclerMissing         = true;
-    warningInputFieldEmpty         = true;
-    warningDirectoryLockFailed     = true;
-    popupOnConfigChange            = true;
-    confirmSyncStart               = true;
-    confirmExternalCommandMassInvoke = true;
-}
-
-
 xmlAccess::XmlGuiConfig xmlAccess::convertBatchToGui(const xmlAccess::XmlBatchConfig& batchCfg) //noexcept
 {
     XmlGuiConfig output;
@@ -177,8 +160,7 @@ void writeText(const CompareVariant& value, std::string& output)
 template <> inline
 bool readText(const std::string& input, CompareVariant& value)
 {
-    std::string tmp = input;
-    zen::trim(tmp);
+    const std::string tmp = trimCpy(input);
     if (tmp == "TimeAndSize")
         value = zen::CMP_BY_TIME_SIZE;
     else if (tmp == "Content")
@@ -209,8 +191,7 @@ void writeText(const SyncDirection& value, std::string& output)
 template <> inline
 bool readText(const std::string& input, SyncDirection& value)
 {
-    std::string tmp = input;
-    zen::trim(tmp);
+    const std::string tmp = trimCpy(input);
     if (tmp == "left")
         value = SyncDirection::LEFT;
     else if (tmp == "right")
@@ -243,8 +224,7 @@ void writeText(const OnError& value, std::string& output)
 template <> inline
 bool readText(const std::string& input, OnError& value)
 {
-    std::string tmp = input;
-    zen::trim(tmp);
+    const std::string tmp = trimCpy(input);
     if (tmp == "Ignore")
         value = ON_ERROR_IGNORE;
     else if (tmp == "Popup")
@@ -274,8 +254,7 @@ void writeText(const OnGuiError& value, std::string& output)
 template <> inline
 bool readText(const std::string& input, OnGuiError& value)
 {
-    std::string tmp = input;
-    zen::trim(tmp);
+    const std::string tmp = trimCpy(input);
     if (tmp == "Ignore")
         value = ON_GUIERROR_IGNORE;
     else if (tmp == "Popup")
@@ -307,8 +286,7 @@ void writeText(const FileIconSize& value, std::string& output)
 template <> inline
 bool readText(const std::string& input, FileIconSize& value)
 {
-    std::string tmp = input;
-    zen::trim(tmp);
+    const std::string tmp = trimCpy(input);
     if (tmp == "Small")
         value = ICON_SIZE_SMALL;
     else if (tmp == "Medium")
@@ -341,8 +319,7 @@ void writeText(const DeletionPolicy& value, std::string& output)
 template <> inline
 bool readText(const std::string& input, DeletionPolicy& value)
 {
-    std::string tmp = input;
-    zen::trim(tmp);
+    const std::string tmp = trimCpy(input);
     if (tmp == "Permanent")
         value = DELETE_PERMANENTLY;
     else if (tmp == "RecycleBin")
@@ -375,8 +352,7 @@ void writeText(const SymLinkHandling& value, std::string& output)
 template <> inline
 bool readText(const std::string& input, SymLinkHandling& value)
 {
-    std::string tmp = input;
-    zen::trim(tmp);
+    const std::string tmp = trimCpy(input);
     if (tmp == "Exclude")
         value = SYMLINK_EXCLUDE;
     else if (tmp == "Direct")
@@ -421,8 +397,7 @@ void writeText(const ColumnTypeRim& value, std::string& output)
 template <> inline
 bool readText(const std::string& input, ColumnTypeRim& value)
 {
-    std::string tmp = input;
-    zen::trim(tmp);
+    const std::string tmp = trimCpy(input);
     if (tmp == "Base")
         value = COL_TYPE_BASE_DIRECTORY;
     else if (tmp == "Full")
@@ -463,8 +438,7 @@ void writeText(const ColumnTypeNavi& value, std::string& output)
 template <> inline
 bool readText(const std::string& input, ColumnTypeNavi& value)
 {
-    std::string tmp = input;
-    zen::trim(tmp);
+    const std::string tmp = trimCpy(input);
     if (tmp == "Bytes")
         value = COL_TYPE_NAVI_BYTES;
     else if (tmp == "Tree")
@@ -500,8 +474,7 @@ void writeText(const UnitSize& value, std::string& output)
 template <> inline
 bool readText(const std::string& input, UnitSize& value)
 {
-    std::string tmp = input;
-    zen::trim(tmp);
+    const std::string tmp = trimCpy(input);
     if (tmp == "None")
         value = USIZE_NONE;
     else if (tmp == "Byte")
@@ -541,8 +514,7 @@ void writeText(const UnitTime& value, std::string& output)
 template <> inline
 bool readText(const std::string& input, UnitTime& value)
 {
-    std::string tmp = input;
-    zen::trim(tmp);
+    const std::string tmp = trimCpy(input);
     if (tmp == "None")
         value = UTIME_NONE;
     else if (tmp == "Today")
@@ -575,8 +547,7 @@ void writeText(const VersioningStyle& value, std::string& output)
 template <> inline
 bool readText(const std::string& input, VersioningStyle& value)
 {
-    std::string tmp = input;
-    zen::trim(tmp);
+    const std::string tmp = trimCpy(input);
     if (tmp == "Replace")
         value = VER_STYLE_REPLACE;
     else if (tmp == "TimeStamp")
@@ -610,8 +581,7 @@ void writeText(const DirectionConfig::Variant& value, std::string& output)
 template <> inline
 bool readText(const std::string& input, DirectionConfig::Variant& value)
 {
-    std::string tmp = input;
-    zen::trim(tmp);
+    const std::string tmp = trimCpy(input);
     if (tmp == "TwoWay")
         value = DirectionConfig::TWOWAY;
     else if (tmp == "Mirror")
@@ -759,9 +729,7 @@ namespace
 void readConfig(const XmlIn& in, CompConfig& cmpConfig)
 {
     in["Variant"  ](cmpConfig.compareVar);
-    warn_static("remove check after migration?")
-    if (in["TimeShift"]) //-> 27.2.2014
-        in["TimeShift"](cmpConfig.optTimeShiftHours);
+    in["TimeShift"](cmpConfig.optTimeShiftHours);
     in["Symlinks" ](cmpConfig.handleSymlinks);
 }
 
@@ -787,7 +755,7 @@ void readConfig(const XmlIn& in, SyncConfig& syncCfg)
     readConfig(in, syncCfg.directionCfg);
 
     in["DeletionPolicy"  ](syncCfg.handleDeletion);
-    in["VersioningFolder"](syncCfg.versioningDirectory);
+    in["VersioningFolder"](syncCfg.versioningFolderPhrase);
     in["VersioningFolder"].attribute("Style", syncCfg.versioningStyle);
 }
 
@@ -816,8 +784,8 @@ void readConfig(const XmlIn& in, FilterConfig& filter)
 void readConfig(const XmlIn& in, FolderPairEnh& enhPair)
 {
     //read folder pairs
-    in["Left" ](enhPair.dirpathPhraseLeft);
-    in["Right"](enhPair.dirpathPhraseRight);
+    in["Left" ](enhPair.folderPathPhraseLeft_);
+    in["Right"](enhPair.folderPathPhraseRight_);
 
     //###########################################################
     //alternate comp configuration (optional)
@@ -905,18 +873,9 @@ void readConfig(const XmlIn& in, xmlAccess::XmlBatchConfig& config)
     //read GUI specific config data
     XmlIn inBatchCfg = in["BatchConfig"];
 
-    inBatchCfg["HandleError"     ](config.handleError);
-
-    warn_static("remove after migration?")
-    if (inBatchCfg["ShowProgress"]) //2014-2-17 -> obsolete name
-    {
-        inBatchCfg["ShowProgress"](config.runMinimized);
-        config.runMinimized = !config.runMinimized;
-    }
-    else
-        inBatchCfg["RunMinimized" ](config.runMinimized);
-
-    inBatchCfg["LogfileFolder"](config.logFileDirectory);
+    inBatchCfg["HandleError"  ](config.handleError);
+    inBatchCfg["RunMinimized" ](config.runMinimized);
+    inBatchCfg["LogfileFolder"](config.logFolderPathPhrase);
     inBatchCfg["LogfileFolder"].attribute("Limit", config.logfilesCountLimit);
 }
 
@@ -963,9 +922,17 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& config)
     inWnd.attribute("PosY",      config.gui.dlgPos.y);
     inWnd.attribute("Maximized", config.gui.isMaximized);
 
+    XmlIn inCopyTo = inWnd["ManualCopyTo"];
+    inCopyTo.attribute("KeepRelativePaths", config.gui.copyToCfg.keepRelPaths);
+    inCopyTo.attribute("OverwriteIfExists", config.gui.copyToCfg.overwriteIfExists);
+
+    XmlIn inCopyToHistory = inCopyTo["FolderHistory"];
+    inCopyToHistory(config.gui.copyToCfg.folderHistory);
+    inCopyToHistory.attribute("LastUsedPath" , config.gui.copyToCfg.lastUsedPath);
+    inCopyToHistory.attribute("MaxSize"      , config.gui.copyToCfg.historySizeMax);
+
     XmlIn inManualDel = inWnd["ManualDeletion"];
-    //inManualDel.attribute("DeleteOnBothSides", config.gui.deleteOnBothSides);
-    inManualDel.attribute("UseRecycler"      , config.gui.useRecyclerForManualDeletion);
+    inManualDel.attribute("UseRecycler", config.gui.manualDeletionUseRecycler);
 
     inWnd["CaseSensitiveSearch"].attribute("Enabled", config.gui.textSearchRespectCase);
     inWnd["FolderPairsVisible" ].attribute("Max",     config.gui.maxFolderPairsVisible);
@@ -994,7 +961,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& config)
     //###########################################################
 
     inWnd["DefaultView" ](config.gui.viewFilterDefault);
-    inWnd["Perspective3"](config.gui.guiPerspectiveLast);
+    inWnd["Perspective4"](config.gui.guiPerspectiveLast);
 
     std::vector<Zstring> tmp = splitFilterByLines(config.gui.defaultExclusionFilter); //default value
     inGui["DefaultExclusionFilter"](tmp);
@@ -1016,14 +983,9 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& config)
     //external applications
     inGui["ExternalApplications"](config.gui.externelApplications);
 
-    warn_static("remove after migration: cleanup the old placeholder syntax") //26.10.2013
-    if (std::any_of(config.gui.externelApplications.begin(), config.gui.externelApplications.end(),
-    [](const std::pair<Description, Commandline>& ea) { return contains(ea.second, L"%name") || contains(ea.second, L"%nameCo") || contains(ea.second, L"%dir") || contains(ea.second, L"%dirCo"); }))
-    config.gui.externelApplications = XmlGlobalSettings().gui.externelApplications;
-
     //last update check
     inGui["LastOnlineCheck"  ](config.gui.lastUpdateCheck);
-	inGui["LastOnlineVersion"](config.gui.lastOnlineVersion);
+    inGui["LastOnlineVersion"](config.gui.lastOnlineVersion);
 
     //batch specific global settings
     //XmlIn inBatch = in["Batch"];
@@ -1045,7 +1007,7 @@ void readConfig(const Zstring& filepath, XmlType type, ConfigType& cfg, int curr
     XmlDoc doc = loadXmlDocument(filepath); //throw FileError
 
     if (getXmlTypeNoThrow(doc) != type) //noexcept
-        throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtFileName(filepath)));
+        throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filepath)));
 
     XmlIn in(doc);
     ::readConfig(in, cfg);
@@ -1149,7 +1111,7 @@ void xmlAccess::readAnyConfig(const std::vector<Zstring>& filepaths, XmlGuiConfi
 
             case XML_TYPE_GLOBAL:
             case XML_TYPE_OTHER:
-                throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtFileName(filepath)));
+                throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filepath)));
         }
     }
 
@@ -1189,7 +1151,7 @@ void writeConfig(const SyncConfig& syncCfg, XmlOut& out)
     writeConfig(syncCfg.directionCfg, out);
 
     out["DeletionPolicy"  ](syncCfg.handleDeletion);
-    out["VersioningFolder"](syncCfg.versioningDirectory);
+    out["VersioningFolder"](syncCfg.versioningFolderPhrase);
     out["VersioningFolder"].attribute("Style", syncCfg.versioningStyle);
 }
 
@@ -1215,8 +1177,8 @@ void writeConfigFolderPair(const FolderPairEnh& enhPair, XmlOut& out)
     XmlOut outPair = out.ref().addChild("Pair");
 
     //read folder pairs
-    outPair["Left" ](enhPair.dirpathPhraseLeft);
-    outPair["Right"](enhPair.dirpathPhraseRight);
+    outPair["Left" ](enhPair.folderPathPhraseLeft_);
+    outPair["Right"](enhPair.folderPathPhraseRight_);
 
     //###########################################################
     //alternate comp configuration (optional)
@@ -1298,7 +1260,7 @@ void writeConfig(const XmlBatchConfig& config, XmlOut& out)
 
     outBatchCfg["HandleError"  ](config.handleError);
     outBatchCfg["RunMinimized" ](config.runMinimized);
-    outBatchCfg["LogfileFolder"](config.logFileDirectory);
+    outBatchCfg["LogfileFolder"](config.logFolderPathPhrase);
     outBatchCfg["LogfileFolder"].attribute("Limit", config.logfilesCountLimit);
 }
 
@@ -1345,9 +1307,17 @@ void writeConfig(const XmlGlobalSettings& config, XmlOut& out)
     outWnd.attribute("PosY",      config.gui.dlgPos.y);
     outWnd.attribute("Maximized", config.gui.isMaximized);
 
+    XmlOut outCopyTo = outWnd["ManualCopyTo"];
+    outCopyTo.attribute("KeepRelativePaths", config.gui.copyToCfg.keepRelPaths);
+    outCopyTo.attribute("OverwriteIfExists", config.gui.copyToCfg.overwriteIfExists);
+
+    XmlOut outCopyToHistory = outCopyTo["FolderHistory"];
+    outCopyToHistory(config.gui.copyToCfg.folderHistory);
+    outCopyToHistory.attribute("LastUsedPath" , config.gui.copyToCfg.lastUsedPath);
+    outCopyToHistory.attribute("MaxSize"      , config.gui.copyToCfg.historySizeMax);
+
     XmlOut outManualDel = outWnd["ManualDeletion"];
-    //outManualDel.attribute("DeleteOnBothSides", config.gui.deleteOnBothSides);
-    outManualDel.attribute("UseRecycler"      , config.gui.useRecyclerForManualDeletion);
+    outManualDel.attribute("UseRecycler", config.gui.manualDeletionUseRecycler);
 
     outWnd["CaseSensitiveSearch"].attribute("Enabled", config.gui.textSearchRespectCase);
     outWnd["FolderPairsVisible" ].attribute("Max",     config.gui.maxFolderPairsVisible);
@@ -1376,7 +1346,7 @@ void writeConfig(const XmlGlobalSettings& config, XmlOut& out)
     //###########################################################
 
     outWnd["DefaultView" ](config.gui.viewFilterDefault);
-    outWnd["Perspective3"](config.gui.guiPerspectiveLast);
+    outWnd["Perspective4"](config.gui.guiPerspectiveLast);
 
     outGui["DefaultExclusionFilter"](splitFilterByLines(config.gui.defaultExclusionFilter));
 
@@ -1398,7 +1368,7 @@ void writeConfig(const XmlGlobalSettings& config, XmlOut& out)
 
     //last update check
     outGui["LastOnlineCheck"  ](config.gui.lastUpdateCheck);
-	outGui["LastOnlineVersion"](config.gui.lastOnlineVersion);
+    outGui["LastOnlineVersion"](config.gui.lastOnlineVersion);
 
     //batch specific global settings
     //XmlOut outBatch = out["Batch"];
@@ -1440,7 +1410,7 @@ void xmlAccess::writeConfig(const XmlGlobalSettings& cfg, const Zstring& filepat
 
 std::wstring xmlAccess::extractJobName(const Zstring& configFilename)
 {
-    const Zstring shortName = afterLast(configFilename, FILE_NAME_SEPARATOR); //returns the whole string if separator not found
-    const Zstring jobName = beforeLast(shortName, Zstr('.')); //returns empty string if seperator not found
-    return utfCvrtTo<std::wstring>(jobName.empty() ? shortName : jobName);
+    const Zstring shortName = afterLast(configFilename, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
+    const Zstring jobName   = beforeLast(shortName, Zstr('.'), IF_MISSING_RETURN_ALL);
+    return utfCvrtTo<std::wstring>(jobName);
 }

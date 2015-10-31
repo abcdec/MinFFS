@@ -16,7 +16,7 @@ const size_t GUI_CALLBACK_INTERVAL = 100;
 struct DirLockCallback //while waiting for the lock
 {
     virtual ~DirLockCallback() {}
-    virtual void requestUiRefresh() = 0;  //allowed to throw exceptions
+    virtual void requestUiRefresh() = 0; //allowed to throw exceptions
     virtual void reportStatus(const std::wstring& text) = 0;
 };
 

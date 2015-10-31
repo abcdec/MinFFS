@@ -9,10 +9,10 @@
 
 #ifdef ZEN_WIN
     #include "thread.h"
-    #include "dll.h"
-    #include "win_ver.h"
-    #include "long_path_prefix.h"
-    #include "IFileOperation/file_op.h"
+
+    #ifdef ZEN_WIN_VISTA_AND_LATER
+        #include "vista_file_op.h"
+    #endif
 
 #elif defined ZEN_LINUX
     #include <sys/stat.h>
@@ -27,112 +27,55 @@ using namespace zen;
 
 
 #ifdef ZEN_WIN
-namespace
+void zen::recycleOrDelete(const std::vector<Zstring>& itempaths, const std::function<void (const std::wstring& displayPath)>& onRecycleItem)
 {
-/*
-Performance test: delete 1000 files
-------------------------------------
-SHFileOperation - single file     33s
-SHFileOperation - multiple files  2,1s
-IFileOperation  - single file     33s
-IFileOperation  - multiple files  2,1s
-
-=> SHFileOperation and IFileOperation have nearly IDENTICAL performance characteristics!
-
-Nevertheless, let's use IFileOperation for better error reporting (including details on locked files)!
-*/
-
-struct CallbackData
-{
-    CallbackData(const std::function<void (const Zstring& currentItem)>& notifyDeletionStatus) :
-        notifyDeletionStatus_(notifyDeletionStatus) {}
-
-    const std::function<void (const Zstring& currentItem)>& notifyDeletionStatus_; //in, optional
-    std::exception_ptr exception; //out
-};
-
-
-bool onRecyclerCallback(const wchar_t* itempath, void* sink)
-{
-    CallbackData& cbd = *static_cast<CallbackData*>(sink); //sink is NOT optional here
-
-    if (cbd.notifyDeletionStatus_)
-        try
-        {
-            cbd.notifyDeletionStatus_(itempath); //throw ?
-        }
-        catch (...)
-        {
-            cbd.exception = std::current_exception();
-            return false;
-        }
-    return true;
-}
-}
-
-
-void zen::recycleOrDelete(const std::vector<Zstring>& itempaths, const std::function<void (const Zstring& currentItem)>& notifyDeletionStatus)
-{
-    if (itempaths.empty())
-        return;
-    //::SetFileAttributes(applyLongPathPrefix(itempath).c_str(), FILE_ATTRIBUTE_NORMAL);
+    if (itempaths.empty()) return;
     //warning: moving long file paths to recycler does not work!
-    //both ::SHFileOperation() and ::IFileOperation() cannot delete a folder named "System Volume Information" with normal attributes but shamelessly report success
-    //both ::SHFileOperation() and ::IFileOperation() can't handle \\?\-prefix!
+    //both ::SHFileOperation() and ::IFileOperation cannot delete a folder named "System Volume Information" with normal attributes but shamelessly report success
+    //both ::SHFileOperation() and ::IFileOperation can't handle \\?\-prefix!
 
-    if (vistaOrLater()) //new recycle bin usage: available since Vista
+    /*
+    Performance test: delete 1000 files
+    ------------------------------------
+    SHFileOperation - single file     33s
+    SHFileOperation - multiple files  2,1s
+    IFileOperation  - single file     33s
+    IFileOperation  - multiple files  2,1s
+
+    => SHFileOperation and IFileOperation have nearly IDENTICAL performance characteristics!
+
+    Nevertheless, let's use IFileOperation for better error reporting (including details on locked files)!
+    */
+#ifdef ZEN_WIN_VISTA_AND_LATER
+    vista::moveToRecycleBin(itempaths, onRecycleItem); //throw FileError
+
+#else //regular recycle bin usage: available since XP: 1. bad error reporting 2. early failure
+    Zstring itempathsDoubleNull;
+    for (const Zstring& itempath : itempaths)
     {
-#define DEF_DLL_FUN(name) const DllFun<fileop::FunType_##name> name(fileop::getDllName(), fileop::funName_##name);
-        DEF_DLL_FUN(moveToRecycleBin);
-        DEF_DLL_FUN(getLastErrorMessage);
-#undef DEF_DLL_FUN
-
-        if (!moveToRecycleBin || !getLastErrorMessage)
-            throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtFileName(itempaths[0])),
-                            replaceCpy(_("Cannot load file %x."), L"%x", fmtFileName(fileop::getDllName())));
-
-        std::vector<const wchar_t*> cNames;
-        for (auto it = itempaths.begin(); it != itempaths.end(); ++it) //CAUTION: do not create temporary strings here!!
-            cNames.push_back(it->c_str());
-
-        CallbackData cbd(notifyDeletionStatus);
-        if (!moveToRecycleBin(&cNames[0], cNames.size(), onRecyclerCallback, &cbd))
-        {
-            if (cbd.exception)
-                std::rethrow_exception(cbd.exception);
-
-            std::wstring itempathFmt = fmtFileName(itempaths[0]); //probably not the correct file name for file lists larger than 1!
-            if (itempaths.size() > 1)
-                itempathFmt += L", ..."; //give at least some hint that there are multiple files, and the error need not be related to the first one
-
-            throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", itempathFmt), getLastErrorMessage()); //already includes details about locking errors!
-        }
+        itempathsDoubleNull += itempath;
+        itempathsDoubleNull += L'\0';
     }
-    else //regular recycle bin usage: available since XP
+
+    SHFILEOPSTRUCT fileOp = {};
+    fileOp.hwnd   = nullptr;
+    fileOp.wFunc  = FO_DELETE;
+    fileOp.pFrom  = itempathsDoubleNull.c_str();
+    fileOp.pTo    = nullptr;
+    fileOp.fFlags = FOF_ALLOWUNDO | FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOERRORUI;
+    fileOp.fAnyOperationsAborted = false;
+    fileOp.hNameMappings         = nullptr;
+    fileOp.lpszProgressTitle     = nullptr;
+
+    //"You should use fully-qualified path names with this function. Using it with relative path names is not thread safe."
+    if (::SHFileOperation(&fileOp) != 0 || fileOp.fAnyOperationsAborted)
     {
-        Zstring itempathsDoubleNull;
-        for (const Zstring& itempath : itempaths)
-        {
-            itempathsDoubleNull += itempath;
-            itempathsDoubleNull += L'\0';
-        }
-
-        SHFILEOPSTRUCT fileOp = {};
-        fileOp.hwnd   = nullptr;
-        fileOp.wFunc  = FO_DELETE;
-        fileOp.pFrom  = itempathsDoubleNull.c_str();
-        fileOp.pTo    = nullptr;
-        fileOp.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOERRORUI;
-        fileOp.fAnyOperationsAborted = false;
-        fileOp.hNameMappings         = nullptr;
-        fileOp.lpszProgressTitle     = nullptr;
-
-        //"You should use fully-qualified path names with this function. Using it with relative path names is not thread safe."
-        if (::SHFileOperation(&fileOp) != 0 || fileOp.fAnyOperationsAborted)
-        {
-            throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtFileName(itempaths[0]))); //probably not the correct file name for file list larger than 1!
-        }
+        std::wstring itempathFmt = fmtPath(itempaths[0]); //probably not the correct file name for file lists larger than 1!
+        if (itempaths.size() > 1)
+            itempathFmt += L", ..."; //give at least some hint that there are multiple files, and the error need not be related to the first one
+        throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", itempathFmt));
     }
+#endif
 }
 #endif
 
@@ -143,7 +86,7 @@ bool zen::recycleOrDelete(const Zstring& itempath) //throw FileError
         return false; //neither file nor any other object with that name existing: no error situation, manual deletion relies on it!
 
 #ifdef ZEN_WIN
-	recycleOrDelete({ itempath }, nullptr); //throw FileError
+    recycleOrDelete({ itempath }, nullptr); //throw FileError
 
 #elif defined ZEN_LINUX
     GFile* file = ::g_file_new_for_path(itempath.c_str()); //never fails according to docu
@@ -154,10 +97,10 @@ bool zen::recycleOrDelete(const Zstring& itempath) //throw FileError
 
     if (!::g_file_trash(file, nullptr, &error))
     {
-        const std::wstring errorMsg = replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtFileName(itempath));
+        const std::wstring errorMsg = replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtPath(itempath));
 
         if (!error)
-            throw FileError(errorMsg, L"Unknown error."); //user should never see this
+            throw FileError(errorMsg, L"g_file_trash: unknown error."); //user should never see this
 
         //implement same behavior as in Windows: if recycler is not existing, delete permanently
         if (error->code == G_IO_ERROR_NOT_SUPPORTED)
@@ -169,7 +112,7 @@ bool zen::recycleOrDelete(const Zstring& itempath) //throw FileError
             if (S_ISLNK(fileInfo.st_mode) || S_ISREG(fileInfo.st_mode))
                 removeFile(itempath); //throw FileError
             else if (S_ISDIR(fileInfo.st_mode))
-                removeDirectory(itempath); //throw FileError
+                removeDirectoryRecursively(itempath); //throw FileError
             return true;
         }
 
@@ -185,7 +128,7 @@ bool zen::recycleOrDelete(const Zstring& itempath) //throw FileError
 
     auto throwFileError = [&](OSStatus oss)
     {
-        const std::wstring errorMsg = replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtFileName(itempath));
+        const std::wstring errorMsg = replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtPath(itempath));
         std::wstring errorDescr = L"OSStatus Code " + numberTo<std::wstring>(oss);
 
         if (const char* description = ::GetMacOSStatusCommentString(oss)) //found no documentation for proper use of GetMacOSStatusCommentString
@@ -217,7 +160,7 @@ bool zen::recycleOrDelete(const Zstring& itempath) //throw FileError
             if (S_ISLNK(fileInfo.st_mode) || S_ISREG(fileInfo.st_mode))
                 removeFile(itempath); //throw FileError
             else if (S_ISDIR(fileInfo.st_mode))
-                removeDirectory(itempath); //throw FileError
+                removeDirectoryRecursively(itempath); //throw FileError
             return true;
         }
 
@@ -229,46 +172,32 @@ bool zen::recycleOrDelete(const Zstring& itempath) //throw FileError
 
 
 #ifdef ZEN_WIN
-bool zen::recycleBinExists(const Zstring& dirpath, const std::function<void ()>& onUpdateGui) //throw FileError
+bool zen::recycleBinExists(const Zstring& dirPath, const std::function<void ()>& onUpdateGui) //throw FileError
 {
-    if (vistaOrLater())
+#ifdef ZEN_WIN_VISTA_AND_LATER
+    return vista::supportsRecycleBin(dirPath); //throw FileError
+
+#else
+    //excessive runtime if recycle bin exists, is full and drive is slow:
+    auto ft = runAsync([dirPath]()
     {
-        using namespace fileop;
-        const DllFun<FunType_getRecycleBinStatus> getRecycleBinStatus(getDllName(), funName_getRecycleBinStatus);
-        const DllFun<FunType_getLastErrorMessage> getLastErrorMessage(getDllName(), funName_getLastErrorMessage);
+        SHQUERYRBINFO recInfo = {};
+        recInfo.cbSize = sizeof(recInfo);
+        return ::SHQueryRecycleBin(dirPath.c_str(), //__in_opt  LPCTSTR pszRootPath,
+                                   &recInfo);       //__inout   LPSHQUERYRBINFO pSHQueryRBInfo
+    });
 
-        if (!getRecycleBinStatus || !getLastErrorMessage)
-            throw FileError(replaceCpy(_("Checking recycle bin failed for folder %x."), L"%x", fmtFileName(dirpath)),
-                            replaceCpy(_("Cannot load file %x."), L"%x", fmtFileName(getDllName())));
+    while (ft.wait_for(std::chrono::milliseconds(50)) != std::future_status::ready)
+        if (onUpdateGui)
+            onUpdateGui(); //may throw!
 
-        bool hasRecycler = false;
-        if (!getRecycleBinStatus(dirpath.c_str(), hasRecycler))
-            throw FileError(replaceCpy(_("Checking recycle bin failed for folder %x."), L"%x", fmtFileName(dirpath)), getLastErrorMessage());
-
-        return hasRecycler;
-    }
-    else
-    {
-        //excessive runtime if recycle bin exists, is full and drive is slow:
-        auto ft = async([dirpath]()
-        {
-            SHQUERYRBINFO recInfo = {};
-            recInfo.cbSize = sizeof(recInfo);
-            return ::SHQueryRecycleBin(dirpath.c_str(), //__in_opt  LPCTSTR pszRootPath,
-                                       &recInfo);       //__inout   LPSHQUERYRBINFO pSHQueryRBInfo
-        });
-
-        while (!ft.timed_wait(boost::posix_time::milliseconds(50)))
-            if (onUpdateGui)
-                onUpdateGui(); //may throw!
-
-        return ft.get() == S_OK;
-    }
+    return ft.get() == S_OK;
+#endif
 
     //1. ::SHQueryRecycleBin() is excessive: traverses whole $Recycle.Bin directory tree each time!!!! But it's safe and correct.
 
     //2. we can't simply buffer the ::SHQueryRecycleBin() based on volume serial number:
-    //	"subst S:\ C:\" => GetVolumeInformation() returns same serial for C:\ and S:\, but S:\ does not support recycle bin!
+    //  "subst S:\ C:\" => GetVolumeInformation() returns same serial for C:\ and S:\, but S:\ does not support recycle bin!
 
     //3. we would prefer to use CLSID_RecycleBinManager beginning with Vista... if only this interface were documented!!!
 
@@ -281,7 +210,7 @@ bool zen::recycleBinExists(const Zstring& dirpath, const std::function<void ()>&
     /*
         Zstring rootPathPf = appendSeparator(&buffer[0]);
 
-    	const bool canUseFastCheckForRecycler = winXpOrLater();
+        const bool canUseFastCheckForRecycler = winXpOrLater();
         if (!canUseFastCheckForRecycler) //== "checkForRecycleBin"
             return STATUS_REC_UNKNOWN;
 

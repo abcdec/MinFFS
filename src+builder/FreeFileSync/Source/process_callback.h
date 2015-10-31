@@ -37,16 +37,16 @@ struct ProcessCallback
     virtual void updateProcessedData(int objectsDelta, std::int64_t dataDelta) = 0; //noexcept!!
     virtual void updateTotalData    (int objectsDelta, std::int64_t dataDelta) = 0; //
     /*the estimated and actual total workload may change *during* sync:
-    		1. file cannot be moved -> fallback to copy + delete
-    		2. file copy, actual size changed after comparison
-    		3. file contains significant ADS data, is sparse or compressed
-    		4. file/directory already deleted externally: nothing to do, 0 logical operations and data
+            1. file cannot be moved -> fallback to copy + delete
+            2. file copy, actual size changed after comparison
+            3. file contains significant ADS data, is sparse or compressed
+            4. file/directory already deleted externally: nothing to do, 0 logical operations and data
             5. auto-resolution for failed create operations due to missing source
-    		6. directory deletion: may contain more items than scanned by FFS (excluded by filter) or less (contains followed symlinks)
-    		7. delete directory to recycler: no matter how many child-elements exist, this is only 1 item to process!
-    		8. user-defined deletion directory on different volume: full file copy required (instead of move)
-    		9. Binary file comparison: short-circuit behavior if files differ
-    		10. Error during file copy, retry: bytes were copied => increases total workload!
+            6. directory deletion: may contain more items than scanned by FFS (excluded by filter) or less (contains followed symlinks)
+            7. delete directory to recycler: no matter how many child-elements exist, this is only 1 item to process!
+            8. user-defined deletion directory on different volume: full file copy required (instead of move)
+            9. Binary file comparison: short-circuit behavior if files differ
+            10. Error during file copy, retry: bytes were copied => increases total workload!
     */
 
     //opportunity to abort must be implemented in a frequently executed method like requestUiRefresh()

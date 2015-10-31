@@ -20,7 +20,7 @@ using namespace zen;
 using namespace xmlAccess;
 
 
-CompareStatusHandler::CompareStatusHandler(MainDialog& dlg) :
+StatusHandlerTemporaryPanel::StatusHandlerTemporaryPanel(MainDialog& dlg) :
     mainDlg(dlg),
     ignoreErrors(false)
 {
@@ -28,7 +28,6 @@ CompareStatusHandler::CompareStatusHandler(MainDialog& dlg) :
 #ifdef ZEN_WIN
         wxWindowUpdateLocker dummy(&mainDlg); //leads to GUI corruption problems on Linux/OS X!
 #endif
-
         mainDlg.compareStatus->init(*this); //clear old values before showing panel
 
         //------------------------------------------------------------------
@@ -92,16 +91,16 @@ CompareStatusHandler::CompareStatusHandler(MainDialog& dlg) :
     mainDlg.Update(); //don't wait until idle event!
 
     //register keys
-    mainDlg.Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(CompareStatusHandler::OnKeyPressed), nullptr, this);
-    mainDlg.m_buttonCancel->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(CompareStatusHandler::OnAbortCompare), nullptr, this);
+    mainDlg.Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(StatusHandlerTemporaryPanel::OnKeyPressed), nullptr, this);
+    mainDlg.m_buttonCancel->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(StatusHandlerTemporaryPanel::OnAbortCompare), nullptr, this);
 }
 
 
-CompareStatusHandler::~CompareStatusHandler()
+StatusHandlerTemporaryPanel::~StatusHandlerTemporaryPanel()
 {
     //unregister keys
-    mainDlg.Disconnect(wxEVT_CHAR_HOOK, wxKeyEventHandler(CompareStatusHandler::OnKeyPressed), nullptr, this);
-    mainDlg.m_buttonCancel->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(CompareStatusHandler::OnAbortCompare), nullptr, this);
+    mainDlg.Disconnect(wxEVT_CHAR_HOOK, wxKeyEventHandler(StatusHandlerTemporaryPanel::OnKeyPressed), nullptr, this);
+    mainDlg.m_buttonCancel->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(StatusHandlerTemporaryPanel::OnAbortCompare), nullptr, this);
 
     mainDlg.auiMgr.GetPane(mainDlg.compareStatus->getAsWindow()).Hide();
     mainDlg.auiMgr.Update();
@@ -109,7 +108,7 @@ CompareStatusHandler::~CompareStatusHandler()
 }
 
 
-void CompareStatusHandler::OnKeyPressed(wxKeyEvent& event)
+void StatusHandlerTemporaryPanel::OnKeyPressed(wxKeyEvent& event)
 {
     const int keyCode = event.GetKeyCode();
     if (keyCode == WXK_ESCAPE)
@@ -122,17 +121,17 @@ void CompareStatusHandler::OnKeyPressed(wxKeyEvent& event)
 }
 
 
-void CompareStatusHandler::initNewPhase(int objectsTotal, std::int64_t dataTotal, Phase phaseID)
+void StatusHandlerTemporaryPanel::initNewPhase(int objectsTotal, std::int64_t dataTotal, Phase phaseID)
 {
     StatusHandler::initNewPhase(objectsTotal, dataTotal, phaseID);
 
     switch (currentPhase())
     {
         case PHASE_NONE:
-        case PHASE_SYNCHRONIZING:
             assert(false);
         case PHASE_SCANNING:
             break;
+        case PHASE_SYNCHRONIZING:
         case PHASE_COMPARING_CONTENT:
         {
 #ifdef ZEN_WIN
@@ -149,7 +148,7 @@ void CompareStatusHandler::initNewPhase(int objectsTotal, std::int64_t dataTotal
 }
 
 
-ProcessCallback::Response CompareStatusHandler::reportError(const std::wstring& errorMessage, size_t retryNumber)
+ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const std::wstring& errorMessage, size_t retryNumber)
 {
     //no need to implement auto-retry here: 1. user is watching 2. comparison is fast
     //=> similar behavior like "ignoreErrors" which does not honor sync settings
@@ -182,14 +181,14 @@ ProcessCallback::Response CompareStatusHandler::reportError(const std::wstring& 
 }
 
 
-void CompareStatusHandler::reportFatalError(const std::wstring& errorMessage)
+void StatusHandlerTemporaryPanel::reportFatalError(const std::wstring& errorMessage)
 {
     forceUiRefresh();
     showNotificationDialog(&mainDlg, DialogInfoType::ERROR2, PopupDialogCfg().setTitle(_("Serious Error")).setDetailInstructions(errorMessage));
 }
 
 
-void CompareStatusHandler::reportWarning(const std::wstring& warningMessage, bool& warningActive)
+void StatusHandlerTemporaryPanel::reportWarning(const std::wstring& warningMessage, bool& warningActive)
 {
     if (!warningActive || ignoreErrors) //if errors are ignored, then warnings should also
         return;
@@ -213,19 +212,19 @@ void CompareStatusHandler::reportWarning(const std::wstring& warningMessage, boo
 }
 
 
-void CompareStatusHandler::forceUiRefresh()
+void StatusHandlerTemporaryPanel::forceUiRefresh()
 {
     mainDlg.compareStatus->updateStatusPanelNow();
 }
 
 
-void CompareStatusHandler::OnAbortCompare(wxCommandEvent& event)
+void StatusHandlerTemporaryPanel::OnAbortCompare(wxCommandEvent& event)
 {
     requestAbortion();
 }
 
 
-void CompareStatusHandler::abortProcessNow()
+void StatusHandlerTemporaryPanel::abortProcessNow()
 {
     requestAbortion(); //just make sure...
     throw GuiAbortProcess();
@@ -233,24 +232,24 @@ void CompareStatusHandler::abortProcessNow()
 
 //########################################################################################################
 
-SyncStatusHandler::SyncStatusHandler(wxFrame* parentDlg,
-                                     size_t lastSyncsLogFileSizeMax,
-                                     OnGuiError handleError,
-                                     size_t automaticRetryCount,
-                                     size_t automaticRetryDelay,
-                                     const std::wstring& jobName,
-                                     const Zstring& onCompletion,
-                                     std::vector<Zstring>& onCompletionHistory) :
+StatusHandlerFloatingDialog::StatusHandlerFloatingDialog(wxFrame* parentDlg,
+                                                         size_t lastSyncsLogFileSizeMax,
+                                                         OnGuiError handleError,
+                                                         size_t automaticRetryCount,
+                                                         size_t automaticRetryDelay,
+                                                         const std::wstring& jobName,
+                                                         const Zstring& onCompletion,
+                                                         std::vector<Zstring>& onCompletionHistory) :
     progressDlg(createProgressDialog(*this, [this] { this->onProgressDialogTerminate(); }, *this, parentDlg, true, jobName, onCompletion, onCompletionHistory)),
             lastSyncsLogFileSizeMax_(lastSyncsLogFileSizeMax),
             handleError_(handleError),
             automaticRetryCount_(automaticRetryCount),
             automaticRetryDelay_(automaticRetryDelay),
             jobName_(jobName),
-startTime_(wxGetUTCTimeMillis().GetValue()) {}
+startTime_(std::time(nullptr)) {}
 
 
-SyncStatusHandler::~SyncStatusHandler()
+StatusHandlerFloatingDialog::~StatusHandlerFloatingDialog()
 {
     //------------ "on completion" command conceptually is part of the sync, not cleanup --------------------------------------
 
@@ -315,13 +314,13 @@ SyncStatusHandler::~SyncStatusHandler()
         jobName_, finalStatus,
         getObjectsCurrent(PHASE_SYNCHRONIZING), getDataCurrent(PHASE_SYNCHRONIZING),
         getObjectsTotal  (PHASE_SYNCHRONIZING), getDataTotal  (PHASE_SYNCHRONIZING),
-        (wxGetUTCTimeMillis().GetValue() - startTime_) / 1000
+        std::time(nullptr) - startTime_
     };
 
     //----------------- write results into LastSyncs.log------------------------
     try
     {
-        saveToLastSyncsLog(summary, errorLog, lastSyncsLogFileSizeMax_, OnUpdateLogfileStatusNoThrow(*this, getLastSyncsLogfilePath())); //throw FileError
+        saveToLastSyncsLog(summary, errorLog, lastSyncsLogFileSizeMax_, OnUpdateLogfileStatusNoThrow(*this, utfCvrtTo<std::wstring>(getLastSyncsLogfilePath()))); //throw FileError
     }
     catch (FileError&) { assert(false); }
 
@@ -331,7 +330,7 @@ SyncStatusHandler::~SyncStatusHandler()
         if (showFinalResults)
         {
             if (abortIsRequested())
-                progressDlg->processHasFinished(SyncProgressDialog::RESULT_ABORTED, errorLog);  //enable okay and close events
+                progressDlg->processHasFinished(SyncProgressDialog::RESULT_ABORTED, errorLog); //enable okay and close events
             else if (totalErrors > 0)
                 progressDlg->processHasFinished(SyncProgressDialog::RESULT_FINISHED_WITH_ERROR, errorLog);
             else if (totalWarnings > 0)
@@ -348,13 +347,13 @@ SyncStatusHandler::~SyncStatusHandler()
         while (progressDlg)
         {
             wxTheApp->Yield(); //*first* refresh GUI (removing flicker) before sleeping!
-            boost::this_thread::sleep(boost::posix_time::milliseconds(UI_UPDATE_INTERVAL));
+            std::this_thread::sleep_for(std::chrono::milliseconds(UI_UPDATE_INTERVAL));
         }
     }
 }
 
 
-void SyncStatusHandler::initNewPhase(int objectsTotal, std::int64_t dataTotal, Phase phaseID)
+void StatusHandlerFloatingDialog::initNewPhase(int objectsTotal, std::int64_t dataTotal, Phase phaseID)
 {
     assert(phaseID == PHASE_SYNCHRONIZING);
     StatusHandler::initNewPhase(objectsTotal, dataTotal, phaseID);
@@ -365,7 +364,7 @@ void SyncStatusHandler::initNewPhase(int objectsTotal, std::int64_t dataTotal, P
 }
 
 
-void SyncStatusHandler::updateProcessedData(int objectsDelta, std::int64_t dataDelta)
+void StatusHandlerFloatingDialog::updateProcessedData(int objectsDelta, std::int64_t dataDelta)
 {
     StatusHandler::updateProcessedData(objectsDelta, dataDelta);
     if (progressDlg)
@@ -374,14 +373,14 @@ void SyncStatusHandler::updateProcessedData(int objectsDelta, std::int64_t dataD
 }
 
 
-void SyncStatusHandler::reportInfo(const std::wstring& text)
+void StatusHandlerFloatingDialog::reportInfo(const std::wstring& text)
 {
     StatusHandler::reportInfo(text);
     errorLog.logMsg(text, TYPE_INFO);
 }
 
 
-ProcessCallback::Response SyncStatusHandler::reportError(const std::wstring& errorMessage, size_t retryNumber)
+ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const std::wstring& errorMessage, size_t retryNumber)
 {
     //auto-retry
     if (retryNumber < automaticRetryCount_)
@@ -394,7 +393,7 @@ ProcessCallback::Response SyncStatusHandler::reportError(const std::wstring& err
         {
             reportStatus(_("Error") + L": " + _P("Automatic retry in 1 second...", "Automatic retry in %x seconds...",
                                                  (1000 * automaticRetryDelay_ - i * UI_UPDATE_INTERVAL + 999) / 1000)); //integer round up
-            boost::this_thread::sleep(boost::posix_time::milliseconds(UI_UPDATE_INTERVAL));
+            std::this_thread::sleep_for(std::chrono::milliseconds(UI_UPDATE_INTERVAL));
         }
         return ProcessCallback::RETRY;
     }
@@ -443,7 +442,7 @@ ProcessCallback::Response SyncStatusHandler::reportError(const std::wstring& err
 }
 
 
-void SyncStatusHandler::reportFatalError(const std::wstring& errorMessage)
+void StatusHandlerFloatingDialog::reportFatalError(const std::wstring& errorMessage)
 {
     errorLog.logMsg(errorMessage, TYPE_FATAL_ERROR);
 
@@ -479,7 +478,7 @@ void SyncStatusHandler::reportFatalError(const std::wstring& errorMessage)
 }
 
 
-void SyncStatusHandler::reportWarning(const std::wstring& warningMessage, bool& warningActive)
+void StatusHandlerFloatingDialog::reportWarning(const std::wstring& warningMessage, bool& warningActive)
 {
     errorLog.logMsg(warningMessage, TYPE_WARNING);
 
@@ -516,21 +515,21 @@ void SyncStatusHandler::reportWarning(const std::wstring& warningMessage, bool& 
 }
 
 
-void SyncStatusHandler::forceUiRefresh()
+void StatusHandlerFloatingDialog::forceUiRefresh()
 {
     if (progressDlg)
         progressDlg->updateGui();
 }
 
 
-void SyncStatusHandler::abortProcessNow()
+void StatusHandlerFloatingDialog::abortProcessNow()
 {
     requestAbortion(); //just make sure...
-    throw GuiAbortProcess();  //abort can be triggered by progressDlg
+    throw GuiAbortProcess(); //abort can be triggered by progressDlg
 }
 
 
-void SyncStatusHandler::onProgressDialogTerminate()
+void StatusHandlerFloatingDialog::onProgressDialogTerminate()
 {
     //it's responsibility of "progressDlg" to call requestAbortion() when closing dialog
     progressDlg = nullptr;

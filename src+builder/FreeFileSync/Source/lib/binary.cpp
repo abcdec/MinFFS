@@ -8,17 +8,16 @@
 #include <zen/tick_count.h>
 #include <vector>
 #include <zen/file_io.h>
-#include <boost/thread/tss.hpp>
 
 using namespace zen;
-
+using ABF = AbstractBaseFolder;
 
 namespace
 {
 /*
 1. there seems to be no perf improvement possible when using file mappings instad of ::ReadFile() calls on Windows:
-	=> buffered   access: same perf
-	=> unbuffered access: same perf on USB stick, file mapping 30% slower on local disk
+    => buffered   access: same perf
+    => unbuffered access: same perf on USB stick, file mapping 30% slower on local disk
 
 2. Tests on Win7 x64 show that buffer size does NOT matter if files are located on different physical disks!
 Impact of buffer size when files are on same disk:
@@ -37,7 +36,7 @@ buffer  MB/s
 class BufferSize
 {
 public:
-    BufferSize() : bufSize(BUFFER_SIZE_START) {}
+    BufferSize(size_t initialSize) : bufSize(initialSize) {}
 
     void inc()
     {
@@ -54,9 +53,8 @@ public:
     size_t get() const { return bufSize; }
 
 private:
-    static const size_t BUFFER_SIZE_MIN   =        64 * 1024;
-    static const size_t BUFFER_SIZE_START =       128 * 1024; //initial buffer size
-    static const size_t BUFFER_SIZE_MAX   = 16 * 1024 * 1024;
+    static const size_t BUFFER_SIZE_MIN   =            8 * 1024; //slow FTP transfer!
+    static const size_t BUFFER_SIZE_MAX   =  1024 * 1024 * 1024;
 
     size_t bufSize;
 };
@@ -74,39 +72,33 @@ const std::int64_t TICKS_PER_SEC = ticksPerSec();
 }
 
 
-bool zen::filesHaveSameContent(const Zstring& filepath1, const Zstring& filepath2, const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus) //throw FileError
+bool zen::filesHaveSameContent(const AbstractPathRef& filePath1, const AbstractPathRef& filePath2, const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus) //throw FileError
 {
-    static boost::thread_specific_ptr<std::vector<char>> cpyBuf1;
-    static boost::thread_specific_ptr<std::vector<char>> cpyBuf2;
-    if (!cpyBuf1.get())
-        cpyBuf1.reset(new std::vector<char>());
-    if (!cpyBuf2.get())
-        cpyBuf2.reset(new std::vector<char>());
+    const std::unique_ptr<ABF::InputStream> inStream1 = ABF::getInputStream(filePath1); //throw FileError, (ErrorFileLocked)
+    const std::unique_ptr<ABF::InputStream> inStream2 = ABF::getInputStream(filePath2); //
 
-    std::vector<char>& memory1 = *cpyBuf1;
-    std::vector<char>& memory2 = *cpyBuf2;
-
-    FileInput file1(filepath1); //throw FileError
-    FileInput file2(filepath2); //
-
-    BufferSize bufferSize;
+    BufferSize dynamicBufSize(std::min(inStream1->optimalBlockSize(),
+                                       inStream2->optimalBlockSize()));
 
     TickVal lastDelayViolation = getTicks();
+    std::vector<char> buf; //make this thread-local? => on noticeable perf advantage!
 
-    do
+    for (;;)
     {
-        setMinSize(memory1, bufferSize.get());
-        setMinSize(memory2, bufferSize.get());
+        const size_t bufSize = dynamicBufSize.get(); //save for reliable eof check below!!!
+        setMinSize(buf, 2 * bufSize);
+        char* buf1 = &buf[0];
+        char* buf2 = &buf[bufSize];
 
         const TickVal startTime = getTicks();
 
-        const size_t length1 = file1.read(&memory1[0], bufferSize.get()); //throw FileError
-        const size_t length2 = file2.read(&memory2[0], bufferSize.get()); //returns actual number of bytes read
+        const size_t length1 = inStream1->read(buf1, bufSize); //throw FileError
+        const size_t length2 = inStream2->read(buf2, bufSize); //returns actual number of bytes read
         //send progress updates immediately after reading to reliably allow speed calculations for our clients!
         if (onUpdateStatus)
             onUpdateStatus(std::max(length1, length2));
 
-        if (length1 != length2 || ::memcmp(&memory1[0], &memory2[0], length1) != 0)
+        if (length1 != length2 || ::memcmp(buf1, buf2, length1) != 0)
             return false;
 
         //-------- dynamically set buffer size to keep callback interval between 100 - 500ms ---------------------
@@ -120,21 +112,18 @@ bool zen::filesHaveSameContent(const Zstring& filepath1, const Zstring& filepath
                 if (dist(lastDelayViolation, now) / TICKS_PER_SEC > 2) //avoid "flipping back": e.g. DVD-Roms read 32MB at once, so first read may be > 500 ms, but second one will be 0ms!
                 {
                     lastDelayViolation = now;
-                    bufferSize.inc();
+                    dynamicBufSize.inc();
                 }
             }
             else if (loopTime > 500)
             {
                 lastDelayViolation = now;
-                bufferSize.dec();
+                dynamicBufSize.dec();
             }
         }
         //------------------------------------------------------------------------------------------------
+
+        if (length1 != bufSize) //end of file
+            return true;
     }
-    while (!file1.eof());
-
-    if (!file2.eof()) //unlikely, but possible
-        return false;
-
-    return true;
 }

@@ -145,66 +145,64 @@ void calcPercentage(std::vector<std::pair<std::uint64_t, int*>>& workList)
         std::for_each(workList.begin(), workList.begin() + remainingPercent, [&](std::pair<std::uint64_t, int*>& pair) { ++*pair.second; });
     }
 }
+}
 
 
-Zstring getShortDisplayNameForFolderPair(const Zstring& dirLeftPf, const Zstring& dirRightPf) //post-fixed with separator
+std::wstring zen::getShortDisplayNameForFolderPair(const std::wstring& displayPathLeft, const std::wstring& displayPathRight)
 {
-    assert(endsWith(dirLeftPf,  FILE_NAME_SEPARATOR) || dirLeftPf .empty());
-    assert(endsWith(dirRightPf, FILE_NAME_SEPARATOR) || dirRightPf.empty());
+    const wchar_t sep = L'/';
+    std::wstring fmtPathL = replaceCpy(displayPathLeft,  L'\\', sep); //treat slash, backslash the same
+    std::wstring fmtPathR = replaceCpy(displayPathRight, L'\\', sep); //
+    if (!startsWith(fmtPathL, sep)) fmtPathL = sep + fmtPathL;
+    if (!startsWith(fmtPathR, sep)) fmtPathR = sep + fmtPathR;
 
-    auto itL = dirLeftPf .end();
-    auto itR = dirRightPf.end();
-
+    auto itL = fmtPathL.end();
+    auto itR = fmtPathR.end();
     for (;;)
     {
-        auto itLPrev = find_last(dirLeftPf .begin(), itL, FILE_NAME_SEPARATOR);
-        auto itRPrev = find_last(dirRightPf.begin(), itR, FILE_NAME_SEPARATOR);
+        auto itLPrev = find_last(fmtPathL.begin(), itL, sep); //c:\file, d:\1file have no common postfix!
+        auto itRPrev = find_last(fmtPathR.begin(), itR, sep);
 
         if (itLPrev == itL ||
             itRPrev == itR)
-        {
-            if (itLPrev == itL)
-                itLPrev = dirLeftPf.begin();
-            else
-                ++itLPrev; //skip separator
-            if (itRPrev == itR)
-                itRPrev = dirRightPf.begin();
-            else
-                ++itRPrev;
-
-            if (equal(itLPrev, itL, itRPrev, itR))
-            {
-                itL = itLPrev;
-                itR = itRPrev;
-            }
             break;
-        }
 
-        if (!equal(itLPrev, itL, itRPrev, itR))
+        if (cmpFilePath(&*itLPrev, itL - itLPrev,
+                        &*itRPrev, itR - itRPrev) != 0)
             break;
         itL = itLPrev;
         itR = itRPrev;
     }
 
-    Zstring commonPostfix(itL, dirLeftPf.end());
-    if (startsWith(commonPostfix, FILE_NAME_SEPARATOR))
-        commonPostfix = afterFirst(commonPostfix, FILE_NAME_SEPARATOR);
-    if (endsWith(commonPostfix, FILE_NAME_SEPARATOR))
-        commonPostfix.resize(commonPostfix.size() - 1);
+    if (itL != fmtPathL.end() && *itL == sep)
+        ++itL;
 
-    if (commonPostfix.empty())
+    const size_t postFixLen = fmtPathL.end() - itL;
+    if (postFixLen > 0)
+        return std::wstring(&*(displayPathLeft.end() - postFixLen), postFixLen);
+
+    auto getLastComponent = [sep](const std::wstring& displayPath) -> std::wstring
     {
-        auto getLastComponent = [](const Zstring& dirPf) { return afterLast(beforeLast(dirPf, FILE_NAME_SEPARATOR), FILE_NAME_SEPARATOR); }; //returns the whole string if term not found
-        if (dirLeftPf.empty())
-            return getLastComponent(dirRightPf);
-        else if (dirRightPf.empty())
-            return getLastComponent(dirLeftPf);
-        else
-            return getLastComponent(dirLeftPf) + utfCvrtTo<Zstring>(L" \u2212 ") + //= unicode minus
-                   getLastComponent(dirRightPf);
-    }
-    return commonPostfix;
-}
+        const std::wstring fmtPath = replaceCpy(displayPath, L'\\', sep);
+
+        auto itEnd = fmtPath.end();
+        if (endsWith(fmtPath, sep)) //preserve trailing separator, support "C:\"
+            --itEnd;
+
+        auto it = find_last(fmtPath.begin(), itEnd, sep);
+        if (it == itEnd)
+            it = fmtPath.begin();
+        else ++it;
+
+        return displayPath.c_str() + (it - fmtPath.begin());
+    };
+    if (displayPathLeft.empty())
+        return getLastComponent(displayPathRight);
+    else if (displayPathRight.empty())
+        return getLastComponent(displayPathLeft);
+    else
+        return getLastComponent(displayPathLeft) + L" \u2212 " + //= unicode minus
+               getLastComponent(displayPathRight);
 }
 
 
@@ -225,7 +223,7 @@ struct TreeView::LessShortName
         switch (lhs.type_)
         {
             case TreeView::TYPE_ROOT:
-                return makeSortDirection(LessFilename(), Int2Type<ascending>())(static_cast<const RootNodeImpl*>(lhs.node_)->displayName,
+                return makeSortDirection(LessFilePath(), Int2Type<ascending>())(static_cast<const RootNodeImpl*>(lhs.node_)->displayName,
                                                                                 static_cast<const RootNodeImpl*>(rhs.node_)->displayName);
 
             case TreeView::TYPE_DIRECTORY:
@@ -238,7 +236,7 @@ struct TreeView::LessShortName
                 else if (!dirObjR)
                     return true;
 
-                return makeSortDirection(LessFilename(), Int2Type<ascending>())(dirObjL->getPairShortName(), dirObjR->getPairShortName());
+                return makeSortDirection(LessFilePath(), Int2Type<ascending>())(dirObjL->getPairShortName(), dirObjR->getPairShortName());
             }
 
             case TreeView::TYPE_FILES:
@@ -429,8 +427,8 @@ void TreeView::updateView(Predicate pred)
         else
         {
             root.baseDirObj = baseObj;
-            root.displayName = getShortDisplayNameForFolderPair(baseObj->getBaseDirPf<LEFT_SIDE >(),
-                                                                baseObj->getBaseDirPf<RIGHT_SIDE>());
+            root.displayName = getShortDisplayNameForFolderPair(ABF::getDisplayPath(baseObj->getABF<LEFT_SIDE >().getAbstractPath()),
+                                                                ABF::getDisplayPath(baseObj->getABF<RIGHT_SIDE>().getAbstractPath()));
 
             this->compressNode(root); //"this->" required by two-pass lookup as enforced by GCC 4.7
         }
@@ -663,10 +661,10 @@ void TreeView::setData(FolderComparison& newData)
     folderCmp = newData;
 
     //remove truly empty folder pairs as early as this: we want to distinguish single/multiple folder pair cases by looking at "folderCmp"
-    vector_remove_if(folderCmp, [](const std::shared_ptr<BaseDirPair>& baseObj)
+    erase_if(folderCmp, [](const std::shared_ptr<BaseDirPair>& baseObj)
     {
-        return baseObj->getBaseDirPf<LEFT_SIDE >().empty() &&
-               baseObj->getBaseDirPf<RIGHT_SIDE>().empty();
+        return baseObj->getABF<LEFT_SIDE >().emptyBaseFolderPath() &&
+               baseObj->getABF<RIGHT_SIDE>().emptyBaseFolderPath();
     });
 }
 
@@ -683,7 +681,7 @@ std::unique_ptr<TreeView::Node> TreeView::getLine(size_t row) const
             case TreeView::TYPE_ROOT:
             {
                 const auto& root = *static_cast<const TreeView::RootNodeImpl*>(flatTree[row].node_);
-                return zen::make_unique<TreeView::RootNode>(percent, root.bytesGross, root.itemCountGross, getStatus(row), *root.baseDirObj, root.displayName);
+                return std::make_unique<TreeView::RootNode>(percent, root.bytesGross, root.itemCountGross, getStatus(row), *root.baseDirObj, root.displayName);
             }
             break;
 
@@ -691,7 +689,7 @@ std::unique_ptr<TreeView::Node> TreeView::getLine(size_t row) const
             {
                 const auto* dir = static_cast<const TreeView::DirNodeImpl*>(flatTree[row].node_);
                 if (auto dirObj = dynamic_cast<DirPair*>(FileSystemObject::retrieve(dir->objId)))
-                    return zen::make_unique<TreeView::DirNode>(percent, dir->bytesGross, dir->itemCountGross, level, getStatus(row), *dirObj);
+                    return std::make_unique<TreeView::DirNode>(percent, dir->bytesGross, dir->itemCountGross, level, getStatus(row), *dirObj);
             }
             break;
 
@@ -712,7 +710,7 @@ std::unique_ptr<TreeView::Node> TreeView::getLine(size_t row) const
                         if (lastViewFilterPred(fsObj))
                             filesAndLinks.push_back(&fsObj);
 
-                    return zen::make_unique<TreeView::FilesNode>(percent, parentDir->bytesNet, parentDir->itemCountNet, level, filesAndLinks);
+                    return std::make_unique<TreeView::FilesNode>(percent, parentDir->bytesNet, parentDir->itemCountNet, level, filesAndLinks);
                 }
             }
             break;
@@ -790,8 +788,8 @@ private:
                     if (std::unique_ptr<TreeView::Node> node = treeDataView_->getLine(row))
                         if (const TreeView::RootNode* root = dynamic_cast<const TreeView::RootNode*>(node.get()))
                         {
-                            const wxString& dirLeft  = utfCvrtTo<wxString>(root->baseDirObj_.getBaseDirPf<LEFT_SIDE >());
-                            const wxString& dirRight = utfCvrtTo<wxString>(root->baseDirObj_.getBaseDirPf<RIGHT_SIDE>());
+                            const wxString& dirLeft  = ABF::getDisplayPath(root->baseDirObj_.getABF<LEFT_SIDE >().getAbstractPath());
+                            const wxString& dirRight = ABF::getDisplayPath(root->baseDirObj_.getABF<RIGHT_SIDE>().getAbstractPath());
                             if (dirLeft.empty())
                                 return dirRight;
                             else if (dirRight.empty())

@@ -28,8 +28,8 @@ class AllocatorOptimalSpeed //exponential growth + min size
 {
 public:
     //::operator new/ ::operator delete show same performance characterisics like malloc()/free()!
-    static void* allocate(size_t size) { return ::operator new(size); } //throw std::bad_alloc
-    static void  deallocate(void* ptr) { ::operator delete(ptr); }
+    static void* allocate(size_t size) { return ::malloc(size); } //throw std::bad_alloc
+    static void  deallocate(void* ptr) { ::free(ptr); }
     static size_t calcCapacity(size_t length) { return std::max<size_t>(16, std::max(length + length / 2, length)); }
     //- size_t might overflow! => better catch here than return a too small size covering up the real error: a way too large length!
     //- any growth rate should not exceed golden ratio: 1.618033989
@@ -39,8 +39,8 @@ public:
 class AllocatorOptimalMemory //no wasted memory, but more reallocations required when manipulating string
 {
 public:
-    static void* allocate(size_t size) { return ::operator new(size); } //throw std::bad_alloc
-    static void  deallocate(void* ptr) { ::operator delete(ptr); }
+    static void* allocate(size_t size) { return ::malloc(size); } //throw std::bad_alloc
+    static void  deallocate(void* ptr) { ::free(ptr); }
     static size_t calcCapacity(size_t length) { return length; }
 };
 
@@ -148,9 +148,21 @@ protected:
         return ptr;
     }
 
+#ifdef NDEBUG
     void destroy(Char* ptr)
+#else
+    void destroy(Char*& ptr)
+#endif
     {
-        if (!ptr) return; //support "destroy(nullptr)"
+        assert(ptr != reinterpret_cast<Char*>(0x1)); //detect double-deletion
+
+        if (!ptr) //support "destroy(nullptr)"
+        {
+#ifndef NDEBUG
+            ptr = reinterpret_cast<Char*>(0x1);
+#endif
+            return;
+        }
 
         Descriptor* const d = descr(ptr);
 
@@ -158,6 +170,9 @@ protected:
         {
             d->~Descriptor();
             this->deallocate(d);
+#ifndef NDEBUG
+            ptr = reinterpret_cast<Char*>(0x1);
+#endif
         }
     }
 
@@ -180,11 +195,10 @@ private:
     struct Descriptor
     {
         Descriptor(size_t len, size_t cap) :
-            refCount(1),
             length  (static_cast<std::uint32_t>(len)),
             capacity(static_cast<std::uint32_t>(cap)) { static_assert(ATOMIC_INT_LOCK_FREE == 2, ""); } //2: "the types are always lock-free"
 
-        std::atomic<unsigned int> refCount;
+        std::atomic<unsigned int> refCount { 1 }; //std:atomic is uninitialized by default!
         std::uint32_t length;
         std::uint32_t capacity; //allocated size without null-termination
     };
@@ -197,9 +211,9 @@ private:
 
 //perf note: interestingly StorageDeepCopy and StorageRefCountThreadSafe show same performance in FFS comparison
 
-template <class Char,  							                        //Character Type
+template <class Char,                                                   //Character Type
           template <class, class> class SP = StorageRefCountThreadSafe, //Storage Policy
-          class AP = AllocatorOptimalSpeed>				                //Allocator Policy
+          class AP = AllocatorOptimalSpeed>                             //Allocator Policy
 class Zbase : public SP<Char, AP>
 {
 public:
@@ -207,11 +221,13 @@ public:
     Zbase(const Char* source); //implicit conversion from a C-string
     Zbase(const Char* source, size_t length);
     Zbase(const Zbase& source);
-    Zbase(Zbase&& tmp); //make noexcept in C++11
-    explicit Zbase(Char source); //dangerous if implicit: Char buffer[]; return buffer[0]; ups... forgot &, but not a compiler error!
+    Zbase(Zbase&& tmp) noexcept;
+    //explicit Zbase(Char source); //dangerous if implicit: Char buffer[]; return buffer[0]; ups... forgot &, but not a compiler error! //-> non-standard extension!!!
+
     //allow explicit construction from different string type, prevent ambiguity via SFINAE
-    template <class S> explicit Zbase(const S& other, typename S::value_type = 0);
-    ~Zbase(); //make noexcept in C++11
+    //template <class S> explicit Zbase(const S& other, typename S::value_type = 0);
+
+    ~Zbase();
 
     //operator const Char* () const; //NO implicit conversion to a C-string!! Many problems... one of them: if we forget to provide operator overloads, it'll just work with a Char*...
 
@@ -248,18 +264,18 @@ public:
     Zbase& assign(const Char* source, size_t len);
     Zbase& append(const Char* source, size_t len);
     void resize(size_t newSize, Char fillChar = 0);
-    void swap(Zbase& other); //make noexcept in C++11
+    void swap(Zbase& other);
     void push_back(Char val) { operator+=(val); } //STL access
 
     Zbase& operator=(const Zbase& source);
-    Zbase& operator=(Zbase&& tmp); //make noexcept in C++11
+    Zbase& operator=(Zbase&& tmp) noexcept;
     Zbase& operator=(const Char* source);
     Zbase& operator=(Char source);
     Zbase& operator+=(const Zbase& other);
     Zbase& operator+=(const Char* other);
     Zbase& operator+=(Char ch);
 
-    static const size_t	npos = static_cast<size_t>(-1);
+    static const size_t npos = static_cast<size_t>(-1);
 
 private:
     Zbase            (int) = delete; //
@@ -287,12 +303,12 @@ template <class Char, template <class, class> class SP, class AP> inline Zbase<C
 template <class Char, template <class, class> class SP, class AP> inline Zbase<Char, SP, AP> operator+(const Zbase<Char, SP, AP>& lhs,       Char                 rhs) { return Zbase<Char, SP, AP>(lhs) += rhs; }
 
 //don't use unified first argument but save one move-construction in the r-value case instead!
-template <class Char, template <class, class> class SP, class AP> inline Zbase<Char, SP, AP> operator+(Zbase<Char, SP, AP>&& lhs, const Zbase<Char, SP, AP>& rhs) { return std::move(lhs += rhs); } //is the move really needed?
-template <class Char, template <class, class> class SP, class AP> inline Zbase<Char, SP, AP> operator+(Zbase<Char, SP, AP>&& lhs, const Char*                rhs) { return std::move(lhs += rhs); } //lhs, is an l-vlaue in the function body...
+template <class Char, template <class, class> class SP, class AP> inline Zbase<Char, SP, AP> operator+(Zbase<Char, SP, AP>&& lhs, const Zbase<Char, SP, AP>& rhs) { return std::move(lhs += rhs); } //the move *is* needed!!!
+template <class Char, template <class, class> class SP, class AP> inline Zbase<Char, SP, AP> operator+(Zbase<Char, SP, AP>&& lhs, const Char*                rhs) { return std::move(lhs += rhs); } //lhs, is an l-value parameter...
 template <class Char, template <class, class> class SP, class AP> inline Zbase<Char, SP, AP> operator+(Zbase<Char, SP, AP>&& lhs,       Char                 rhs) { return std::move(lhs += rhs); } //and not a local variable => no copy elision
 
-template <class Char, template <class, class> class SP, class AP> inline Zbase<Char, SP, AP> operator+(      Char          lhs, const Zbase<Char, SP, AP>& rhs) { return Zbase<Char, SP, AP>(lhs) += rhs; }
-template <class Char, template <class, class> class SP, class AP> inline Zbase<Char, SP, AP> operator+(const Char*         lhs, const Zbase<Char, SP, AP>& rhs) { return Zbase<Char, SP, AP>(lhs) += rhs; }
+template <class Char, template <class, class> class SP, class AP> inline Zbase<Char, SP, AP> operator+(      Char          lhs, const Zbase<Char, SP, AP>& rhs) { return Zbase<Char, SP, AP>(&lhs, 1) += rhs; }
+template <class Char, template <class, class> class SP, class AP> inline Zbase<Char, SP, AP> operator+(const Char*         lhs, const Zbase<Char, SP, AP>& rhs) { return Zbase<Char, SP, AP>(lhs    ) += rhs; }
 
 
 
@@ -313,15 +329,6 @@ Zbase<Char, SP, AP>::Zbase()
     //resist the temptation to avoid this allocation by referening a static global: NO performance advantage, MT issues!
     rawStr    = this->create(0);
     rawStr[0] = 0;
-}
-
-
-template <class Char, template <class, class> class SP, class AP> inline
-Zbase<Char, SP, AP>::Zbase(Char source)
-{
-    rawStr    = this->create(1);
-    rawStr[0] = source;
-    rawStr[1] = 0;
 }
 
 
@@ -362,14 +369,14 @@ Zbase<Char, SP, AP>::Zbase(const Zbase<Char, SP, AP>& source)
 
 
 template <class Char, template <class, class> class SP, class AP> inline
-Zbase<Char, SP, AP>::Zbase(Zbase<Char, SP, AP>&& tmp)
+Zbase<Char, SP, AP>::Zbase(Zbase<Char, SP, AP>&& tmp) noexcept
 {
     rawStr = tmp.rawStr;
     tmp.rawStr = nullptr; //usually nullptr would violate the class invarants, but it is good enough for the destructor!
     //caveat: do not increment ref-count of an unshared string! We'd lose optimization opportunity of reusing its memory!
 }
 
-
+/*
 template <class Char, template <class, class> class SP, class AP>
 template <class S> inline
 Zbase<Char, SP, AP>::Zbase(const S& other, typename S::value_type)
@@ -379,11 +386,13 @@ Zbase<Char, SP, AP>::Zbase(const S& other, typename S::value_type)
     std::copy(other.c_str(), other.c_str() + sourceLen, rawStr);
     rawStr[sourceLen] = 0;
 }
-
+*/
 
 template <class Char, template <class, class> class SP, class AP> inline
 Zbase<Char, SP, AP>::~Zbase()
 {
+    static_assert(noexcept(this->~Zbase()), ""); //has exception spec of compiler-generated destructor by default
+
     this->destroy(rawStr); //rawStr may be nullptr; see move constructor!
 }
 
@@ -635,7 +644,7 @@ Zbase<Char, SP, AP>& Zbase<Char, SP, AP>::operator=(const Zbase<Char, SP, AP>& o
 
 
 template <class Char, template <class, class> class SP, class AP> inline
-Zbase<Char, SP, AP>& Zbase<Char, SP, AP>::operator=(Zbase<Char, SP, AP>&& tmp)
+Zbase<Char, SP, AP>& Zbase<Char, SP, AP>::operator=(Zbase<Char, SP, AP>&& tmp) noexcept
 {
     swap(tmp); //don't use unifying assignment but save one move-construction in the r-value case instead!
     return *this;

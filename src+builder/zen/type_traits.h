@@ -38,10 +38,10 @@ struct ResultType
 
 //Herb Sutter's signedness conversion helpers: http://herbsutter.com/2013/06/13/gotw-93-solution-auto-variables-part-2/
 template<class T> inline
-typename std::make_signed<T>::type makeSigned(T t) { return typename std::make_signed<T>::type(t); }
+typename std::make_signed<T>::type makeSigned(T t) { return static_cast<typename std::make_signed<T>::type>(t); }
 
 template<class T> inline
-typename std::make_unsigned<T>::type makeUnsigned(T t) { return typename std::make_unsigned<T>::type(t); }
+typename std::make_unsigned<T>::type makeUnsigned(T t) { return static_cast<typename std::make_unsigned<T>::type>(t); }
 
 //################# Built-in Types  ########################
 //Example: "IsSignedInt<int>::value" evaluates to "true"
@@ -60,20 +60,20 @@ template <class T> struct IsArithmetic; //IsInteger or IsFloat
 //################# Class Members ########################
 
 /*  Detect data or function members of a class by name: ZEN_INIT_DETECT_MEMBER + HasMember_
-	Example: 1. ZEN_INIT_DETECT_MEMBER(c_str);
-	         2. HasMember_c_str<T>::value     -> use as boolean
+    Example: 1. ZEN_INIT_DETECT_MEMBER(c_str);
+             2. HasMember_c_str<T>::value     -> use as boolean
 */
 
 /*  Detect data or function members of a class by name *and* type: ZEN_INIT_DETECT_MEMBER2 + HasMember_
 
-	Example: 1. ZEN_INIT_DETECT_MEMBER2(size, size_t (T::*)() const);
-	         2. HasMember_size<T>::value     -> use as boolean
+    Example: 1. ZEN_INIT_DETECT_MEMBER2(size, size_t (T::*)() const);
+             2. HasMember_size<T>::value     -> use as boolean
 */
 
 /*  Detect member type of a class: ZEN_INIT_DETECT_MEMBER_TYPE + HasMemberType_
 
-	Example: 1. ZEN_INIT_DETECT_MEMBER_TYPE(value_type);
-	         2. HasMemberType_value_type<T>::value     -> use as boolean
+    Example: 1. ZEN_INIT_DETECT_MEMBER_TYPE(value_type);
+             2. HasMemberType_value_type<T>::value     -> use as boolean
 */
 
 
@@ -130,29 +130,29 @@ template <class T>
 struct IsArithmetic : StaticBool<IsInteger<T>::value || IsFloat<T>::value> {};
 //####################################################################
 
-#define ZEN_INIT_DETECT_MEMBER(NAME) 		\
+#define ZEN_INIT_DETECT_MEMBER(NAME)        \
     \
-    template<bool isClass, class T>			\
-    struct HasMemberImpl_##NAME				\
-    {		                                \
+    template<bool isClass, class T>         \
+    struct HasMemberImpl_##NAME             \
+    {                                       \
     private:                                \
-        typedef char Yes[1];				\
-        typedef char No [2];				\
+        typedef char Yes[1];                \
+        typedef char No [2];                \
         \
         template <typename U, U t>          \
-        class Helper {};		            \
-        struct Fallback { int NAME; };		\
+        class Helper {};                    \
+        struct Fallback { int NAME; };      \
         \
-        template <class U>					\
-        struct Helper2 : public U, public Fallback {};	/*this works only for class types!!!*/  \
+        template <class U>                  \
+        struct Helper2 : public U, public Fallback {};  /*this works only for class types!!!*/  \
         \
-        template <class U> static  No& hasMember(Helper<int Fallback::*, &Helper2<U>::NAME>*);	\
-        template <class U> static Yes& hasMember(...);											\
-    public:																						\
-        enum { value = sizeof(hasMember<T>(nullptr)) == sizeof(Yes) };							\
+        template <class U> static  No& hasMember(Helper<int Fallback::*, &Helper2<U>::NAME>*);  \
+        template <class U> static Yes& hasMember(...);                                          \
+    public:                                                                                     \
+        enum { value = sizeof(hasMember<T>(nullptr)) == sizeof(Yes) };                          \
     };                                                                                          \
     \
-    template<class T>					                          \
+    template<class T>                                             \
     struct HasMemberImpl_##NAME<false, T> : FalseType {}; \
     \
     template<typename T>                                          \
@@ -160,37 +160,37 @@ struct IsArithmetic : StaticBool<IsInteger<T>::value || IsFloat<T>::value> {};
 
 //####################################################################
 
-#define ZEN_INIT_DETECT_MEMBER2(NAME, TYPE) 		\
+#define ZEN_INIT_DETECT_MEMBER2(NAME, TYPE)         \
     \
-    template<typename U> 							\
-    class HasMember_##NAME 							\
-    { 												\
-        typedef char Yes[1]; 						\
-        typedef char No [2]; 						\
+    template<typename U>                            \
+    class HasMember_##NAME                          \
+    {                                               \
+        typedef char Yes[1];                        \
+        typedef char No [2];                        \
         \
         template <typename T, T t> class Helper {}; \
         \
-        template <class T> static Yes& hasMember(Helper<TYPE, &T::NAME>*); 	\
-        template <class T> static  No& hasMember(...); 					  	\
-    public:																	\
+        template <class T> static Yes& hasMember(Helper<TYPE, &T::NAME>*);  \
+        template <class T> static  No& hasMember(...);                      \
+    public:                                                                 \
         enum { value = sizeof(hasMember<U>(nullptr)) == sizeof(Yes) };      \
     };
 //####################################################################
 
-#define ZEN_INIT_DETECT_MEMBER_TYPE(TYPENAME)		\
+#define ZEN_INIT_DETECT_MEMBER_TYPE(TYPENAME)       \
     \
-    template<typename T>						\
-    class HasMemberType_##TYPENAME				\
-    {											\
-        typedef char Yes[1];					\
-        typedef char No [2];					\
+    template<typename T>                        \
+    class HasMemberType_##TYPENAME              \
+    {                                           \
+        typedef char Yes[1];                    \
+        typedef char No [2];                    \
         \
-        template <typename U> class Helper {};	\
+        template <typename U> class Helper {};  \
         \
         template <class U> static Yes& hasMemberType(Helper<typename U::TYPENAME>*); \
-        template <class U> static  No& hasMemberType(...); 							 \
-    public:          																 \
-        enum { value = sizeof(hasMemberType<T>(nullptr)) == sizeof(Yes) };			 \
+        template <class U> static  No& hasMemberType(...);                           \
+    public:                                                                          \
+        enum { value = sizeof(hasMemberType<T>(nullptr)) == sizeof(Yes) };           \
     };
 }
 

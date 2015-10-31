@@ -63,18 +63,18 @@ struct FolderPairSyncCfg
     FolderPairSyncCfg(bool saveSyncDB,
                       const DeletionPolicy handleDel,
                       VersioningStyle versioningStyle,
-                      const Zstring& versioningDirFmt,
+                      const Zstring& versioningPhrase,
                       DirectionConfig::Variant syncVariant) :
         saveSyncDB_(saveSyncDB),
         handleDeletion(handleDel),
         versioningStyle_(versioningStyle),
-        versioningFolder(versioningDirFmt),
+        versioningFolderPhrase(versioningPhrase),
         syncVariant_(syncVariant) {}
 
     bool saveSyncDB_; //save database if in automatic mode or dection of moved files is active
     DeletionPolicy handleDeletion;
     VersioningStyle versioningStyle_;
-    Zstring versioningFolder; //formatted directory name
+    Zstring versioningFolderPhrase; //unresolved directory names as entered by user!
     DirectionConfig::Variant syncVariant_;
 };
 std::vector<FolderPairSyncCfg> extractSyncCfg(const MainConfiguration& mainCfg);

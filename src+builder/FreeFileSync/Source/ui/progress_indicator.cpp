@@ -61,11 +61,12 @@ using namespace zen;
 
 namespace
 {
-const int GAUGE_FULL_RANGE = 50000;
-
 //window size used for statistics in milliseconds
 const int WINDOW_REMAINING_TIME_MS = 60000; //USB memory stick scenario can have drop outs of 40 seconds => 60 sec. window size handles it
 const int WINDOW_BYTES_PER_SEC     =  5000; //
+
+const int GAUGE_FULL_RANGE = 50000;
+
 
 //don't use wxStopWatch for long-running measurements: internally it uses ::QueryPerformanceCounter() which can overflow after only a few days:
 //https://sourceforge.net/p/freefilesync/discussion/help/thread/5d62339e
@@ -73,20 +74,12 @@ const int WINDOW_BYTES_PER_SEC     =  5000; //
 class StopWatch
 {
 public:
-    StopWatch() : startTime(wxGetUTCTimeMillis().GetValue()), paused(false), elapsedUntilPause(0) {} //start running
-
-    void restart()
-    {
-        startTime = wxGetUTCTimeMillis().GetValue(); //uses ::GetSystemTimeAsFileTime()
-        paused = false;
-    }
-
     void pause()
     {
         if (!paused)
         {
             paused = true;
-            elapsedUntilPause = wxGetUTCTimeMillis().GetValue() - startTime;
+            elapsedUntilPause += numeric::dist(startTime, wxGetUTCTimeMillis().GetValue());
         }
     }
 
@@ -95,17 +88,63 @@ public:
         if (paused)
         {
             paused = false;
-            startTime = wxGetUTCTimeMillis().GetValue() - elapsedUntilPause;
+            startTime = wxGetUTCTimeMillis().GetValue();
         }
     }
 
-    int64_t timeMs() const { return paused ? elapsedUntilPause : wxGetUTCTimeMillis().GetValue() - startTime; }
+    void restart()
+    {
+        startTime = wxGetUTCTimeMillis().GetValue(); //uses ::GetSystemTimeAsFileTime()
+        paused = false;
+        elapsedUntilPause = 0;
+    }
+
+    int64_t timeMs() const
+    {
+        int64_t msTotal = elapsedUntilPause;
+        if (!paused)
+            msTotal += numeric::dist(startTime, wxGetUTCTimeMillis().GetValue());
+        return msTotal;
+    }
 
 private:
-    int64_t startTime;
-    bool paused;
-    int64_t elapsedUntilPause;
+    wxLongLong_t startTime = wxGetUTCTimeMillis().GetValue(); //alas not a steady clock, but something's got to give!
+    bool    paused = false;
+    int64_t elapsedUntilPause = 0;
 };
+
+
+std::wstring getDialogPhaseText(const Statistics* syncStat, bool paused, SyncProgressDialog::SyncResult finalResult)
+{
+    if (syncStat) //sync running
+    {
+        if (paused)
+            return _("Paused");
+        else
+            switch (syncStat->currentPhase())
+            {
+                case ProcessCallback::PHASE_NONE:
+                    return _("Initializing..."); //dialog is shown *before* sync starts, so this text may be visible!
+                case ProcessCallback::PHASE_SCANNING:
+                    return _("Scanning...");
+                case ProcessCallback::PHASE_COMPARING_CONTENT:
+                    return _("Comparing content...");
+                case ProcessCallback::PHASE_SYNCHRONIZING:
+                    return _("Synchronizing...");
+            }
+    }
+    else //sync finished
+        switch (finalResult)
+        {
+            case SyncProgressDialog::RESULT_ABORTED:
+                return _("Stopped");
+            case SyncProgressDialog::RESULT_FINISHED_WITH_ERROR:
+            case SyncProgressDialog::RESULT_FINISHED_WITH_WARNINGS:
+            case SyncProgressDialog::RESULT_FINISHED_WITH_SUCCESS:
+                return _("Completed");
+        }
+    return std::wstring();
+}
 }
 
 
@@ -125,23 +164,21 @@ private:
     wxString titleTextBackup;
 
     StopWatch timeElapsed;
-    int64_t binCompStartMs; //begin of binary comparison phase in [ms]
+    int64_t binCompStartMs = 0; //begin of binary comparison phase in [ms]
 
-    const Statistics* syncStat_; //only bound while sync is running
+    const Statistics* syncStat_ = nullptr; //only bound while sync is running
 
     std::unique_ptr<Taskbar> taskbar_;
     std::unique_ptr<PerfCheck> perf; //estimate remaining time
 
-    int64_t timeLastSpeedEstimateMs; //used for calculating intervals between showing and collecting perf samples
+    int64_t timeLastSpeedEstimateMs = -1000000; //used for calculating intervals between showing and collecting perf samples
+    //initial value: just some big number
 };
 
 
 CompareProgressDialog::Pimpl::Pimpl(wxFrame& parentWindow) :
     CompareProgressDlgGenerated(&parentWindow),
-    parentWindow_(parentWindow),
-    binCompStartMs(0),
-    syncStat_(nullptr),
-    timeLastSpeedEstimateMs(-1000000) //some big number
+    parentWindow_(parentWindow)
 {
     //make sure that standard height matches PHASE_COMPARING_CONTENT statistics layout
     m_staticTextItemsFoundLabel->Hide();
@@ -162,7 +199,7 @@ void CompareProgressDialog::Pimpl::init(const Statistics& syncStat)
 
     try //try to get access to Windows 7/Ubuntu taskbar
     {
-        taskbar_ = make_unique<Taskbar>(parentWindow_);
+        taskbar_ = std::make_unique<Taskbar>(parentWindow_);
     }
     catch (const TaskbarNotAvailable&) {}
 
@@ -204,7 +241,7 @@ void CompareProgressDialog::Pimpl::teardown()
 void CompareProgressDialog::Pimpl::switchToCompareBytewise()
 {
     //start to measure perf
-    perf = make_unique<PerfCheck>(WINDOW_REMAINING_TIME_MS, WINDOW_BYTES_PER_SEC);
+    perf = std::make_unique<PerfCheck>(WINDOW_REMAINING_TIME_MS, WINDOW_BYTES_PER_SEC);
     timeLastSpeedEstimateMs   = -1000000; //some big number
 
     binCompStartMs = timeElapsed.timeMs();
@@ -253,7 +290,7 @@ void CompareProgressDialog::Pimpl::updateStatusPanelNow()
             const wxString& scannedObjects = toGuiString(syncStat_->getObjectsCurrent(ProcessCallback::PHASE_SCANNING));
 
             //dialog caption, taskbar
-            setTitle(scannedObjects + L" - " + _("Scanning..."));
+            setTitle(scannedObjects + L" - " + getDialogPhaseText(syncStat_, false /*paused*/, SyncProgressDialog::RESULT_ABORTED));
             if (taskbar_.get()) //support Windows 7 taskbar
                 taskbar_->setStatus(Taskbar::STATUS_INDETERMINATE);
 
@@ -262,18 +299,19 @@ void CompareProgressDialog::Pimpl::updateStatusPanelNow()
         }
         break;
 
+        case ProcessCallback::PHASE_SYNCHRONIZING:
         case ProcessCallback::PHASE_COMPARING_CONTENT:
         {
-            auto objectsCurrent = syncStat_->getObjectsCurrent(ProcessCallback::PHASE_COMPARING_CONTENT);
-            auto objectsTotal   = syncStat_->getObjectsTotal  (ProcessCallback::PHASE_COMPARING_CONTENT);
-            auto dataCurrent    = syncStat_->getDataCurrent   (ProcessCallback::PHASE_COMPARING_CONTENT);
-            auto dataTotal      = syncStat_->getDataTotal     (ProcessCallback::PHASE_COMPARING_CONTENT);
+            const int itemsCurrent         = syncStat_->getObjectsCurrent(syncStat_->currentPhase());
+            const int itemsTotal           = syncStat_->getObjectsTotal  (syncStat_->currentPhase());
+            const std::int64_t dataCurrent = syncStat_->getDataCurrent   (syncStat_->currentPhase());
+            const std::int64_t dataTotal   = syncStat_->getDataTotal     (syncStat_->currentPhase());
 
             //add both data + obj-count, to handle "deletion-only" cases
-            const double fraction = dataTotal + objectsTotal == 0 ? 0 : std::max(0.0, 1.0 * (dataCurrent + objectsCurrent) / (dataTotal + objectsTotal));
+            const double fraction = dataTotal + itemsTotal == 0 ? 0 : std::max(0.0, 1.0 * (dataCurrent + itemsCurrent) / (dataTotal + itemsTotal));
 
             //dialog caption, taskbar
-            setTitle(fractionToString(fraction) + wxT(" - ") + _("Comparing content..."));
+            setTitle(fractionToString(fraction) + wxT(" - ") + getDialogPhaseText(syncStat_, false /*paused*/, SyncProgressDialog::RESULT_ABORTED));
             if (taskbar_.get())
             {
                 taskbar_->setProgress(fraction);
@@ -284,7 +322,7 @@ void CompareProgressDialog::Pimpl::updateStatusPanelNow()
             m_gauge2->SetValue(numeric::round(fraction * GAUGE_FULL_RANGE));
 
             //remaining objects and bytes for file comparison
-            setText(*m_staticTextItemsRemaining, toGuiString(objectsTotal - objectsCurrent), &layoutChanged);
+            setText(*m_staticTextItemsRemaining, toGuiString(itemsTotal - itemsCurrent), &layoutChanged);
             setText(*m_staticTextDataRemaining, L"(" + filesizeToShortString(dataTotal - dataCurrent) + L")", &layoutChanged);
 
             //remaining time and speed: only visible during binary comparison
@@ -295,7 +333,7 @@ void CompareProgressDialog::Pimpl::updateStatusPanelNow()
                     timeLastSpeedEstimateMs = timeNowMs;
 
                     if (numeric::dist(binCompStartMs, timeNowMs) >= 1000) //discard stats for first second: probably messy
-                        perf->addSample(objectsCurrent, dataCurrent, timeNowMs);
+                        perf->addSample(itemsCurrent, dataCurrent, timeNowMs);
 
                     //remaining time: display with relative error of 10% - based on samples taken every 0.5 sec only
                     //-> call more often than once per second to correctly show last few seconds countdown, but don't call too often to avoid occasional jitter
@@ -308,10 +346,6 @@ void CompareProgressDialog::Pimpl::updateStatusPanelNow()
                 }
         }
         break;
-
-        case ProcessCallback::PHASE_SYNCHRONIZING:
-            assert(false);
-            break;
     }
 
     //time elapsed
@@ -379,7 +413,7 @@ bool isComponentOf(const wxWindow* child, const wxWindow* top)
 inline
 wxBitmap getImageButtonPressed(const wchar_t* name)
 {
-    return layOver(getResourceImage(name), getResourceImage(L"log button pressed"));
+    return layOver(getResourceImage(L"log button pressed"), getResourceImage(name));
 }
 
 
@@ -737,7 +771,7 @@ private:
             includedTypes |= TYPE_INFO;
 
         msgView->updateView(includedTypes); //update MVC "model"
-        m_gridMessages->Refresh();   //update MVC "view"
+        m_gridMessages->Refresh();          //update MVC "view"
     }
 
     void onGridButtonEvent(wxKeyEvent& event)
@@ -758,9 +792,9 @@ private:
         //else
         //switch (keyCode)
         //{
-        //	case WXK_RETURN:
-        //	case WXK_NUMPAD_ENTER:
-        //		return;
+        //  case WXK_RETURN:
+        //  case WXK_NUMPAD_ENTER:
+        //      return;
         //}
 
         event.Skip(); //unknown keypress: propagate
@@ -856,7 +890,7 @@ private:
             if (auto prov = m_gridMessages->getDataProvider())
             {
                 std::vector<Grid::ColumnAttribute> colAttr = m_gridMessages->getColumnConfig();
-                vector_remove_if(colAttr, [](const Grid::ColumnAttribute& ca) { return !ca.visible_; });
+                erase_if(colAttr, [](const Grid::ColumnAttribute& ca) { return !ca.visible_; });
                 if (!colAttr.empty())
                     for (size_t row : m_gridMessages->getSelectedRows())
                     {
@@ -980,7 +1014,7 @@ private:
 
     static const size_t MAX_BUFFER_SIZE = 2500000; //sizeof(single node) worst case ~ 3 * 8 byte ptr + 16 byte key/value = 40 byte
 
-    std::map<int64_t, double> samples; //time, unit: [ms]  !don't use std::multimap, see getLessEq()
+    std::map <int64_t, double> samples; //time, unit: [ms]  !don't use std::multimap, see getLessEq()
     std::pair<int64_t, double> lastSample; //artificial most current record at the end of samples to visualize current time!
 };
 
@@ -988,8 +1022,6 @@ private:
 class CurveDataRectangleArea : public CurveData
 {
 public:
-    CurveDataRectangleArea() : x_(), y_() {}
-
     void setValue (double x, double y) { x_ = x; y_ = y; }
     void setValueX(double x)           { x_ = x; }
     double getValueX() const { return x_; }
@@ -1004,8 +1036,8 @@ private:
         points.emplace_back(x_,  0);
     }
 
-    double x_; //time elapsed in seconds
-    double y_; //items/bytes processed
+    double x_ = 0; //time elapsed in seconds
+    double y_ = 0; //items/bytes processed
 };
 
 
@@ -1097,8 +1129,8 @@ template <class TopLevelDialog> //can be a wxFrame or wxDialog
 class SyncProgressDialogImpl : public TopLevelDialog, public SyncProgressDialog
 /*we need derivation, not composition!
       1. SyncProgressDialogImpl IS a wxFrame/wxDialog
-	  2. implement virtual ~wxFrame()
-	  3. event handling below assumes lifetime is larger-equal than wxFrame's
+      2. implement virtual ~wxFrame()
+      3. event handling below assumes lifetime is larger-equal than wxFrame's
 */
 {
 public:
@@ -1164,20 +1196,20 @@ private:
 
     std::function<void()> notifyWindowTerminate_; //call once in OnClose(), NOT in destructor which is called far too late somewhere in wxWidgets main loop!
 
-    bool wereDead; //set after wxWindow::Delete(), which equals "delete this" on OS X!
+    bool wereDead = false; //set after wxWindow::Delete(), which equals "delete this" on OS X!
 
     //status variables
     const Statistics* syncStat_;                  //
     AbortCallback*    abortCb_;                   //valid only while sync is running
-    bool paused_; //valid only while sync is running
-    SyncResult finalResult; //set after sync
+    bool paused_ = false; //valid only while sync is running
+    SyncResult finalResult = RESULT_ABORTED; //set after sync
 
     //remaining time
     std::unique_ptr<PerfCheck> perf;
-    int64_t timeLastSpeedEstimateMs;     //used for calculating intervals between collecting perf samples
+    int64_t timeLastSpeedEstimateMs = -1000000; //used for calculating intervals between collecting perf samples
 
     //help calculate total speed
-    int64_t phaseStartMs; //begin of current phase in [ms]
+    int64_t phaseStartMs = 0; //begin of current phase in [ms]
 
     std::shared_ptr<CurveDataStatistics   > curveDataBytes;
     std::shared_ptr<CurveDataStatistics   > curveDataItems;
@@ -1208,17 +1240,14 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
     jobName_  (jobName),
     parentFrame_(parentFrame),
     notifyWindowTerminate_(notifyWindowTerminate),
-    wereDead(false),
     syncStat_ (&syncStat),
-    abortCb_  (&abortCb),
-    paused_   (false),
-    finalResult(RESULT_ABORTED), //dummy value
-    timeLastSpeedEstimateMs    (-1000000), //some big number
-    phaseStartMs(0)
+    abortCb_  (&abortCb)
 {
     static_assert(IsSameType<TopLevelDialog, wxFrame >::value ||
                   IsSameType<TopLevelDialog, wxDialog>::value, "");
+#ifndef ZEN_MAC
     assert((IsSameType<TopLevelDialog, wxFrame>::value == !parentFrame));
+#endif
 
     //finish construction of this dialog:
     this->SetMinSize(wxSize(470, 280)); //== minimum size! no idea why SetMinSize() is not used...
@@ -1258,7 +1287,7 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
     if (wxFrame* frame = getTaskbarFrame(*this))
         try //try to get access to Windows 7/Ubuntu taskbar
         {
-            taskbar_ = make_unique<Taskbar>(*frame); //throw TaskbarNotAvailable
+            taskbar_ = std::make_unique<Taskbar>(*frame); //throw TaskbarNotAvailable
         }
         catch (const TaskbarNotAvailable&) {}
 
@@ -1279,7 +1308,7 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
     curveDataBytes        = std::make_shared<CurveDataStatistics>();
     curveDataItems        = std::make_shared<CurveDataStatistics>();
 
-    const int xLabelHeight = this->GetCharHeight() + 2 * 1/*border*/; //use same height for both graphs to make sure they stretch evenly
+    const int xLabelHeight = this->GetCharHeight() + 2 * 1 /*border*/; //use same height for both graphs to make sure they stretch evenly
     const int yLabelWidth  = 70;
     pnl.m_panelGraphBytes->setAttributes(Graph2D::MainAttributes().
                                          setLabelX(Graph2D::X_LABEL_BOTTOM, xLabelHeight, std::make_shared<LabelFormatterTimeElapsed>(true)).
@@ -1324,7 +1353,7 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
     pnl.m_bitmapGraphKeyItems->SetBitmap(generateSquareBitmap(colCurveAreaItems, colCurveAreaItemsRim));
 
     //allow changing the "on completion" command
-    pnl.m_comboBoxOnCompletion->initHistory(onCompletionHistory, onCompletionHistory.size()); //-> we won't use addItemHistory() later
+    pnl.m_comboBoxOnCompletion->setHistory(onCompletionHistory, onCompletionHistory.size()); //-> we won't use addItemHistory() later
     pnl.m_comboBoxOnCompletion->setValue(onCompletion);
 
     updateDialogStatus(); //null-status will be shown while waiting for dir locks
@@ -1417,8 +1446,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::initNewPhase()
     notifyProgressChange(); //make sure graphs get initial values
 
     //start new measurement
-    perf = make_unique<PerfCheck>(WINDOW_REMAINING_TIME_MS, WINDOW_BYTES_PER_SEC);
-    timeLastSpeedEstimateMs     = -1000000; //some big number
+    perf = std::make_unique<PerfCheck>(WINDOW_REMAINING_TIME_MS, WINDOW_BYTES_PER_SEC);
+    timeLastSpeedEstimateMs = -1000000; //some big number
 
     phaseStartMs = timeElapsed.timeMs();
 
@@ -1477,39 +1506,6 @@ Zorder evaluateZorder(const wxWindow& top, const wxWindow& bottom)
     return ZORDER_INDEFINITE;
 }
 #endif
-
-
-std::wstring getDialogPhaseText(const Statistics* syncStat, bool paused, SyncProgressDialog::SyncResult finalResult)
-{
-    if (syncStat) //sync running
-    {
-        if (paused)
-            return _("Paused");
-        else
-            switch (syncStat->currentPhase())
-            {
-                case ProcessCallback::PHASE_NONE:
-                    return _("Initializing..."); //dialog is shown *before* sync starts, so this text may be visible!
-                case ProcessCallback::PHASE_SCANNING:
-                    return _("Scanning...");
-                case ProcessCallback::PHASE_COMPARING_CONTENT:
-                    return _("Comparing content...");
-                case ProcessCallback::PHASE_SYNCHRONIZING:
-                    return _("Synchronizing...");
-            }
-    }
-    else //sync finished
-        switch (finalResult)
-        {
-            case SyncProgressDialog::RESULT_ABORTED:
-                return _("Stopped");
-            case SyncProgressDialog::RESULT_FINISHED_WITH_ERROR:
-            case SyncProgressDialog::RESULT_FINISHED_WITH_WARNINGS:
-            case SyncProgressDialog::RESULT_FINISHED_WITH_SUCCESS:
-                return _("Completed");
-        }
-    return std::wstring();
-}
 }
 
 
@@ -1705,7 +1701,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateGuiInt(bool allowYield)
             {
                 wxTheApp->Yield(); //receive UI message that end pause OR forceful termination!
                 //*first* refresh GUI (removing flicker) before sleeping!
-                boost::this_thread::sleep(boost::posix_time::milliseconds(UI_UPDATE_INTERVAL));
+                std::this_thread::sleep_for(std::chrono::milliseconds(UI_UPDATE_INTERVAL));
             }
             //after SyncProgressDialogImpl::OnClose() called wxWindow::Destroy() on OS X this instance is instantly toast!
             if (wereDead)
@@ -1879,10 +1875,10 @@ void SyncProgressDialogImpl<TopLevelDialog>::processHasFinished(SyncResult resul
         case ProcessCallback::PHASE_COMPARING_CONTENT:
         case ProcessCallback::PHASE_SYNCHRONIZING:
         {
-            const int   itemsCurrent = syncStat_->getObjectsCurrent(syncStat_->currentPhase());
-            const int   itemsTotal   = syncStat_->getObjectsTotal  (syncStat_->currentPhase());
-            const std::int64_t dataCurrent  = syncStat_->getDataCurrent   (syncStat_->currentPhase());
-            const std::int64_t dataTotal    = syncStat_->getDataTotal     (syncStat_->currentPhase());
+            const int itemsCurrent         = syncStat_->getObjectsCurrent(syncStat_->currentPhase());
+            const int itemsTotal           = syncStat_->getObjectsTotal  (syncStat_->currentPhase());
+            const std::int64_t dataCurrent = syncStat_->getDataCurrent   (syncStat_->currentPhase());
+            const std::int64_t dataTotal   = syncStat_->getDataTotal     (syncStat_->currentPhase());
             assert(dataCurrent <= dataTotal);
 
             //set overall speed (instead of current speed)
@@ -2051,28 +2047,28 @@ template <class TopLevelDialog>
 void SyncProgressDialogImpl<TopLevelDialog>::OnIconize(wxIconizeEvent& event)
 {
     /*
-    	propagate progress dialog minimize/maximize to parent
-    	-----------------------------------------------------
+        propagate progress dialog minimize/maximize to parent
+        -----------------------------------------------------
         Fedora/Debian/Ubuntu:
-    		- wxDialog cannot be minimized
-    		- worse, wxGTK sends stray iconize events *after* wxDialog::Destroy()
-    		- worse, on Fedora an iconize event is issued directly after calling Close()
-    		- worse, even wxDialog::Hide() causes iconize event!
-    			=> nothing to do
-    	SUSE:
-    		- wxDialog can be minimized (it just vanishes!) and in general also minimizes parent: except for our progress wxDialog!!!
-    		- worse, wxDialog::Hide() causes iconize event
-    		- probably the same issues with stray iconize events like Fedora/Debian/Ubuntu
-    		- minimize button is always shown, even if wxMINIMIZE_BOX is omitted!
-    			=> nothing to do
-    	Mac OS X:
-    		- wxDialog can be minimized and automatically minimizes parent
-    		- no iconize events seen by wxWidgets!
-    			=> nothing to do
-    	Windows:
-    		- wxDialog can be minimized but does not also minimize parent
-    		- iconize events only seen for manual minimize
-    			=> propagate event to parent
+            - wxDialog cannot be minimized
+            - worse, wxGTK sends stray iconize events *after* wxDialog::Destroy()
+            - worse, on Fedora an iconize event is issued directly after calling Close()
+            - worse, even wxDialog::Hide() causes iconize event!
+                => nothing to do
+        SUSE:
+            - wxDialog can be minimized (it just vanishes!) and in general also minimizes parent: except for our progress wxDialog!!!
+            - worse, wxDialog::Hide() causes iconize event
+            - probably the same issues with stray iconize events like Fedora/Debian/Ubuntu
+            - minimize button is always shown, even if wxMINIMIZE_BOX is omitted!
+                => nothing to do
+        Mac OS X:
+            - wxDialog can be minimized and automatically minimizes parent
+            - no iconize events seen by wxWidgets!
+                => nothing to do
+        Windows:
+            - wxDialog can be minimized but does not also minimize parent
+            - iconize events only seen for manual minimize
+                => propagate event to parent
     */
 #ifdef ZEN_WIN
     if (parentFrame_)
@@ -2088,7 +2084,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::minimizeToTray()
 {
     if (!trayIcon.get())
     {
-        trayIcon = make_unique<FfsTrayIcon>([this] { this->resumeFromSystray(); }); //FfsTrayIcon lifetime is a subset of "this"'s lifetime!
+        trayIcon = std::make_unique<FfsTrayIcon>([this] { this->resumeFromSystray(); }); //FfsTrayIcon lifetime is a subset of "this"'s lifetime!
         //we may destroy FfsTrayIcon even while in the FfsTrayIcon callback!!!!
 
         updateGuiInt(false); //set tray tooltip + progress: e.g. no updates while paused
@@ -2151,9 +2147,19 @@ SyncProgressDialog* createProgressDialog(zen::AbortCallback& abortCb,
                                          std::vector<Zstring>& onCompletionHistory)
 {
     if (parentWindow) //sync from GUI
+    {
+        //due to usual "wxBugs", wxDialog on OS X does not float on its parent; wxFrame OTOH does => hack!
+        //https://groups.google.com/forum/#!topic/wx-users/J5SjjLaBOQE
+#ifdef ZEN_MAC
+        return new SyncProgressDialogImpl<wxFrame>(wxDEFAULT_FRAME_STYLE | wxFRAME_FLOAT_ON_PARENT,
+        [&](wxFrame& progDlg) { return parentWindow; },
+        abortCb, notifyWindowTerminate, syncStat, parentWindow, showProgress, jobName, onCompletion, onCompletionHistory);
+#else
         return new SyncProgressDialogImpl<wxDialog>(wxDEFAULT_DIALOG_STYLE | wxMAXIMIZE_BOX | wxMINIMIZE_BOX | wxRESIZE_BORDER,
         [&](wxDialog& progDlg) { return parentWindow; },
-    abortCb, notifyWindowTerminate, syncStat, parentWindow, showProgress, jobName, onCompletion, onCompletionHistory);
+        abortCb, notifyWindowTerminate, syncStat, parentWindow, showProgress, jobName, onCompletion, onCompletionHistory);
+#endif
+    }
     else //FFS batch job
     {
         auto dlg = new SyncProgressDialogImpl<wxFrame>(wxDEFAULT_FRAME_STYLE,

@@ -34,7 +34,7 @@ Usage:
 #define STATIC_WARNING_MAKE_STRINGIZE(NUM) STATIC_WARNING_MAKE_STRINGIZE_SUB(NUM)
 
 #define warn_static(TXT) \
-    __pragma(message (__FILE__ "(" STATIC_WARNING_MAKE_STRINGIZE(__LINE__) "): Warning: " ## TXT))
+    __pragma(message(__FILE__ "(" STATIC_WARNING_MAKE_STRINGIZE(__LINE__) "): Warning: " ## TXT))
 
 #elif defined __GNUC__
 #define STATIC_WARNING_CONCAT_SUB(X, Y) X ## Y

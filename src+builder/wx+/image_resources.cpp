@@ -22,7 +22,7 @@ namespace
 void loadAnimFromZip(wxZipInputStream& zipInput, wxAnimation& anim)
 {
     //work around wxWidgets bug:
-    //construct seekable input stream (zip-input stream is non-seekable) for wxAnimation::Load()
+    //construct seekable input stream (zip-input stream is not seekable) for wxAnimation::Load()
     //luckily this method call is very fast: below measurement precision!
     std::vector<char> data;
     data.reserve(10000);
@@ -42,7 +42,9 @@ class GlobalResources
 public:
     static GlobalResources& instance()
     {
-        //caveat: function scope static initialization is not thread-safe in VS 2010! => but we wouldn't use wxWidgets in combination with multithreading anyway!
+#if defined _MSC_VER && _MSC_VER < 1900
+#error function scope static initialization is not yet thread-safe!
+#endif
         static GlobalResources inst;
         return inst;
     }
@@ -89,8 +91,8 @@ void GlobalResources::init(const Zstring& filepath)
                 wxImage img(streamIn, wxBITMAP_TYPE_PNG);
 
                 //end this alpha/no-alpha/mask/wxDC::DrawBitmap/RTL/high-contrast-scheme interoperability nightmare here and now!!!!
-				//=> there's only one type of png image: with alpha channel, no mask!!!
-				 convertToVanillaImage(img);
+                //=> there's only one type of png image: with alpha channel, no mask!!!
+                convertToVanillaImage(img);
 
                 bitmaps.emplace(name, img);
             }

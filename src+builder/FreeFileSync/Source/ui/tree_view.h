@@ -13,6 +13,7 @@
 #include "column_attr.h"
 #include "../file_hierarchy.h"
 
+
 namespace zen
 {
 //tree view of FolderComparison
@@ -84,11 +85,11 @@ public:
 
     struct RootNode : public Node
     {
-        RootNode(int percent, std::uint64_t bytes, int itemCount, NodeStatus status, BaseDirPair& baseDirObj, const Zstring displayName) :
+        RootNode(int percent, std::uint64_t bytes, int itemCount, NodeStatus status, BaseDirPair& baseDirObj, const std::wstring& displayName) :
             Node(percent, bytes, itemCount, 0, status), baseDirObj_(baseDirObj), displayName_(displayName) {}
 
         BaseDirPair& baseDirObj_;
-        Zstring displayName_;
+        const std::wstring displayName_;
     };
 
     std::unique_ptr<Node> getLine(size_t row) const; //return nullptr on error
@@ -116,9 +117,9 @@ private:
             firstFileId(nullptr) {}
 
         std::uint64_t bytesGross;
-        std::uint64_t bytesNet;  //bytes for files on view in this directory only
+        std::uint64_t bytesNet; //bytes for files on view in this directory only
         int itemCountGross;
-        int itemCountNet;   //number of files on view for in this directory only
+        int itemCountNet; //number of files on view for in this directory only
 
         std::vector<DirNodeImpl> subDirs;
         FileSystemObject::ObjectId firstFileId; //weak pointer to first FilePair or SymlinkPair
@@ -137,7 +138,7 @@ private:
     {
         RootNodeImpl() {}
         std::shared_ptr<BaseDirPair> baseDirObj;
-        Zstring displayName;
+        std::wstring displayName;
     };
 
     enum NodeType
@@ -181,6 +182,9 @@ private:
     ColumnTypeNavi sortColumn;
     bool sortAscending;
 };
+
+
+std::wstring getShortDisplayNameForFolderPair(const std::wstring& displayPathLeft, const std::wstring& displayPathRight);
 
 
 namespace treeview

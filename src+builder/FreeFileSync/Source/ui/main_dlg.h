@@ -8,10 +8,10 @@
 #define MAINDIALOG_H_891048132454564
 
 #include <map>
-#include <set>
+#include <list>
 #include <stack>
 #include <memory>
-#include <zen/async_task.h>
+#include <wx+/async_task.h>
 #include <wx+/file_drop.h>
 #include <wx/aui/aui.h>
 #include "gui_generated.h"
@@ -54,12 +54,12 @@ private:
                bool startComparison);
     ~MainDialog();
 
-    friend class CompareStatusHandler;
-    friend class SyncStatusHandler;
+    friend class StatusHandlerTemporaryPanel;
+    friend class StatusHandlerFloatingDialog;
     friend class ManualDeletionHandler;
     friend class FolderPairFirst;
     friend class FolderPairPanel;
-    friend class DirectoryNameMainImpl;
+    friend class FolderSelectorImpl;
     template <class GuiPanel>
     friend class FolderPairCallback;
     friend class PanelMoveWindow;
@@ -114,30 +114,26 @@ private:
     void setSyncDirManually(const std::vector<zen::FileSystemObject*>& selection, zen::SyncDirection direction);
     void setFilterManually(const std::vector<zen::FileSystemObject*>& selection, bool setIncluded);
     void copySelectionToClipboard(const std::vector<const zen::Grid*>& gridRefs);
+
+    void copyToAlternateFolder(const std::vector<zen::FileSystemObject*>& selectionLeft,
+                               const std::vector<zen::FileSystemObject*>& selectionRight);
+
     void deleteSelectedFiles(const std::vector<zen::FileSystemObject*>& selectionLeft,
                              const std::vector<zen::FileSystemObject*>& selectionRight);
 
     void openExternalApplication(const wxString& commandline, const std::vector<zen::FileSystemObject*>& selection, bool leftSide); //selection may be empty
 
-    //don't use wxWidgets idle handling => repeated idle requests/consumption hogs 100% cpu!
-    void onProcessAsyncTasks(wxEvent& event);
-
-    template <class Fun, class Fun2>
-    void processAsync(Fun doAsync, Fun2 evalOnGui) { asyncTasks.add(doAsync, evalOnGui); timerForAsyncTasks.Start(50); /*timer interval in [ms] */ }
-    template <class Fun, class Fun2>
-    void processAsync2(Fun doAsync, Fun2 evalOnGui) { asyncTasks.add2(doAsync, evalOnGui); timerForAsyncTasks.Start(50); /*timer interval in [ms] */ }
-
     //status bar supports one of the following two states at a time:
-    void setStatusBarFullText(const wxString& msg);
     void setStatusBarFileStatistics(size_t filesOnLeftView, size_t foldersOnLeftView, size_t filesOnRightView, size_t foldersOnRightView, std::uint64_t filesizeLeftView, std::uint64_t filesizeRightView);
+    //void setStatusBarFullText(const wxString& msg);
 
-    void flashStatusInformation(const wxString& msg); //temporarily show different status (only valid for setStatusBarFullText)
+    void flashStatusInformation(const wxString& msg); //temporarily show different status (only valid for setStatusBarFileStatistics)
     void restoreStatusInformation();                  //called automatically after a few seconds
 
     //events
-    void onGridButtonEventL(wxKeyEvent& event);
-    void onGridButtonEventC(wxKeyEvent& event);
-    void onGridButtonEventR(wxKeyEvent& event);
+    void onGridButtonEventL(wxKeyEvent& event) { onGridButtonEvent(event, *m_gridMainL,  true); }
+    void onGridButtonEventC(wxKeyEvent& event) { onGridButtonEvent(event, *m_gridMainC,  true); }
+    void onGridButtonEventR(wxKeyEvent& event) { onGridButtonEvent(event, *m_gridMainR, false); }
     void onGridButtonEvent (wxKeyEvent& event, zen::Grid& grid, bool leftSide);
 
     void onTreeButtonEvent (wxKeyEvent& event);
@@ -149,7 +145,7 @@ private:
     void OnGlobalFilterContext (wxMouseEvent& event) override;
     void OnViewButtonRightClick(wxMouseEvent& event) override;
 
-    void applyCompareConfig(bool setDefaultViewType = false);
+    void applyCompareConfig(bool setDefaultViewType);
 
     //context menu handler methods
     void onMainGridContextL(zen::GridClickEvent& event);
@@ -210,11 +206,11 @@ private:
     void OnSwapSides            (wxCommandEvent& event) override;
     void OnClose                (wxCloseEvent&   event) override;
 
-    void OnCmpSettings    (wxCommandEvent& event) override { showConfigDialog(zen::SyncConfigPanel::COMPARISON); }
-    void OnConfigureFilter(wxCommandEvent& event) override { showConfigDialog(zen::SyncConfigPanel::FILTER    ); }
-    void OnSyncSettings   (wxCommandEvent& event) override { showConfigDialog(zen::SyncConfigPanel::SYNC      ); }
+    void OnCmpSettings    (wxCommandEvent& event) override { showConfigDialog(zen::SyncConfigPanel::COMPARISON, -1); }
+    void OnConfigureFilter(wxCommandEvent& event) override { showConfigDialog(zen::SyncConfigPanel::FILTER    , -1); }
+    void OnSyncSettings   (wxCommandEvent& event) override { showConfigDialog(zen::SyncConfigPanel::SYNC      , -1); }
 
-    void showConfigDialog(zen::SyncConfigPanel panelToShow);
+    void showConfigDialog(zen::SyncConfigPanel panelToShow, int localPairIndexToShow);
 
     void filterExtension(const Zstring& extension, bool include);
     void filterShortname(const zen::FileSystemObject& fsObj, bool include);
@@ -225,6 +221,14 @@ private:
     void OnTopFolderPairRemove(wxCommandEvent& event) override;
     void OnRemoveFolderPair   (wxCommandEvent& event);
     void OnShowFolderPairOptions(wxCommandEvent& event);
+
+    void OnTopLocalCompCfg  (wxCommandEvent& event) override { showConfigDialog(zen::SyncConfigPanel::COMPARISON, 0); }
+    void OnTopLocalSyncCfg  (wxCommandEvent& event) override { showConfigDialog(zen::SyncConfigPanel::SYNC,       0); }
+    void OnTopLocalFilterCfg(wxCommandEvent& event) override { showConfigDialog(zen::SyncConfigPanel::FILTER,     0); }
+
+    void OnLocalCompCfg  (wxCommandEvent& event);
+    void OnLocalSyncCfg  (wxCommandEvent& event);
+    void OnLocalFilterCfg(wxCommandEvent& event);
 
     void onTopFolderPairKeyEvent(wxKeyEvent& event);
     void onAddFolderPairKeyEvent(wxKeyEvent& event);
@@ -312,21 +316,19 @@ private:
 
     wxString defaultPerspective;
 
-    std::int64_t manualTimeSpanFrom;
-    std::int64_t manualTimeSpanTo; //buffer manual time span selection at session level
+    std::int64_t manualTimeSpanFrom = 0;
+    std::int64_t manualTimeSpanTo   = 0; //buffer manual time span selection at session level
 
     std::shared_ptr<FolderHistory> folderHistoryLeft;  //shared by all wxComboBox dropdown controls
     std::shared_ptr<FolderHistory> folderHistoryRight; //always bound!
 
-    //schedule and run long-running tasks asynchronously, but process results on GUI queue
-    zen::AsyncTasks asyncTasks;
-    wxTimer timerForAsyncTasks; //don't use wxWidgets idle handling => repeated idle requests/consumption hogs 100% cpu!
+    zen::AsyncGuiQueue guiQueue; //schedule and run long-running tasks asynchronously, but process results on GUI queue
 
     std::unique_ptr<zen::FilterConfig> filterCfgOnClipboard; //copy/paste of filter config
 
-    wxWindow* focusWindowAfterSearch; //used to restore focus after search panel is closed
+    wxWindow* focusWindowAfterSearch = nullptr; //used to restore focus after search panel is closed
 
-    bool localKeyEventsEnabled;
+    bool localKeyEventsEnabled = true;
 };
 
 #endif //MAINDIALOG_H_891048132454564

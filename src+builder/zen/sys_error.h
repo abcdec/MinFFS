@@ -28,14 +28,12 @@ namespace zen
     typedef DWORD ErrorCode;
 #elif defined ZEN_LINUX || defined ZEN_MAC
     typedef int ErrorCode;
-#else
-    #error define a platform!
 #endif
 
 ErrorCode getLastError();
 
-std::wstring formatSystemError(const std::wstring& functionName, ErrorCode lastError);
-std::wstring formatSystemError(const std::wstring& functionName, ErrorCode lastError, const std::wstring& lastErrorMsg);
+std::wstring formatSystemError(const std::wstring& functionName, ErrorCode ec);
+std::wstring formatSystemError(const std::wstring& functionName, ErrorCode ec, const std::wstring& errorMsg);
 
 //A low-level exception class giving (non-translated) detail information only - same conceptional level like "GetLastError()"!
 class SysError
@@ -48,6 +46,7 @@ private:
     std::wstring msg_;
 };
 
+#define DEFINE_NEW_SYS_ERROR(X) struct X : public SysError { X(const std::wstring& msg) : SysError(msg) {} };
 
 
 
@@ -67,16 +66,14 @@ ErrorCode getLastError()
 }
 
 
-std::wstring formatSystemError(const std::wstring& functionName, long long lastError) = delete; //not implemented! intentional overload ambiguity to catch usage errors with HRESULT!
-
+std::wstring formatSystemErrorRaw(long long) = delete; //intentional overload ambiguity to catch usage errors
 
 inline
-std::wstring formatSystemError(const std::wstring& functionName, ErrorCode lastError)
+std::wstring formatSystemErrorRaw(ErrorCode ec) //return empty string on error
 {
     const ErrorCode currentError = getLastError(); //not necessarily == lastError
 
-    std::wstring lastErrorMsg;
-
+    std::wstring errorMsg;
 #ifdef ZEN_WIN
     ZEN_ON_SCOPE_EXIT(::SetLastError(currentError)); //this function must not change active system error variable!
 
@@ -84,37 +81,42 @@ std::wstring formatSystemError(const std::wstring& functionName, ErrorCode lastE
     if (::FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM    |
                         FORMAT_MESSAGE_MAX_WIDTH_MASK |
                         FORMAT_MESSAGE_IGNORE_INSERTS | //important: without this flag ::FormatMessage() will fail if message contains placeholders
-                        FORMAT_MESSAGE_ALLOCATE_BUFFER, nullptr, lastError, 0, reinterpret_cast<LPWSTR>(&buffer), 0, nullptr) != 0)
+                        FORMAT_MESSAGE_ALLOCATE_BUFFER, nullptr, ec, 0, reinterpret_cast<LPWSTR>(&buffer), 0, nullptr) != 0)
         if (buffer) //"don't trust nobody"
         {
             ZEN_ON_SCOPE_EXIT(::LocalFree(buffer));
-            lastErrorMsg = buffer;
+            errorMsg = buffer;
         }
 
 #elif defined ZEN_LINUX || defined ZEN_MAC
     ZEN_ON_SCOPE_EXIT(errno = currentError);
 
-    lastErrorMsg = utfCvrtTo<std::wstring>(::strerror(lastError));
+    errorMsg = utfCvrtTo<std::wstring>(::strerror(ec));
 #endif
+    trim(errorMsg); //Windows messages seem to end with a blank...
 
-    return formatSystemError(functionName, lastError, lastErrorMsg);
+    return errorMsg;
 }
 
 
-inline
-std::wstring formatSystemError(const std::wstring& functionName, ErrorCode lastError, const std::wstring& lastErrorMsg)
-{
-    std::wstring output = replaceCpy(_("Error Code %x:"), L"%x", numberTo<std::wstring>(lastError));
+std::wstring formatSystemError(const std::wstring& functionName, long long lastError) = delete; //intentional overload ambiguity to catch usage errors with HRESULT!
 
-    if (!lastErrorMsg.empty())
+inline
+std::wstring formatSystemError(const std::wstring& functionName, ErrorCode ec) { return formatSystemError(functionName, ec, formatSystemErrorRaw(ec)); }
+
+
+inline
+std::wstring formatSystemError(const std::wstring& functionName, ErrorCode ec, const std::wstring& errorMsg)
+{
+    std::wstring output = replaceCpy(_("Error Code %x:"), L"%x", numberTo<std::wstring>(ec));
+
+    if (!errorMsg.empty())
     {
         output += L" ";
-        output += lastErrorMsg;
+        output += errorMsg;
     }
 
-    if (!endsWith(output, L" ")) //Windows messages seem to end with a blank...
-        output += L" ";
-    output += L"(" + functionName + L")";
+    output += L" (" + functionName + L")";
 
     return output;
 }

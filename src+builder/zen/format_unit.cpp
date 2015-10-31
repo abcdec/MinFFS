@@ -190,7 +190,10 @@ public:
 private:
     static const IntegerFormat& getInst()
     {
-        static IntegerFormat inst; //not threadsafe in MSVC until C++11, but not required right now
+#if defined _MSC_VER && _MSC_VER < 1900
+#error function scope static initialization is not yet thread-safe!
+#endif
+        static IntegerFormat inst;
         return inst;
     }
 
@@ -276,14 +279,6 @@ std::wstring zen::ffs_Impl::includeNumberSeparator(const std::wstring& number)
 }
 
 
-#ifdef ZEN_WIN
-namespace
-{
-const bool useNewLocalTimeCalculation = zen::vistaOrLater();
-}
-#endif
-
-
 std::wstring zen::utcToLocalTimeString(std::int64_t utcTime)
 {
     auto errorMsg = [&] { return _("Error") + L" (time_t: " + numberTo<std::wstring>(utcTime) + L")"; };
@@ -292,6 +287,11 @@ std::wstring zen::utcToLocalTimeString(std::int64_t utcTime)
     FILETIME lastWriteTimeUtc = timetToFileTime(utcTime); //convert ansi C time to FILETIME
 
     SYSTEMTIME systemTimeLocal = {};
+
+#if defined _MSC_VER && _MSC_VER < 1900
+#error function scope static initialization is not yet thread-safe!
+#endif
+    static const bool useNewLocalTimeCalculation = zen::vistaOrLater();
 
     //http://msdn.microsoft.com/en-us/library/ms724277(VS.85).aspx
     if (useNewLocalTimeCalculation) //DST conversion  like in Windows 7: NTFS stays fixed, but FAT jumps by one hour

@@ -35,8 +35,8 @@ public:
 
     //filtering
     virtual bool passFileFilter(const Zstring& relFilePath) const = 0;
-    virtual bool passDirFilter (const Zstring& relDirPath, bool* subObjMightMatch) const = 0;
-    //subObjMightMatch: file/dir in subdirectories could(!) match
+    virtual bool passDirFilter (const Zstring& relDirPath, bool* childItemMightMatch) const = 0;
+    //childItemMightMatch: file/dir in subdirectories could(!) match
     //note: this hint is only set if passDirFilter returns false!
 
     virtual bool isNull() const = 0; //filter is equivalent to NullFilter, but may be technically slower
@@ -64,7 +64,7 @@ class NullFilter : public HardFilter  //no filtering at all
 {
 public:
     bool passFileFilter(const Zstring& relFilePath) const override { return true; }
-    bool passDirFilter(const Zstring& relDirPath, bool* subObjMightMatch) const override;
+    bool passDirFilter(const Zstring& relDirPath, bool* childItemMightMatch) const override;
     bool isNull() const override { return true; }
     FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const override;
 
@@ -81,7 +81,7 @@ public:
     void addExclusion(const Zstring& excludePhrase);
 
     bool passFileFilter(const Zstring& relFilePath) const override;
-    bool passDirFilter(const Zstring& relDirPath, bool* subObjMightMatch) const override;
+    bool passDirFilter(const Zstring& relDirPath, bool* childItemMightMatch) const override;
 
     bool isNull() const override;
     static bool isNull(const Zstring& includePhrase, const Zstring& excludePhrase); //*fast* check without expensive NameFilter construction!
@@ -103,7 +103,7 @@ public:
     CombinedFilter(const NameFilter& first, const NameFilter& second) : first_(first), second_(second) { assert(!first.isNull() && !second.isNull()); } //if either is null, then wy use CombinedFilter?
 
     bool passFileFilter(const Zstring& relFilePath) const override;
-    bool passDirFilter(const Zstring& relDirPath, bool* subObjMightMatch) const override;
+    bool passDirFilter(const Zstring& relDirPath, bool* childItemMightMatch) const override;
     bool isNull() const override;
     FilterRef copyFilterAddingExclusion(const Zstring& excludePhrase) const override;
 
@@ -121,9 +121,9 @@ private:
 
 //--------------- inline implementation ---------------------------------------
 inline
-bool NullFilter::passDirFilter(const Zstring& relDirPath, bool* subObjMightMatch) const
+bool NullFilter::passDirFilter(const Zstring& relDirPath, bool* childItemMightMatch) const
 {
-    assert(!subObjMightMatch || *subObjMightMatch == true); //check correct usage
+    assert(!childItemMightMatch || *childItemMightMatch == true); //check correct usage
     return true;
 }
 
@@ -164,14 +164,14 @@ bool CombinedFilter::passFileFilter(const Zstring& relFilePath) const
 
 
 inline
-bool CombinedFilter::passDirFilter(const Zstring& relDirPath, bool* subObjMightMatch) const
+bool CombinedFilter::passDirFilter(const Zstring& relDirPath, bool* childItemMightMatch) const
 {
-    if (first_.passDirFilter(relDirPath, subObjMightMatch))
-        return second_.passDirFilter(relDirPath, subObjMightMatch);
+    if (first_.passDirFilter(relDirPath, childItemMightMatch))
+        return second_.passDirFilter(relDirPath, childItemMightMatch);
     else
     {
-        if (subObjMightMatch && *subObjMightMatch)
-            second_.passDirFilter(relDirPath, subObjMightMatch);
+        if (childItemMightMatch && *childItemMightMatch)
+            second_.passDirFilter(relDirPath, childItemMightMatch);
         return false;
     }
 }

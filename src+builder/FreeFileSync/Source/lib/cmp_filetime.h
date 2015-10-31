@@ -34,11 +34,8 @@ bool sameFileTime(std::int64_t lhs, std::int64_t rhs, int tolerance, unsigned in
 
     return false;
 }
-//---------------------------------------------------------------------------------------------------------------
 
-//number of seconds since Jan 1st 1970 + 1 year (needn't be too precise)
-const std::int64_t oneYearFromNow = std::time(nullptr) + 365 * 24 * 3600; //init at program startup in *each* compilation unit -> avoid MT issues
-//refactor when C++11 thread-safe static initialization is availalbe in VS (already in GCC)
+//---------------------------------------------------------------------------------------------------------------
 
 enum class TimeResult
 {
@@ -53,6 +50,13 @@ enum class TimeResult
 inline
 TimeResult compareFileTime(std::int64_t lhs, std::int64_t rhs, int tolerance, unsigned int optTimeShiftHours)
 {
+#if defined _MSC_VER && _MSC_VER < 1900
+#error function scope static initialization is not yet thread-safe!
+#endif
+
+    //number of seconds since Jan 1st 1970 + 1 year (needn't be too precise)
+    static const std::int64_t oneYearFromNow = std::time(nullptr) + 365 * 24 * 3600;
+
     if (sameFileTime(lhs, rhs, tolerance, optTimeShiftHours)) //last write time may differ by up to 2 seconds (NTFS vs FAT32)
         return TimeResult::EQUAL;
 

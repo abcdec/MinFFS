@@ -4,17 +4,17 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef REALTIMESYNCMAIN_H
-#define REALTIMESYNCMAIN_H
+#ifndef RTS_MAIN_DLG_H_2384790842252445
+#define RTS_MAIN_DLG_H_2384790842252445
 
 #include "gui_generated.h"
 #include <vector>
 #include <memory>
 #include <zen/zstring.h>
-#include <zen/async_task.h>
+#include <wx+/async_task.h>
 #include <wx+/file_drop.h>
 #include <wx/timer.h>
-#include "../ui/dir_name.h"
+#include "folder_selector2.h"
 
 namespace xmlAccess
 {
@@ -53,30 +53,18 @@ private:
     xmlAccess::XmlRealConfig getConfiguration();
     void setLastUsedConfig(const Zstring& filepath);
 
-    void layoutAsync(); //call Layout() asynchronously
-
-    //void addFolder(const Zstring& dirpath, bool addFront = false);
     void addFolder(const std::vector<Zstring>& newFolders, bool addFront = false);
     void removeAddFolder(size_t pos);
     void clearAddFolders();
 
     static const Zstring& lastConfigFileName();
 
-    std::unique_ptr<zen::DirectoryName<wxTextCtrl>> dirpathFirst;
+    std::unique_ptr<zen::FolderSelector2> dirpathFirst;
     std::vector<DirectoryPanel*> dirpathsExtra; //additional pairs to the standard pair
 
     Zstring currentConfigFileName;
 
-    void onProcessAsyncTasks(wxEvent& event);
-
-    template <class Fun, class Fun2>
-    void processAsync(Fun doAsync, Fun2 evalOnGui) { asyncTasks.add(doAsync, evalOnGui); timerForAsyncTasks.Start(50); /*timer interval in [ms] */ }
-    template <class Fun, class Fun2>
-    void processAsync2(Fun doAsync, Fun2 evalOnGui) { asyncTasks.add2(doAsync, evalOnGui); timerForAsyncTasks.Start(50); /*timer interval in [ms] */ }
-
-    //schedule and run long-running tasks asynchronously, but process results on GUI queue
-    zen::AsyncTasks asyncTasks;
-    wxTimer timerForAsyncTasks; //don't use wxWidgets idle handling => repeated idle requests/consumption hogs 100% cpu!
+    zen::AsyncGuiQueue guiQueue; //schedule and run long-running tasks asynchronously, but process results on GUI queue
 };
 
-#endif // REALTIMESYNCMAIN_H
+#endif //RTS_MAIN_DLG_H_2384790842252445

@@ -4,16 +4,15 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef BATCHSTATUSHANDLER_H_INCLUDED
-#define BATCHSTATUSHANDLER_H_INCLUDED
+#ifndef BATCH_STATUS_HANDLER_857390451451234566
+#define BATCH_STATUS_HANDLER_857390451451234566
 
 #include <zen/error_log.h>
-#include <zen/file_io.h>
 #include <zen/time.h>
-#include "../lib/status_handler.h"
-#include "../lib/process_xml.h"
 #include "progress_indicator.h"
 #include "switch_to_gui.h"
+#include "../lib/status_handler.h"
+#include "../lib/process_xml.h"
 #include "../lib/return_codes.h"
 
 
@@ -28,7 +27,7 @@ public:
     BatchStatusHandler(bool showProgress, //defines: -start minimized and -quit immediately when finished
                        const std::wstring& jobName, //should not be empty for a batch job!
                        const zen::TimeComp& timeStamp,
-                       const Zstring& logfileDirectory,
+                       const Zstring& logFolderPathPhrase,
                        int logfilesCountLimit, //0: logging inactive; < 0: no limit
                        size_t lastSyncsLogFileSizeMax,
                        const xmlAccess::OnError handleError,
@@ -67,11 +66,12 @@ private:
     const size_t automaticRetryDelay_;
 
     SyncProgressDialog* progressDlg; //managed to have shorter lifetime than this handler!
-    std::unique_ptr<zen::FileOutput> logFile; //optional!
 
     const std::wstring jobName_;
-    const int64_t startTime_; //don't use wxStopWatch: may overflow after a few days due to ::QueryPerformanceCounter()
+    const zen::TimeComp timeStamp_;
+    const time_t startTime_; //don't use wxStopWatch: may overflow after a few days due to ::QueryPerformanceCounter()
+
+    const Zstring logFolderPathPhrase_;
 };
 
-
-#endif // BATCHSTATUSHANDLER_H_INCLUDED
+#endif //BATCH_STATUS_HANDLER_857390451451234566

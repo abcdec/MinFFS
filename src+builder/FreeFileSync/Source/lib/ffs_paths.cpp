@@ -27,7 +27,7 @@ namespace
 inline
 Zstring getExecutableDir() //directory containing executable WITH path separator at end
 {
-    return appendSeparator(beforeLast(utfCvrtTo<Zstring>(wxStandardPaths::Get().GetExecutablePath()), FILE_NAME_SEPARATOR));
+    return appendSeparator(beforeLast(utfCvrtTo<Zstring>(wxStandardPaths::Get().GetExecutablePath()), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
 }
 #endif
 
@@ -35,7 +35,7 @@ Zstring getExecutableDir() //directory containing executable WITH path separator
 inline
 Zstring getInstallDir() //root install directory WITH path separator at end
 {
-    return appendSeparator(beforeLast(beforeLast(getExecutableDir(), FILE_NAME_SEPARATOR), FILE_NAME_SEPARATOR));
+    return appendSeparator(beforeLast(beforeLast(getExecutableDir(), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
 }
 #endif
 
@@ -102,16 +102,14 @@ Zstring zen::getConfigDir()
     //portable apps do not seem common on OS - fine with me: http://theocacao.com/document.page/319
 #endif
     //use OS' standard paths
-    Zstring userDirectory = toZ(wxStandardPathsBase::Get().GetUserDataDir());
+    Zstring configDirPath = toZ(wxStandardPathsBase::Get().GetUserDataDir());
+    try
+    {
+        makeDirectoryRecursively(configDirPath); //throw FileError
+    }
+    catch (const FileError&) { assert(false); }
 
-    if (!dirExists(userDirectory))
-        try
-        {
-            makeDirectory(userDirectory); //throw FileError
-        }
-        catch (const FileError&) {}
-
-    return appendSeparator(userDirectory);
+    return appendSeparator(configDirPath);
 }
 
 

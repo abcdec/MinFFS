@@ -190,17 +190,21 @@ void zen::convertToVanillaImage(wxImage& img)
 {
     if (!img.HasAlpha())
     {
+        const int width  = img.GetWidth ();
+        const int height = img.GetHeight();
+        if (width <= 0 || height <= 0) return;
+
         unsigned char mask_r = 0;
         unsigned char mask_g = 0;
         unsigned char mask_b = 0;
         const bool haveMask = img.HasMask() && img.GetOrFindMaskColour(&mask_r, &mask_g, &mask_b);
-		//check for mask before calling wxImage::GetOrFindMaskColour() to skip needlessly searching for new mask color
+        //check for mask before calling wxImage::GetOrFindMaskColour() to skip needlessly searching for new mask color
 
         img.SetAlpha();
-        ::memset(img.GetAlpha(), wxIMAGE_ALPHA_OPAQUE, img.GetWidth() * img.GetHeight());
+        ::memset(img.GetAlpha(), wxIMAGE_ALPHA_OPAQUE, width * height);
 
-		//wxWidgets, as always, tries to be more clever than it really is and fucks up wxStaticBitmap if wxBitmap is fully opaque:
-		img.GetAlpha()[img.GetWidth() * img.GetHeight() - 1] = 254;
+        //wxWidgets, as always, tries to be more clever than it really is and fucks up wxStaticBitmap if wxBitmap is fully opaque:
+        img.GetAlpha()[width * height - 1] = 254;
 
         if (haveMask)
         {
@@ -208,7 +212,7 @@ void zen::convertToVanillaImage(wxImage& img)
             unsigned char*       alphaPtr = img.GetAlpha();
             const unsigned char* dataPtr  = img.GetData();
 
-            const int pixelCount = img.GetWidth() * img.GetHeight();
+            const int pixelCount = width * height;
             for (int i = 0; i < pixelCount; ++ i)
             {
                 const unsigned char r = *dataPtr++;
@@ -222,8 +226,8 @@ void zen::convertToVanillaImage(wxImage& img)
             }
         }
     }
-	else
-	{
-		assert(!img.HasMask());
-	}
+    else
+    {
+        assert(!img.HasMask());
+    }
 }

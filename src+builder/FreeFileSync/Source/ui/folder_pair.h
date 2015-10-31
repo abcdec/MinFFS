@@ -13,11 +13,12 @@
 #include <wx+/bitmap_button.h>
 #include <wx+/image_tools.h>
 #include <wx+/image_resources.h>
-#include "dir_name.h"
+#include "folder_selector.h"
 #include "small_dlgs.h"
 #include "sync_cfg.h"
 #include "../lib/norm_filter.h"
 #include "../structures.h"
+
 
 namespace zen
 {
@@ -50,10 +51,6 @@ public:
         basicPanel_.m_bpButtonAltCompCfg ->Connect(wxEVT_RIGHT_DOWN, wxCommandEventHandler(FolderPairPanelBasic::OnAltCompCfgContext    ), nullptr, this);
         basicPanel_.m_bpButtonAltSyncCfg ->Connect(wxEVT_RIGHT_DOWN, wxCommandEventHandler(FolderPairPanelBasic::OnAltSyncCfgContext    ), nullptr, this);
         basicPanel_.m_bpButtonLocalFilter->Connect(wxEVT_RIGHT_DOWN, wxCommandEventHandler(FolderPairPanelBasic::OnLocalFilterCfgContext), nullptr, this);
-
-        basicPanel_.m_bpButtonAltCompCfg-> Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(FolderPairPanelBasic::OnAltCompCfg    ), nullptr, this);
-        basicPanel_.m_bpButtonAltSyncCfg-> Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(FolderPairPanelBasic::OnAltSyncCfg    ), nullptr, this);
-        basicPanel_.m_bpButtonLocalFilter->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(FolderPairPanelBasic::OnLocalFilterCfg), nullptr, this);
 
         basicPanel_.m_bpButtonRemovePair->SetBitmapLabel(getResourceImage(L"item_remove"));
     }
@@ -134,7 +131,7 @@ private:
 
         std::unique_ptr<FilterConfig>& filterCfgOnClipboard = getFilterCfgOnClipboardRef();
 
-        auto copyFilter  = [&] { filterCfgOnClipboard = make_unique<FilterConfig>(this->localFilter); };
+        auto copyFilter  = [&] { filterCfgOnClipboard = std::make_unique<FilterConfig>(this->localFilter); };
         auto pasteFilter = [&]
         {
             if (filterCfgOnClipboard)
@@ -161,55 +158,6 @@ private:
     virtual void onAltCompCfgChange() = 0;
     virtual void onAltSyncCfgChange() = 0;
     virtual void onLocalFilterCfgChange() = 0;
-
-    void OnAltCompCfg    (wxCommandEvent& event) { showConfigDialog(SyncConfigPanel::COMPARISON); }
-    void OnLocalFilterCfg(wxCommandEvent& event) { showConfigDialog(SyncConfigPanel::FILTER    ); }
-    void OnAltSyncCfg    (wxCommandEvent& event) { showConfigDialog(SyncConfigPanel::SYNC      ); }
-
-    void showConfigDialog(SyncConfigPanel panelToShow)
-    {
-        const MainConfiguration mainCfg = getMainConfig();
-
-        bool useAlternateCmpCfg  = altCompConfig.get() != nullptr;
-        bool useAlternateSyncCfg = altSyncConfig.get() != nullptr;
-        CompConfig cmpCfg  = altCompConfig.get() ? *altCompConfig : mainCfg.cmpConfig;
-        SyncConfig syncCfg = altSyncConfig.get() ? *altSyncConfig : mainCfg.syncCfg;
-
-        const bool useAlternateCmpCfgOld  = useAlternateCmpCfg;
-        const bool useAlternateSyncCfgOld = useAlternateSyncCfg;
-        const CompConfig   cmpCfgOld    = cmpCfg;
-        const FilterConfig filterCfgOld = localFilter;
-        const SyncConfig   syncCfgOld   = syncCfg;
-
-        if (showSyncConfigDlg(getParentWindow(),
-                              panelToShow,
-                              &useAlternateCmpCfg,
-                              cmpCfg,
-                              localFilter,
-                              &useAlternateSyncCfg,
-                              syncCfg,
-                              mainCfg.cmpConfig.compareVar,
-                              nullptr,
-                              _("Local Synchronization Settings")) == ReturnSyncConfig::BUTTON_OKAY)
-        {
-            if (!(cmpCfg == cmpCfgOld) || useAlternateCmpCfg != useAlternateCmpCfgOld)
-            {
-                altCompConfig = useAlternateCmpCfg ? std::make_shared<CompConfig>(cmpCfg) : nullptr;
-                onAltCompCfgChange();
-            }
-
-            if (!(localFilter == filterCfgOld))
-                onLocalFilterCfgChange();
-
-            if (!(syncCfg == syncCfgOld) || useAlternateSyncCfg != useAlternateSyncCfgOld)
-            {
-                altSyncConfig = useAlternateSyncCfg ? std::make_shared<SyncConfig>(syncCfg) : nullptr;
-                onAltSyncCfgChange();
-            }
-
-            refreshButtons();
-        }
-    }
 
     GuiPanel& basicPanel_; //panel to be enhanced by this template
 

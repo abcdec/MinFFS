@@ -12,12 +12,13 @@
 #include "file_error.h"
 #include "file_id_def.h"
 
+
 namespace zen
 {
-bool fileExists     (const Zstring& filepath); //noexcept; check whether file      or file-symlink exists
-bool dirExists      (const Zstring& dirpath ); //noexcept; check whether directory or dir-symlink exists
-bool symlinkExists  (const Zstring& linkname); //noexcept; check whether a symbolic link exists
-bool somethingExists(const Zstring& objname ); //noexcept; check whether any object with this name exists
+bool fileExists     (const Zstring& filePath); //noexcept; check whether file      or file-symlink exists
+bool dirExists      (const Zstring& dirPath ); //noexcept; check whether directory or dir-symlink exists
+bool symlinkExists  (const Zstring& linkPath); //noexcept; check whether a symbolic link exists
+bool somethingExists(const Zstring& itemPath); //noexcept; check whether any object with this name exists
 
 enum class ProcSymlink
 {
@@ -25,29 +26,32 @@ enum class ProcSymlink
     FOLLOW
 };
 
-void setFileTime(const Zstring& filepath, std::int64_t modificationTime, ProcSymlink procSl); //throw FileError
+void setFileTime(const Zstring& filePath, std::int64_t modificationTime, ProcSymlink procSl); //throw FileError
 
 //symlink handling: always evaluate target
-std::uint64_t getFilesize(const Zstring& filepath); //throw FileError
-std::uint64_t getFreeDiskSpace(const Zstring& path); //throw FileError
+std::uint64_t getFilesize(const Zstring& filePath); //throw FileError
+std::uint64_t getFreeDiskSpace(const Zstring& path); //throw FileError, returns 0 if not available
 
-bool removeFile(const Zstring& filepath); //throw FileError; return "false" if file is not existing
-void removeDirectory(const Zstring& directory, //throw FileError
-                     const std::function<void (const Zstring& filepath)>& onBeforeFileDeletion = nullptr,  //optional;
-                     const std::function<void (const Zstring& dirpath )>& onBeforeDirDeletion  = nullptr); //one call for each *existing* object!
+bool removeFile(const Zstring& filePath); //throw FileError; return "false" if file is not existing
+
+void removeDirectorySimple(const Zstring& dirPath); //throw FileError
+
+void removeDirectoryRecursively(const Zstring& dirPath); //throw FileError
 
 //rename file or directory: no copying!!!
-void renameFile(const Zstring& oldName, const Zstring& newName); //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
+void renameFile(const Zstring& itemPathOld, const Zstring& itemPathNew); //throw FileError, ErrorDifferentVolume, ErrorTargetExisting
 
 bool supportsPermissions(const Zstring& dirpath); //throw FileError, dereferences symlinks
 
-//if parent directory not existing: create recursively:
-void makeDirectory(const Zstring& directory, bool failIfExists = false); //throw FileError, ErrorTargetExisting
+//- no error if already existing
+//- create recursively if parent directory is not existing
+void makeDirectoryRecursively(const Zstring& dirpath); //throw FileError
 
 //fail if already existing or parent directory not existing:
-//directory should not end with path separator
-//templateDir may be empty
-void makeDirectoryPlain(const Zstring& directory, const Zstring& templateDir, bool copyFilePermissions); //throw FileError, ErrorTargetExisting, ErrorTargetPathMissing
+//source path is optional (may be empty)
+void copyNewDirectory(const Zstring& sourcePath, const Zstring& targetPath, bool copyFilePermissions); //throw FileError, ErrorTargetExisting, ErrorTargetPathMissing
+
+void copySymlink(const Zstring& sourceLink, const Zstring& targetLink, bool copyFilePermissions); //throw FileError
 
 struct InSyncAttributes
 {
@@ -57,24 +61,9 @@ struct InSyncAttributes
     FileId targetFileId;
 };
 
-void copyFile(const Zstring& sourceFile, //throw FileError, ErrorFileLocked (Windows-only)
-              const Zstring& targetFile, //symlink handling: dereference source
-              bool copyFilePermissions,
-              bool transactionalCopy,
-              //if target is existing user needs to implement deletion: copyFile() NEVER overwrites target if already existing!
-              //if transactionalCopy == true, full read access on source had been proven at this point, so it's safe to delete it.
-              const std::function<void()>& onDeleteTargetFile, //may be nullptr; may throw!
-              //accummulated delta != file size! consider ADS, sparse, compressed files
-              const std::function<void(std::int64_t bytesDelta)>& onUpdateCopyStatus, //may be nullptr; may throw!
-
-              InSyncAttributes* newAttrib = nullptr);  //return current attributes at the time of copy
-
-//Note: it MAY happen that copyFile() leaves temp files behind, e.g. temporary network drop.
-// => clean them up at an appropriate time (automatically set sync directions to delete them). They have the following ending:
-
-const Zchar TEMP_FILE_ENDING[] = Zstr(".ffs_tmp"); //don't use Zstring as global constant: avoid static initialization order problem in global namespace!
-
-void copySymlink(const Zstring& sourceLink, const Zstring& targetLink, bool copyFilePermissions); //throw FileError
+InSyncAttributes copyNewFile(const Zstring& sourceFile, const Zstring& targetFile, bool copyFilePermissions, //throw FileError, ErrorTargetExisting, ErrorFileLocked
+                             //accummulated delta != file size! consider ADS, sparse, compressed files
+                             const std::function<void(std::int64_t bytesDelta)>& onUpdateCopyStatus); //may be nullptr; throw X!
 }
 
 #endif //FILE_ACCESS_H_8017341345614857

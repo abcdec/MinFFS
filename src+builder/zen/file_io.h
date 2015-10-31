@@ -7,7 +7,6 @@
 #ifndef FILEIO_89578342758342572345
 #define FILEIO_89578342758342572345
 
-#include "file_io_base.h"
 #include "file_error.h"
 
 #ifdef ZEN_WIN
@@ -31,30 +30,58 @@ namespace zen
     typedef int FileHandle;
 #endif
 
-class FileInput : public FileInputBase
+class FileBase
 {
 public:
-    FileInput(const Zstring& filepath);                    //throw FileError
+    const Zstring& getFilePath() const { return filename_; }
+
+protected:
+    FileBase(const Zstring& filename) : filename_(filename)  {}
+
+private:
+    FileBase           (const FileBase&) = delete;
+    FileBase& operator=(const FileBase&) = delete;
+
+    const Zstring filename_;
+};
+
+//-----------------------------------------------------------------------------------------------
+
+class FileInput : public FileBase
+{
+public:
+    FileInput(const Zstring& filepath);                    //throw FileError, ErrorFileLocked
     FileInput(FileHandle handle, const Zstring& filepath); //takes ownership!
     ~FileInput();
 
-    size_t read(void* buffer, size_t bytesToRead) override; //throw FileError; returns actual number of bytes read
+    size_t read(void* buffer, size_t bytesToRead); //throw FileError; returns "bytesToRead", unless end of file!
     FileHandle getHandle() { return fileHandle; }
+    size_t optimalBlockSize() const { return 128 * 1024; }
 
 private:
     FileHandle fileHandle;
 };
 
 
-class FileOutput : public FileOutputBase
+class FileOutput : public FileBase
 {
 public:
+    enum AccessFlag
+    {
+        ACC_OVERWRITE,
+        ACC_CREATE_NEW
+    };
+
     FileOutput(const Zstring& filepath, AccessFlag access); //throw FileError, ErrorTargetExisting
     FileOutput(FileHandle handle, const Zstring& filepath); //takes ownership!
     ~FileOutput();
+    void close(); //throw FileError   -> optional, but good place to catch errors when closing stream!
 
-    void write(const void* buffer, size_t bytesToWrite) override; //throw FileError
+    void write(const void* buffer, size_t bytesToWrite); //throw FileError
     FileHandle getHandle() { return fileHandle; }
+    size_t optimalBlockSize() const { return 128 * 1024; }
+
+    FileOutput(FileOutput&& tmp);
 
 private:
     FileHandle fileHandle;

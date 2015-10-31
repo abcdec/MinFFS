@@ -281,17 +281,17 @@ GridView::StatusSyncPreview GridView::updateSyncPreview(bool showExcluded, //map
 }
 
 
-std::vector<FileSystemObject*> GridView::getAllFileRef(const std::set<size_t>& rows)
+std::vector<FileSystemObject*> GridView::getAllFileRef(const std::vector<size_t>& rows)
 {
+    const size_t viewSize = viewRef.size();
+
     std::vector<FileSystemObject*> output;
 
-    auto iterLast = rows.lower_bound(rowsOnView()); //loop over valid rows only!
-    std::for_each(rows.begin(), iterLast,
-                  [&](size_t pos)
-    {
-        if (FileSystemObject* fsObj = FileSystemObject::retrieve(viewRef[pos]))
-            output.push_back(fsObj);
-    });
+    for (size_t pos : rows)
+        if (pos < viewSize)
+            if (FileSystemObject* fsObj = FileSystemObject::retrieve(viewRef[pos]))
+                output.push_back(fsObj);
+
     return output;
 }
 
@@ -303,7 +303,7 @@ void GridView::removeInvalidRows()
     rowPositionsFirstChild.clear();
 
     //remove rows that have been deleted meanwhile
-    vector_remove_if(sortedRef, [&](const RefIndex& refIdx) { return FileSystemObject::retrieve(refIdx.objId) == nullptr; });
+    erase_if(sortedRef, [&](const RefIndex& refIdx) { return FileSystemObject::retrieve(refIdx.objId) == nullptr; });
 }
 
 
@@ -345,8 +345,8 @@ void GridView::setData(FolderComparison& folderCmp)
     folderPairCount = std::count_if(begin(folderCmp), end(folderCmp),
                                     [](const BaseDirPair& baseObj) //count non-empty pairs to distinguish single/multiple folder pair cases
     {
-        return !baseObj.getBaseDirPf<LEFT_SIDE >().empty() ||
-               !baseObj.getBaseDirPf<RIGHT_SIDE>().empty();
+        return !baseObj.getABF<LEFT_SIDE >().emptyBaseFolderPath() ||
+               !baseObj.getABF<RIGHT_SIDE>().emptyBaseFolderPath();
     });
 
     for (auto it = begin(folderCmp); it != end(folderCmp); ++it)
@@ -522,7 +522,7 @@ void GridView::sortView(ColumnTypeRim type, bool onLeft, bool ascending)
     viewRef.clear();
     rowPositions.clear();
     rowPositionsFirstChild.clear();
-    currentSort = make_unique<SortInfo>(type, onLeft, ascending);
+    currentSort = std::make_unique<SortInfo>(type, onLeft, ascending);
 
     switch (type)
     {

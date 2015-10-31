@@ -10,6 +10,7 @@
 #include <zen/type_tools.h>
 #include "../file_hierarchy.h"
 
+
 namespace zen
 {
 namespace
@@ -21,6 +22,7 @@ struct CompileTimeReminder : public FSObjectVisitor
     void visit(const DirPair&     dirObj ) override {}
 } checkDymanicCasts; //just a compile-time reminder to manually check dynamic casts in this file when needed
 }
+
 
 inline
 bool isDirectoryPair(const FileSystemObject& fsObj)
@@ -50,8 +52,9 @@ bool lessShortFileName(const FileSystemObject& a, const FileSystemObject& b)
         return true;
 
     //sort directories and files/symlinks by short name
-    return makeSortDirection(LessFilename(), Int2Type<ascending>())(a.getItemName<side>(), b.getItemName<side>());
+    return makeSortDirection(LessFilePath(), Int2Type<ascending>())(a.getItemName<side>(), b.getItemName<side>());
 }
+
 
 template <bool ascending, SelectedSide side> inline
 bool lessFullPath(const FileSystemObject& a, const FileSystemObject& b)
@@ -62,7 +65,8 @@ bool lessFullPath(const FileSystemObject& a, const FileSystemObject& b)
     else if (b.isEmpty<side>())
         return true;
 
-    return makeSortDirection(LessFilename(), Int2Type<ascending>())(a.getFullPath<side>(), b.getFullPath<side>());
+    return makeSortDirection(LessFilePath(), Int2Type<ascending>())(ABF::getDisplayPath(a.getAbstractPath<side>()),
+                                                                    ABF::getDisplayPath(b.getAbstractPath<side>()));
 }
 
 
@@ -72,15 +76,16 @@ bool lessRelativeFolder(const FileSystemObject& a, const FileSystemObject& b)
     const bool isDirectoryA = isDirectoryPair(a);
     const Zstring& relFolderA = isDirectoryA ?
                                 a.getPairRelativePath() : //directory
-                                beforeLast(a.getPairRelativePath(), FILE_NAME_SEPARATOR); //returns empty string if ch not found
+                                beforeLast(a.getPairRelativePath(), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
 
     const bool isDirectoryB = isDirectoryPair(b);
     const Zstring& relFolderB = isDirectoryB ?
                                 b.getPairRelativePath() : //directory
-                                beforeLast(b.getPairRelativePath(), FILE_NAME_SEPARATOR); //returns empty string if ch not found
+                                beforeLast(b.getPairRelativePath(), FILE_NAME_SEPARATOR ,IF_MISSING_RETURN_NONE);
 
     //compare relative names without filepaths first
-    const int rv = cmpFileName(relFolderA, relFolderB);
+    const int rv = cmpFilePath(relFolderA.c_str(), relFolderA.size(),
+                               relFolderB.c_str(), relFolderB.size());
     if (rv != 0)
         return makeSortDirection(std::less<int>(), Int2Type<ascending>())(rv, 0);
 
@@ -90,7 +95,7 @@ bool lessRelativeFolder(const FileSystemObject& a, const FileSystemObject& b)
     else if (isDirectoryA)
         return true;
 
-    return LessFilename()(a.getPairShortName(), b.getPairShortName());
+    return LessFilePath()(a.getPairShortName(), b.getPairShortName());
 }
 
 
@@ -127,9 +132,9 @@ template <bool ascending, SelectedSide side> inline
 bool lessFiletime(const FileSystemObject& a, const FileSystemObject& b)
 {
     if (a.isEmpty<side>())
-        return false;  //empty rows always last
+        return false; //empty rows always last
     else if (b.isEmpty<side>())
-        return true;  //empty rows always last
+        return true; //empty rows always last
 
     const FilePair* fileObjA = dynamic_cast<const FilePair*>(&a);
     const FilePair* fileObjB = dynamic_cast<const FilePair*>(&b);
@@ -140,7 +145,7 @@ bool lessFiletime(const FileSystemObject& a, const FileSystemObject& b)
     if (!fileObjA && !linkObjA)
         return false; //directories last
     else if (!fileObjB && !linkObjB)
-        return true;  //directories last
+        return true; //directories last
 
     const std::int64_t dateA = fileObjA ? fileObjA->getLastWriteTime<side>() : linkObjA->getLastWriteTime<side>();
     const std::int64_t dateB = fileObjB ? fileObjB->getLastWriteTime<side>() : linkObjB->getLastWriteTime<side>();
@@ -154,14 +159,14 @@ template <bool ascending, SelectedSide side> inline
 bool lessExtension(const FileSystemObject& a, const FileSystemObject& b)
 {
     if (a.isEmpty<side>())
-        return false;  //empty rows always last
+        return false; //empty rows always last
     else if (b.isEmpty<side>())
-        return true;  //empty rows always last
+        return true; //empty rows always last
 
     if (dynamic_cast<const DirPair*>(&a))
         return false; //directories last
     else if (dynamic_cast<const DirPair*>(&b))
-        return true;  //directories last
+        return true; //directories last
 
     auto getExtension = [&](const FileSystemObject& fsObj) -> Zstring
     {
@@ -170,7 +175,7 @@ bool lessExtension(const FileSystemObject& a, const FileSystemObject& b)
         return pos == Zstring::npos ? Zstring() : Zstring(shortName.begin() + pos + 1, shortName.end());
     };
 
-    return makeSortDirection(LessFilename(), Int2Type<ascending>())(getExtension(a), getExtension(b));
+    return makeSortDirection(LessFilePath(), Int2Type<ascending>())(getExtension(a), getExtension(b));
 }
 
 

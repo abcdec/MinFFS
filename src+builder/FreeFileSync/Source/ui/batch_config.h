@@ -10,13 +10,24 @@
 #include <wx/window.h>
 #include "../lib/process_xml.h"
 
+
 namespace zen
 {
+struct ReturnBatchConfig
+{
+    enum ButtonPressed
+    {
+        BUTTON_CANCEL,
+        BUTTON_SAVE_AS
+    };
+};
+
+
 //show and let user customize batch settings (without saving)
-bool customizeBatchConfig(wxWindow* parent, //return "false" if aborted, "true" on "do save"
-                          xmlAccess::XmlBatchConfig& batchCfg, //in/out
-                          std::vector<Zstring>& onCompletionHistory,
-                          size_t onCompletionHistoryMax);
+ReturnBatchConfig::ButtonPressed customizeBatchConfig(wxWindow* parent,
+                                                      xmlAccess::XmlBatchConfig& batchCfg, //in/out
+                                                      std::vector<Zstring>& onCompletionHistory,
+                                                      size_t onCompletionHistoryMax);
 }
 
 #endif // BATCHCONFIG_H_INCLUDED

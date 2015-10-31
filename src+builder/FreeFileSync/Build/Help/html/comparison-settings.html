@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<link rel="stylesheet" type="text/css" href="base.css" >
+	<title>Comparison Settings</title>
+</head>
+
+<body>
+	<h1>Comparison Settings</h1>
+
+	<p>
+		<img src="../images/comparison-settings.png" alt="Comparison settings dialog"><br>
+		&nbsp;
+	</p>
+
+	<h2>Symbolic Link Handling</h2>
+
+	<p>
+		FreeFileSync lets you choose to include symbolic links (also called symlinks or soft links) 
+		when scanning directories rather than skipping over them. When included, you can select between two ways to handle them:
+	</p>
+
+	<ol>
+		<li><b>Follow:</b>
+		Treat symbolic links like the object they are pointing to. Links
+		pointing to directories are traversed like ordinary directories and
+		the target of each link is copied during synchronization.<br>&nbsp;	
+		
+		<li><b>Direct:</b>
+		Evaluate the symbolic link object
+		directly. Symbolic links will be shown as separate entities.
+		Links pointing to directories are not traversed and the link object
+		is copied directly during synchronization.
+	</ol>
+	<br>
+
+	<div class="box-outer"><div class="bluebox"><div class="box-inner">
+		<b>Note</b>
+		<ul style="margin: 0">
+			<li>Under Windows the symbolic link options apply to symbolic links, volume mount points and NTFS junction points.				
+			<li>Copying symbolic links requires FreeFileSync to be started with administrator rights.
+		</ul>		
+	</div></div></div>	
+	<br>
+	<br>
+
+	<h2>I. Compare by File time and size</h2>
+
+	<p>This variant considers two files with the same name as equal when both modification 
+	time <b>and</b> file size match. The following categories are distinguished:</p>
+
+	<ol style="list-style: upper-roman">
+		<li><b>file exists on one side only</b>
+			<ul>
+				<li>left only
+				<li>right only
+			</ul>
+		
+		<li><b>file exists on both sides</b>
+			<ol style="list-style: lower-roman">
+				<li><b>different date</b>
+				<ul>
+					<li>left newer
+					<li>right newer
+				</ul>
+				<li><b>same date</b>
+				<ul>
+					<li>equal
+					<li>conflict (same date, different size)
+				</ul>
+			</ol>
+	</ol>
+	<br>
+
+	<h2>II. Compare by File content</h2>
+
+	<p>
+		Two files with the same name are marked as equal if and only if they have
+		the same content. This option is more useful for consistency checks
+		rather than backup operations since a bitwise comparison can be slow.
+	</p>
+
+	<ol style="list-style: upper-roman">
+		<li><b>file exists on one side only</b>
+			<ul>
+				<li>left only
+				<li>right only
+			</ul>
+			
+		<li><b>file exists on both sides</b>
+			<ul>
+				<li>equal
+				<li>different content
+			</ul>
+	</ol>
+</body>
+</html>

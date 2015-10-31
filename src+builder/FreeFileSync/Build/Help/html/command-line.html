@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<link rel="stylesheet" type="text/css" href="base.css" >
+	<title>Command Line Usage</title>
+</head>
+
+<body>
+	<h1>Command Line Usage</h1>
+
+	<p>
+		FreeFileSync enables additional synchronization scenarios via a command line interface. 
+		To get a syntax overview, open the console, go to the directory where FreeFileSync is installed and type:
+	</p>
+
+	<div class="box-outer"><div class="greybox"><div class="box-inner">
+		<div class="command-line">FreeFileSync -h</div>
+	</div></div></div>		
+	<br>
+	<br>
+
+	<h2>1. Run a FreeFileSync batch job</h2>
+
+	<p>In order to start synchronization in batch mode, supply the path of a ffs_batch configuration file as the first argument for FreeFileSync.exe:</p>
+
+	<div class="box-outer"><div class="greybox"><div class="box-inner">
+		<div class="command-line">FreeFileSync &quot;D:\Backup Projects.ffs_batch&quot;</div>
+	</div></div></div>	
+
+	<p>After synchronization one of the following status codes is returned:</p>
+
+	<div class="box-outer"><div class="greybox"><div class="box-inner">
+		<b>Return Codes</b><br>
+		0 - Synchronization completed successfully<br>
+		1 - Synchronization completed with warnings<br>
+		2 - Synchronization completed with errors<br>
+		3 - Synchronization was aborted
+	</div></div></div>
+
+	<p>
+		You can evaluate these codes from a script (e.g. a cmd or bat file on Windows)
+		and check if synchronization completed successfully:
+	</p>
+
+	<div class="box-outer"><div class="greybox"><div class="box-inner">
+		<div class="command-line">
+			&quot;C:\Program Files\FreeFileSync\FreeFileSync.exe&quot; &quot;D:\Backup Projects.ffs_batch&quot;<br>
+			if errorlevel 1 (<br>
+				&nbsp;&nbsp;<span class="command-line-comment">::if return code is 1 or greater, something went wrong, add special treatment here</span><br>
+				&nbsp;&nbsp;echo Errors occurred during synchronization...<br>
+				&nbsp;&nbsp;pause<br>
+			)
+		</div>
+	</div></div></div>
+
+	<p>Instead of showing an error message you can also send an email notification (using a third party tool).</p>
+
+	<div class="box-outer"><div class="bluebox"><div class="box-inner">
+		<b>Attention</b><br>
+		Make sure your script is not blocked by a popup dialog. Consider the
+		following options when setting up a FreeFileSync batch job:
+		<br>&nbsp;
+		
+		<ul style="margin: 0">
+			<li>Enable checkbox <b>Run minimized</b> or have <b>On completion</b> automatically close the results dialog after synchronization.
+			
+			<li>Set error handling to <b>Stop</b> or <b>Ignore</b>.
+		</ul>		
+	</div></div></div>	
+	<br>
+	<br>
+
+	<h2>2. Start a FreeFileSync GUI configuration</h2>
+
+	<p>If you pass a ffs_gui file, FreeFileSync will start in GUI mode and immediately start comparison (but only if all directories exist):</p>
+
+	<div class="box-outer"><div class="greybox"><div class="box-inner">
+		<div class="command-line">FreeFileSync &quot;D:\Manual Backup.ffs_gui&quot;</div>
+	</div></div></div>		
+	<br>
+	<br>
+
+	<h2>3. Customize an existing configuration</h2>
+
+	<p>
+		You can replace the directories of a given ffs_gui or ffs_batch configuration file by using the <span class="command-line">-LeftDir</span>
+		and <span class="command-line">-RightDir</span> parameters:
+	</p>
+
+	<div class="box-outer"><div class="greybox"><div class="box-inner">
+		<div class="command-line">FreeFileSync &quot;D:\Manual Backup.ffs_gui&quot; -leftdir C:\NewSource -rightdir D:\NewTarget</div>
+	</div></div></div>	
+	<br>
+	<br>
+
+	<h2>4. Merge multiple configurations</h2>
+
+	<p>
+		When more than one configuration file is provided, FreeFileSync will merge
+		everything into a single configuration with multiple folder pairs and start in GUI mode:
+	</p>
+
+	<div class="box-outer"><div class="greybox"><div class="box-inner">
+		<div class="command-line">FreeFileSync &quot;D:\Manual Backup.ffs_gui&quot; &quot;D:\Backup Projects.ffs_batch&quot;</div>
+	</div></div></div>	
+</body>
+</html>

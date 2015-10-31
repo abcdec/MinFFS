@@ -11,6 +11,7 @@
 #include <functional>
 #include "file_error.h"
 
+
 namespace zen
 {
 /*
@@ -20,7 +21,8 @@ namespace zen
 
 Windows
 -------
-Recycler API always available: during runtime either SHFileOperation or IFileOperation (since Vista) will be dynamically selected
+-> Recycler API always available: during runtime either SHFileOperation or IFileOperation (since Vista) will be dynamically selected
+-> COM needs to be initialized before calling any of these functions! CoInitializeEx/CoUninitialize
 
 Linux
 -----
@@ -30,16 +32,19 @@ Linker   flags: `pkg-config --libs gio-2.0`
 Already included in package "gtk+-2.0"!
 */
 
+
+
 //move a file or folder to Recycle Bin (deletes permanently if recycler is not available) -> crappy semantics, but we have no choice thanks to Windows' design
-bool recycleOrDelete(const Zstring& itempath); //throw FileError, return "true" if file/dir was actually deleted
+bool recycleOrDelete(const Zstring& itemPath); //throw FileError, return "true" if file/dir was actually deleted
 
 
 #ifdef ZEN_WIN
 //Win XP: can take a long time if recycle bin is full and drive is slow!!! => buffer result!
-bool recycleBinExists(const Zstring& dirpath, const std::function<void ()>& onUpdateGui); //throw FileError
+//Vista and later: dirPath must exist for a valid check!
+bool recycleBinExists(const Zstring& dirPath, const std::function<void ()>& onUpdateGui); //throw FileError
 
-void recycleOrDelete(const std::vector<Zstring>& filepaths, //throw FileError, return "true" if file/dir was actually deleted
-                     const std::function<void (const Zstring& currentItem)>& notifyDeletionStatus); //optional; currentItem may be empty
+void recycleOrDelete(const std::vector<Zstring>& filePaths, //throw FileError, return "true" if file/dir was actually deleted
+                     const std::function<void (const std::wstring& displayPath)>& onRecycleItem); //optional; currentItem may be empty
 #endif
 }
 

@@ -2,7 +2,7 @@
 Compatibility=1.1 or later
 Compiled file=..\FreeFileSync.chm
 Contents file=FreeFileSync.hhc
-Default topic=html\FreeFileSync.html
+Default topic=html\freefilesync.html
 Display compile progress=No
 Full-text search=Yes
 Language=0x409 Englisch (USA)
@@ -10,21 +10,22 @@ Title=FreeFileSync - Help
 
 
 [FILES]
-html\FreeFileSync.html
-html\Versioning.html
-html\Command Line.html
-html\Expert Settings.html
-html\Comparison Settings.html
-html\Daylight Saving Time.html
-html\Exclude Items.html
-html\External Applications.html
-html\Macros.html
-html\Schedule a Batch Job.html
-html\Synchronize with FTP.html
-html\Variable Drive Letters.html
-html\Volume Shadow Copy.html
-html\RealtimeSync.html
-html\Run as Service.html
+html\command-line.html
+html\comparison-settings.html
+html\daylight-saving-time.html
+html\exclude-items.html
+html\expert-settings.html
+html\external-applications.html
+html\freefilesync.html
+html\macros.html
+html\schedule-a-batch-job.html
+html\synchronize-with-ftp.html
+html\tips-and-tricks.html
+html\variable-drive-letters.html
+html\versioning.html
+html\volume-shadow-copy.html
+html\realtimesync.html
+html\run-as-service.html
 
 [INFOTYPES]
 

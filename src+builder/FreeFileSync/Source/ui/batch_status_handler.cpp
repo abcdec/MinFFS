@@ -5,8 +5,6 @@
 // **************************************************************************
 
 #include "batch_status_handler.h"
-#include <zen/file_access.h>
-#include <zen/file_traverser.h>
 #include <zen/shell_execute.h>
 #include <wx+/popup_dlg.h>
 #include <wx/app.h>
@@ -15,6 +13,7 @@
 #include "../lib/resolve_path.h"
 #include "../lib/status_handler_impl.h"
 #include "../lib/generate_logfile.h"
+#include "../fs/concrete.h"
 
 using namespace zen;
 
@@ -22,81 +21,100 @@ using namespace zen;
 namespace
 {
 //"Backup FreeFileSync 2013-09-15 015052.log" ->
-//"Backup FreeFileSync 2013-09-15 015052 (Error).log"
-Zstring addStatusToLogfilename(const Zstring& logfilepath, const std::wstring& status)
+//"Backup FreeFileSync 2013-09-15 015052 [Error].log"
+
+//return value always bound!
+std::pair<std::unique_ptr<ABF::OutputStream>, AbstractPathRef> prepareNewLogfile(ABF& abf, //throw FileError
+        const std::wstring& jobName,
+        const TimeComp& timeStamp,
+        const std::wstring& status)
 {
-    //attention: do not interfere with naming convention required by limitLogfileCount()!
-    size_t pos = logfilepath.rfind(Zstr('.'));
-    if (pos != Zstring::npos)
-        return Zstring(logfilepath.begin(), logfilepath.begin() + pos) +
-               utfCvrtTo<Zstring>(L" [" + status + L"]") +
-               Zstring(logfilepath.begin() + pos, logfilepath.end());
-    assert(false);
-    return logfilepath;
-}
-
-
-void limitLogfileCount(const Zstring& logdir, const std::wstring& jobname, size_t maxCount, const std::function<void()>& onUpdateStatus) //noexcept
-{
-    std::vector<Zstring> logFiles;
-    const Zstring prefix = utfCvrtTo<Zstring>(jobname);
-
-    traverseFolder(logdir, [&](const FileInfo& fi)
-    {
-        const Zstring fileName(fi.shortName);
-        if (startsWith(fileName, prefix) && endsWith(fileName, Zstr(".log")))
-            logFiles.push_back(fi.fullPath);
-
-        if (onUpdateStatus)
-            onUpdateStatus();
-    },
-    nullptr, nullptr, [&](const std::wstring& errorMsg) { assert(false); }); //errors are not really critical in this context
-
-    if (logFiles.size() <= maxCount)
-        return;
-
-    //delete oldest logfiles: take advantage of logfile naming convention to find them
-    std::nth_element(logFiles.begin(), logFiles.end() - maxCount, logFiles.end(), LessFilename());
-
-    std::for_each(logFiles.begin(), logFiles.end() - maxCount, [&](const Zstring& filepath)
-    {
-        try { removeFile(filepath); }
-        catch (FileError&) {};
-        onUpdateStatus();
-    });
-}
-
-
-std::unique_ptr<FileOutput> prepareNewLogfile(const Zstring& logfileDirectory, //throw FileError
-                                              const std::wstring& jobName,
-                                              const TimeComp& timeStamp) //return value always bound!
-{
-    Zstring logfileDir = logfileDirectory.empty() ?
-                         getConfigDir() + Zstr("Logs") :
-                         getFormattedDirectoryPath(logfileDirectory);
+    assert(!jobName.empty());
 
     //create logfile directory if required
-    makeDirectory(logfileDir); //throw FileError
+    ABF::createFolderRecursively(abf.getAbstractPath()); //throw FileError
 
     //const std::string colon = "\xcb\xb8"; //="modifier letter raised colon" => regular colon is forbidden in file names on Windows and OS X
     //=> too many issues, most notably cmd.exe is not Unicode-awere: http://sourceforge.net/p/freefilesync/discussion/open-discussion/thread/c559a5fb/
 
     //assemble logfile name
-    const Zstring body = appendSeparator(logfileDir) + utfCvrtTo<Zstring>(jobName) + Zstr(" ") + formatTime<Zstring>(Zstr("%Y-%m-%d %H%M%S"), timeStamp);
+    Zstring body = utfCvrtTo<Zstring>(jobName) + Zstr(" ") + formatTime<Zstring>(Zstr("%Y-%m-%d %H%M%S"), timeStamp);
+    if (!status.empty())
+        body += utfCvrtTo<Zstring>(L" [" + status + L"]");
 
-    //ensure uniqueness
-    Zstring filepath = body + Zstr(".log");
+    //ensure uniqueness; avoid file system race-condition!
+    Zstring logFileName = body + Zstr(".log");
     for (int i = 0;; ++i)
         try
         {
-            return zen::make_unique<FileOutput>(filepath, FileOutput::ACC_CREATE_NEW); //throw FileError, ErrorTargetExisting
-            //*no* file system race-condition!
+            const AbstractPathRef logFilePath = abf.getAbstractPath(logFileName);
+            auto outStream = ABF::getOutputStream(logFilePath, //throw FileError, ErrorTargetExisting
+                                                  nullptr, /*streamSize*/
+                                                  nullptr /*modificationTime*/);
+            return std::make_pair(std::move(outStream), logFilePath);
         }
         catch (const ErrorTargetExisting&)
         {
             if (i == 10) throw; //avoid endless recursion in pathological cases
-            filepath = body + Zstr('_') + numberTo<Zstring>(i) + Zstr(".log");
+            logFileName = body + Zstr('_') + numberTo<Zstring>(i) + Zstr(".log");
         }
+}
+
+
+struct LogTraverserCallback: public ABF::TraverserCallback
+{
+    LogTraverserCallback(std::vector<Zstring>& logFileNames, const Zstring& prefix, const std::function<void()>& onUpdateStatus) :
+        logFileNames_(logFileNames),
+        prefix_(prefix),
+        onUpdateStatus_(onUpdateStatus) {}
+
+    void onFile(const FileInfo& fi) override
+    {
+        if (pathStartsWith(fi.itemName, prefix_) && pathEndsWith(fi.itemName, Zstr(".log")))
+            logFileNames_.push_back(fi.itemName);
+
+        if (onUpdateStatus_)
+            onUpdateStatus_();
+    }
+    std::unique_ptr<TraverserCallback> onDir    (const DirInfo&     di) override { return nullptr; }
+    HandleLink                         onSymlink(const SymlinkInfo& si) override { return TraverserCallback::LINK_SKIP; }
+    HandleError reportDirError (const std::wstring& msg, size_t retryNumber)                          override { assert(false); return ON_ERROR_IGNORE; } //errors are not critical in this context
+    HandleError reportItemError(const std::wstring& msg, size_t retryNumber, const Zstring& itemName) override { assert(false); return ON_ERROR_IGNORE; } //
+
+private:
+    std::vector<Zstring>& logFileNames_; //out
+    const Zstring prefix_;
+    const std::function<void()> onUpdateStatus_;
+};
+
+
+void limitLogfileCount(ABF& abf, const std::wstring& jobname, size_t maxCount, const std::function<void()>& onUpdateStatus) //noexcept
+{
+    std::vector<Zstring> logFileNames;
+    {
+        const Zstring prefix = utfCvrtTo<Zstring>(jobname);
+        LogTraverserCallback lt(logFileNames, prefix, onUpdateStatus); //traverse source directory one level deep
+
+        ABF::traverseFolder(abf.getAbstractPath(), lt);
+    }
+
+    if (logFileNames.size() <= maxCount)
+        return;
+
+    //delete oldest logfiles: take advantage of logfile naming convention to find them
+    std::nth_element(logFileNames.begin(), logFileNames.end() - maxCount, logFileNames.end(), LessFilePath());
+
+    std::for_each(logFileNames.begin(), logFileNames.end() - maxCount, [&](const Zstring& logFileName)
+    {
+        try
+        {
+            ABF::removeFile(abf.getAbstractPath(logFileName)); //throw FileError
+        }
+        catch (FileError&) { assert(false); };
+
+        if (onUpdateStatus)
+            onUpdateStatus();
+    });
 }
 }
 
@@ -105,7 +123,7 @@ std::unique_ptr<FileOutput> prepareNewLogfile(const Zstring& logfileDirectory, /
 BatchStatusHandler::BatchStatusHandler(bool showProgress,
                                        const std::wstring& jobName,
                                        const TimeComp& timeStamp,
-                                       const Zstring& logfileDirectory, //may be empty
+                                       const Zstring& logFolderPathPhrase, //may be empty
                                        int logfilesCountLimit,
                                        size_t lastSyncsLogFileSizeMax,
                                        const xmlAccess::OnError handleError,
@@ -126,23 +144,19 @@ BatchStatusHandler::BatchStatusHandler(bool showProgress,
     automaticRetryDelay_(automaticRetryDelay),
     progressDlg(createProgressDialog(*this, [this] { this->onProgressDialogTerminate(); }, *this, nullptr, showProgress, jobName, onCompletion, onCompletionHistory)),
             jobName_(jobName),
-            startTime_(wxGetUTCTimeMillis().GetValue())
+            timeStamp_(timeStamp),
+            startTime_(std::time(nullptr)),
+            logFolderPathPhrase_(logFolderPathPhrase)
 {
-    //ATTENTION: "progressDlg" is an unmanaged resource!!! Anyway, at this point we already consider construction complete! =>
-    ScopeGuard guardConstructor = zen::makeGuard([&] { this->~BatchStatusHandler(); });
+    //ATTENTION: "progressDlg" is an unmanaged resource!!! However, at this point we already consider construction complete! =>
+    ScopeGuard constructorGuard = zen::makeGuard([&] { /*cleanup();*/ /*destructor call would lead to member double clean-up!!!*/ });
 
-    if (logfilesCountLimit != 0)
-    {
-        zen::Opt<std::wstring> errMsg = tryReportingError([&] { logFile = prepareNewLogfile(logfileDirectory, jobName, timeStamp); }, //throw FileError; return value always bound!
-                                                          *this); //throw X?
-        if (errMsg)
-            abortProcessNow(); //throw BatchAbortProcess
-    }
+    //...
 
     //if (logFile)
-    //	::wxSetEnv(L"logfile", utfCvrtTo<wxString>(logFile->getFilename()));
+    //  ::wxSetEnv(L"logfile", utfCvrtTo<wxString>(logFile->getFilename()));
 
-    guardConstructor.dismiss();
+    constructorGuard.dismiss();
 }
 
 
@@ -190,75 +204,78 @@ BatchStatusHandler::~BatchStatusHandler()
     const int totalWarnings = errorLog.getItemCount(TYPE_WARNING);
 
     //finalize error log
-    std::wstring finalStatus;
+    std::wstring status; //additionally indicate errors in log file name
+    std::wstring finalStatusMsg;
     if (abortIsRequested())
     {
         raiseReturnCode(returnCode_, FFS_RC_ABORTED);
-        finalStatus = _("Synchronization stopped");
-        errorLog.logMsg(finalStatus, TYPE_ERROR);
+        finalStatusMsg = _("Synchronization stopped");
+        errorLog.logMsg(finalStatusMsg, TYPE_ERROR);
+        status = _("Stopped");
     }
     else if (totalErrors > 0)
     {
         raiseReturnCode(returnCode_, FFS_RC_FINISHED_WITH_ERRORS);
-        finalStatus = _("Synchronization completed with errors");
-        errorLog.logMsg(finalStatus, TYPE_ERROR);
+        finalStatusMsg = _("Synchronization completed with errors");
+        errorLog.logMsg(finalStatusMsg, TYPE_ERROR);
+        status = _("Error");
     }
     else if (totalWarnings > 0)
     {
         raiseReturnCode(returnCode_, FFS_RC_FINISHED_WITH_WARNINGS);
-        finalStatus = _("Synchronization completed with warnings");
-        errorLog.logMsg(finalStatus, TYPE_WARNING);
+        finalStatusMsg = _("Synchronization completed with warnings");
+        errorLog.logMsg(finalStatusMsg, TYPE_WARNING);
+        status = _("Warning");
     }
     else
     {
         if (getObjectsTotal(PHASE_SYNCHRONIZING) == 0 && //we're past "initNewPhase(PHASE_SYNCHRONIZING)" at this point!
             getDataTotal   (PHASE_SYNCHRONIZING) == 0)
-            finalStatus = _("Nothing to synchronize"); //even if "ignored conflicts" occurred!
+            finalStatusMsg = _("Nothing to synchronize"); //even if "ignored conflicts" occurred!
         else
-            finalStatus = _("Synchronization completed successfully");
-        errorLog.logMsg(finalStatus, TYPE_INFO);
+            finalStatusMsg = _("Synchronization completed successfully");
+        errorLog.logMsg(finalStatusMsg, TYPE_INFO);
     }
 
     const SummaryInfo summary =
     {
         jobName_,
-        finalStatus,
+        finalStatusMsg,
         getObjectsCurrent(PHASE_SYNCHRONIZING), getDataCurrent(PHASE_SYNCHRONIZING),
         getObjectsTotal  (PHASE_SYNCHRONIZING), getDataTotal  (PHASE_SYNCHRONIZING),
-        (wxGetUTCTimeMillis().GetValue() - startTime_) / 1000
+        std::time(nullptr) - startTime_
     };
 
     //----------------- write results into user-specified logfile ------------------------
-    if (logFile.get()) //can be null if BatchStatusHandler constructor throws!
+    //create not before destruction: 1. avoid issues with FFS trying to sync open log file 2. simplify transactional retry on failure 3. no need to rename log file to include status
+    if (logfilesCountLimit_ != 0)
     {
+        std::unique_ptr<AbstractBaseFolder> logFileAbf = createAbstractBaseFolder(trimCpy(logFolderPathPhrase_).empty() ? getConfigDir() + Zstr("Logs") : logFolderPathPhrase_); //noexcept
+        try
+        {
+            tryReportingError([&] //errors logged here do not impact final status calculation above! => not a problem!
+            {
+                auto rv = prepareNewLogfile(*logFileAbf, jobName_, timeStamp_, status); //throw FileError; return value always bound!
+                ABF::OutputStream&    logFileStream = *rv.first;
+                const AbstractPathRef logFilePath   = rv.second;
+
+                saveLogToFile(summary, errorLog, logFileStream, OnUpdateLogfileStatusNoThrow(*this, ABF::getDisplayPath(logFilePath))); //throw FileError
+                logFileStream.finalize([&] { try { requestUiRefresh(); } catch (...) {} }); //throw FileError
+            }, *this); //throw X?
+        }
+        catch (...) {}
+
         if (logfilesCountLimit_ > 0)
         {
             try { reportStatus(_("Cleaning up old log files...")); }
             catch (...) {}
-            limitLogfileCount(beforeLast(logFile->getFilename(), FILE_NAME_SEPARATOR), jobName_, logfilesCountLimit_, [&] { try { requestUiRefresh(); } catch (...) {} }); //noexcept
+            limitLogfileCount(*logFileAbf, jobName_, logfilesCountLimit_, [&] { try { requestUiRefresh(); } catch (...) {} }); //noexcept
         }
-
-        try
-        {
-            saveLogToFile(summary, errorLog, *logFile, OnUpdateLogfileStatusNoThrow(*this, logFile->getFilename())); //throw FileError
-
-            //additionally notify errors by showing in log file name
-            const Zstring oldLogfilepath = logFile->getFilename();
-            logFile.reset();
-
-            if (abortIsRequested())
-                renameFile(oldLogfilepath, addStatusToLogfilename(oldLogfilepath, _("Stopped"))); //throw FileError
-            else if (totalErrors > 0)
-                renameFile(oldLogfilepath, addStatusToLogfilename(oldLogfilepath, _("Error"))); //throw FileError
-            else if (totalWarnings > 0)
-                renameFile(oldLogfilepath, addStatusToLogfilename(oldLogfilepath, _("Warning"))); //throw FileError
-        }
-        catch (FileError&) { assert(false); }
     }
     //----------------- write results into LastSyncs.log------------------------
     try
     {
-        saveToLastSyncsLog(summary, errorLog, lastSyncsLogFileSizeMax_, OnUpdateLogfileStatusNoThrow(*this, getLastSyncsLogfilePath())); //throw FileError
+        saveToLastSyncsLog(summary, errorLog, lastSyncsLogFileSizeMax_, OnUpdateLogfileStatusNoThrow(*this, utfCvrtTo<std::wstring>(getLastSyncsLogfilePath()))); //throw FileError
     }
     catch (FileError&) { assert(false); }
 
@@ -271,7 +288,7 @@ BatchStatusHandler::~BatchStatusHandler()
 
             //notify to progressDlg that current process has ended
             if (abortIsRequested())
-                progressDlg->processHasFinished(SyncProgressDialog::RESULT_ABORTED, errorLog);  //enable okay and close events
+                progressDlg->processHasFinished(SyncProgressDialog::RESULT_ABORTED, errorLog); //enable okay and close events
             else if (totalErrors > 0)
                 progressDlg->processHasFinished(SyncProgressDialog::RESULT_FINISHED_WITH_ERROR, errorLog);
             else if (totalWarnings > 0)
@@ -288,7 +305,7 @@ BatchStatusHandler::~BatchStatusHandler()
         while (progressDlg)
         {
             wxTheApp->Yield(); //*first* refresh GUI (removing flicker) before sleeping!
-            boost::this_thread::sleep(boost::posix_time::milliseconds(UI_UPDATE_INTERVAL));
+            std::this_thread::sleep_for(std::chrono::milliseconds(UI_UPDATE_INTERVAL));
         }
     }
 }
@@ -382,7 +399,7 @@ ProcessCallback::Response BatchStatusHandler::reportError(const std::wstring& er
         {
             reportStatus(_("Error") + L": " + _P("Automatic retry in 1 second...", "Automatic retry in %x seconds...",
                                                  (1000 * automaticRetryDelay_ - i * UI_UPDATE_INTERVAL + 999) / 1000)); //integer round up
-            boost::this_thread::sleep(boost::posix_time::milliseconds(UI_UPDATE_INTERVAL));
+            std::this_thread::sleep_for(std::chrono::milliseconds(UI_UPDATE_INTERVAL));
         }
         return ProcessCallback::RETRY;
     }
@@ -485,7 +502,7 @@ void BatchStatusHandler::forceUiRefresh()
 void BatchStatusHandler::abortProcessNow()
 {
     requestAbortion(); //just make sure...
-    throw BatchAbortProcess();  //abort can be triggered by progressDlg
+    throw BatchAbortProcess(); //abort can be triggered by progressDlg
 }
 
 

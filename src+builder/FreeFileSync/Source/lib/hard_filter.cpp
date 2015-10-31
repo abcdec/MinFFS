@@ -27,7 +27,7 @@ bool zen::operator<(const HardFilter& lhs, const HardFilter& rhs)
 namespace
 {
 //constructing them in addFilterEntry becomes perf issue for large filter lists
-const Zstring asterisk(Zstr("*"));
+const Zstring asterisk            = Zstr("*");
 const Zstring sepAsterisk         = FILE_NAME_SEPARATOR + asterisk;
 const Zstring asteriskSep         = asterisk + FILE_NAME_SEPARATOR;
 const Zstring asteriskSepAsterisk = asteriskSep + asterisk;
@@ -35,8 +35,11 @@ const Zstring asteriskSepAsterisk = asteriskSep + asterisk;
 
 void addFilterEntry(const Zstring& filterPhrase, std::vector<Zstring>& masksFileFolder, std::vector<Zstring>& masksFolder)
 {
-#if defined ZEN_WIN || defined ZEN_MAC
-    const Zstring& filterFmt= makeUpperCopy(filterPhrase); //Windows does NOT distinguish between upper/lower-case
+#if defined ZEN_WIN
+    const Zstring& filterFmt = replaceCpy(makeUpperCopy(filterPhrase), L'/', FILE_NAME_SEPARATOR);
+    //Windows does NOT distinguish between upper/lower-case, or between slash and backslash
+#elif defined ZEN_MAC
+    const Zstring& filterFmt = makeUpperCopy(filterPhrase);
 #elif defined ZEN_LINUX
     const Zstring& filterFmt = filterPhrase; //Linux DOES distinguish between upper/lower-case: nothing to do here
 #endif
@@ -49,7 +52,7 @@ void addFilterEntry(const Zstring& filterPhrase, std::vector<Zstring>& masksFile
     | \*\*    | remove \
     +---------+--------
     | *blah   |
-    | *\blah  |	-> add blah
+    | *\blah  | -> add blah
     | *\*blah | -> add *blah
     +---------+--------
     | blah\   | remove \; folder only
@@ -66,7 +69,7 @@ void addFilterEntry(const Zstring& filterPhrase, std::vector<Zstring>& masksFile
         if (endsWith(phrase, FILE_NAME_SEPARATOR) || //only relevant for folder filtering
             endsWith(phrase, sepAsterisk)) // abc\*
         {
-            const Zstring dirPhrase = beforeLast(phrase, FILE_NAME_SEPARATOR);
+            const Zstring dirPhrase = beforeLast(phrase, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
             if (!dirPhrase.empty())
                 masksFolder.push_back(dirPhrase);
         }
@@ -75,12 +78,12 @@ void addFilterEntry(const Zstring& filterPhrase, std::vector<Zstring>& masksFile
     };
 
     if (startsWith(filterFmt, FILE_NAME_SEPARATOR)) // \abc
-        processTail(afterFirst(filterFmt, FILE_NAME_SEPARATOR));
+        processTail(afterFirst(filterFmt, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
     else
     {
         processTail(filterFmt);
         if (startsWith(filterFmt, asteriskSep)) // *\abc
-            processTail(afterFirst(filterFmt, asteriskSep));
+            processTail(afterFirst(filterFmt, asteriskSep, IF_MISSING_RETURN_NONE));
     }
 }
 
@@ -218,14 +221,6 @@ bool matchesMaskBegin(const Zstring& name, const std::vector<Zstring>& masks)
 {
     return std::any_of(masks.begin(), masks.end(), [&](const Zstring& mask) { return matchesMaskBegin(name.c_str(), mask.c_str()); });
 }
-
-
-inline
-void removeDuplicates(std::vector<Zstring>& v)
-{
-    std::sort(v.begin(), v.end());
-    v.erase(std::unique(v.begin(), v.end()), v.end());
-}
 }
 
 
@@ -288,9 +283,9 @@ bool NameFilter::passFileFilter(const Zstring& relFilePath) const
 }
 
 
-bool NameFilter::passDirFilter(const Zstring& relDirPath, bool* subObjMightMatch) const
+bool NameFilter::passDirFilter(const Zstring& relDirPath, bool* childItemMightMatch) const
 {
-    assert(!subObjMightMatch || *subObjMightMatch == true); //check correct usage
+    assert(!childItemMightMatch || *childItemMightMatch == true); //check correct usage
 
 #if defined ZEN_WIN || defined ZEN_MAC //Windows does NOT distinguish between upper/lower-case
     const Zstring& pathFmt = makeUpperCopy(relDirPath);
@@ -301,18 +296,18 @@ bool NameFilter::passDirFilter(const Zstring& relDirPath, bool* subObjMightMatch
     if (matchesMask<AnyMatch>(pathFmt, excludeMasksFileFolder) ||
         matchesMask<AnyMatch>(pathFmt, excludeMasksFolder))
     {
-        if (subObjMightMatch)
-            *subObjMightMatch = false; //perf: no need to traverse deeper; subfolders/subfiles would be excluded by filter anyway!
+        if (childItemMightMatch)
+            *childItemMightMatch = false; //perf: no need to traverse deeper; subfolders/subfiles would be excluded by filter anyway!
         /*
-        Attention: the design choice that "subObjMightMatch" is optional implies that the filter must provide correct results no matter if this
-        value is considered by the client! In particular, if *subObjMightMatch == false, then any filter evaluations for child items must
+        Attention: the design choice that "childItemMightMatch" is optional implies that the filter must provide correct results no matter if this
+        value is considered by the client! In particular, if *childItemMightMatch == false, then any filter evaluations for child items must
         also return "false"!
-        This is not a problem for folder traversal which stops at the first *subObjMightMatch == false anyway, but other code continues recursing further,
+        This is not a problem for folder traversal which stops at the first *childItemMightMatch == false anyway, but other code continues recursing further,
         e.g. the database update code in db_file.cpp recurses unconditionally without filter check! It's possible to construct edge cases with incorrect
-        behavior if "subObjMightMatch" were not optional:
-        	1. two folders including a sub folder with some files are in sync with up-to-date database files
-        	2. deny access to this sub folder on both sides and start sync ignoring errors
-        	3. => database entries of this sub folder are incorrectly deleted! (if sub-folder is excluded, but child items are not!)
+        behavior if "childItemMightMatch" were not optional:
+            1. two folders including a sub folder with some files are in sync with up-to-date database files
+            2. deny access to this sub folder on both sides and start sync ignoring errors
+            3. => database entries of this sub folder are incorrectly deleted! (if sub-folder is excluded, but child items are not!)
         */
         return false;
     }
@@ -320,12 +315,12 @@ bool NameFilter::passDirFilter(const Zstring& relDirPath, bool* subObjMightMatch
     if (!matchesMask<AnyMatch>(pathFmt, includeMasksFileFolder) &&
         !matchesMask<AnyMatch>(pathFmt, includeMasksFolder))
     {
-        if (subObjMightMatch)
+        if (childItemMightMatch)
         {
             const Zstring& childPathBegin = pathFmt + FILE_NAME_SEPARATOR;
 
-            *subObjMightMatch = matchesMaskBegin(childPathBegin, includeMasksFileFolder) || //might match a file  or folder in subdirectory
-                                matchesMaskBegin(childPathBegin, includeMasksFolder);       //
+            *childItemMightMatch = matchesMaskBegin(childPathBegin, includeMasksFileFolder) || //might match a file  or folder in subdirectory
+                                   matchesMaskBegin(childPathBegin, includeMasksFolder);       //
         }
         return false;
     }
@@ -336,10 +331,8 @@ bool NameFilter::passDirFilter(const Zstring& relDirPath, bool* subObjMightMatch
 
 bool NameFilter::isNull(const Zstring& includePhrase, const Zstring& excludePhrase)
 {
-    Zstring include = includePhrase;
-    Zstring exclude = excludePhrase;
-    trim(include);
-    trim(exclude);
+    const Zstring include = trimCpy(includePhrase);
+    const Zstring exclude = trimCpy(excludePhrase);
 
     return include == Zstr("*") && exclude.empty();
     //return NameFilter(includePhrase, excludePhrase).isNull(); -> very expensive for huge lists

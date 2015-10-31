@@ -109,31 +109,41 @@ private:
 
 
 //enlarge value range to display to a multiple of a "useful" block size
-void widenRange(double& valMin, double& valMax, //in/out
-                int& blockCount, //out
-                int graphAreaSize,      //in pixel
-                int optimalBlockSizePx, //
-                const LabelFormatter& labelFmt)
+//returns block cound
+int widenRange(double& valMin, double& valMax, //in/out
+               int graphAreaSize,      //in pixel
+               int optimalBlockSizePx, //
+               const LabelFormatter& labelFmt)
 {
-    if (graphAreaSize > 0)
+    if (graphAreaSize <= 0) return 0;
+
+    const double minValRangePerBlock      = (valMax - valMin) / graphAreaSize;
+    const double proposedValRangePerBlock = (valMax - valMin) * optimalBlockSizePx / graphAreaSize;
+    double valRangePerBlock = labelFmt.getOptimalBlockSize(proposedValRangePerBlock);
+    assert(numeric::isNull(proposedValRangePerBlock) || valRangePerBlock > minValRangePerBlock);
+
+    if (numeric::isNull(valRangePerBlock)) //valMin == valMax or strange "optimal block size"
+        return 1;
+
+    //don't allow sub-pixel blocks! => avoid erroneously high GDI render work load!
+    if (valRangePerBlock < minValRangePerBlock)
+        valRangePerBlock = std::ceil(minValRangePerBlock / valRangePerBlock) * valRangePerBlock;
+
+    double blockMin = std::floor(valMin / valRangePerBlock); //store as double, not int: truncation possible, e.g. if valRangePerBlock == 1
+    double blockMax = std::ceil (valMax / valRangePerBlock); //
+    int blockCount = numeric::round(blockMax - blockMin);
+    assert(blockCount >= 0);
+
+    //handle valMin == valMax == integer
+    if (blockCount <= 0)
     {
-        double valRangePerBlock = (valMax - valMin) * optimalBlockSizePx / graphAreaSize; //proposal
-        valRangePerBlock = labelFmt.getOptimalBlockSize(valRangePerBlock);
-        if (numeric::isNull(valRangePerBlock)) //handle valMin == valMax
-            valRangePerBlock = 1;
-        warn_static("/|  arbitrary!?")
-
-        int blockMin = std::floor(valMin / valRangePerBlock);
-        int blockMax = std::ceil (valMax / valRangePerBlock);
-        if (blockMin == blockMax) //handle valMin == valMax == integer
-            ++blockMax;
-
-        valMin = blockMin * valRangePerBlock;
-        valMax = blockMax * valRangePerBlock;
-        blockCount = blockMax - blockMin;
-        return;
+        ++blockMax;
+        blockCount = 1;
     }
-    blockCount = 0;
+
+    valMin = blockMin * valRangePerBlock;
+    valMax = blockMax * valRangePerBlock;
+    return blockCount;
 }
 
 
@@ -443,7 +453,7 @@ void Graph2D::onPaintEvent(wxPaintEvent& event)
 
 void Graph2D::OnMouseLeftDown(wxMouseEvent& event)
 {
-    activeSel = zen::make_unique<MouseSelection>(*this, event.GetPosition());
+    activeSel = std::make_unique<MouseSelection>(*this, event.GetPosition());
 
     if (!event.ControlDown())
         oldSel.clear();
@@ -591,16 +601,17 @@ void Graph2D::render(wxDC& dc) const
                 maxX = std::max(maxX, rangeX.second);
         }
 
+    const wxSize minimalBlockSizePx = dc.GetTextExtent(L"00");
+
     if (minX <= maxX && maxX - minX < std::numeric_limits<double>::infinity()) //valid x-range
     {
         int blockCountX = 0;
         //enlarge minX, maxX to a multiple of a "useful" block size
         if (attr.labelposX != X_LABEL_NONE && attr.labelFmtX.get())
-            widenRange(minX, maxX, //in/out
-                       blockCountX, //out
-                       graphArea.width,
-                       dc.GetTextExtent(L"100000000000000").GetWidth(),
-                       *attr.labelFmtX);
+            blockCountX = widenRange(minX, maxX, //in/out
+                                     graphArea.width,
+                                     minimalBlockSizePx.GetWidth() * 7,
+                                     *attr.labelFmtX);
 
         //get raw values + detect y value range
         double minY = attr.minYauto ?  std::numeric_limits<double>::infinity() : attr.minY; //automatic: ensure values are initialized by first curve
@@ -636,11 +647,10 @@ void Graph2D::render(wxDC& dc) const
             int blockCountY = 0;
             //enlarge minY, maxY to a multiple of a "useful" block size
             if (attr.labelposY != Y_LABEL_NONE && attr.labelFmtY.get())
-                widenRange(minY, maxY, //in/out
-                           blockCountY, //out
-                           graphArea.height,
-                           3 * dc.GetTextExtent(L"1").GetHeight(),
-                           *attr.labelFmtY);
+                blockCountY = widenRange(minY, maxY, //in/out
+                                         graphArea.height,
+                                         minimalBlockSizePx.GetHeight() * 3,
+                                         *attr.labelFmtY);
 
             if (graphArea.width <= 1 || graphArea.height <= 1) return;
             const ConvertCoord cvrtX(minX, maxX, graphArea.width  - 1); //map [minX, maxX] to [0, pixelWidth - 1]
