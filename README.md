@@ -24,7 +24,7 @@ A FreeFileSync modified for MinGW Build
 ## How to build
 
 ### Prerequisites
-- A modern PC running Microsoft Windows 7 or 8.1 OS with sufficient diskspace
+- A modern PC running Microsoft Windows 7, 8.1 or 10 OS with sufficient diskspace
 - Internet connection to download required build toolsets
 - Some ideas how Windows, MinGW, Boost and other building environment work, and skill set to be able to troubleshoot.
   - It would be quite frustrating and time consuming experience if something goes wrong.
@@ -79,8 +79,8 @@ NOTE: After initial installation, if MinGW toolset version is updated for any re
 Using MinGW, build Boost libraries.  The following is the step by step instruction.
 
   - Download Boost source zip https://www.boost.org/.  Pre-built binaries are not for MinGW, you will need to download source and build for MinGW.
-    - The download package is like boost_1.57.0.zip found at http://sourceforge.net/projects/boost/files/boost/1.57.0. Note that the size of distribution package is relatively large (for example, boost-1.57.0.zip is 110.5MB) so download might take some time.
-  - Create a tempoary build directory and unpack ZIP.  This README assumes the temporary build directory as D:\Builds and unpacked sources are under D:\Builds\boost_1_57_0.  Intallation target directory will be C:\Boost by default. (If changed, please substitue all "C:\Boost" in this README with absolute path of your actual installation directory.    It is strongly suggested to install Boost in a directory without white space in the path name string. e.g. avoid installing under "C:\Program Files".)
+    - The download package is like boost_1_58_0.zip found at http://sourceforge.net/projects/boost/files/boost/1.58.0. Note that the size of distribution package is relatively large (for example, boost-1_58_0.zip is 123.1 MB) so download might take some time.
+  - Create a tempoary build directory and unpack ZIP.  This README assumes the temporary build directory as D:\Builds and unpacked sources are under D:\Builds\boost_1_58_0.  Intallation target directory will be C:\Boost by default. (If changed, please substitue all "C:\Boost" in this README with absolute path of your actual installation directory.    It is strongly suggested to install Boost in a directory without white space in the path name string. e.g. avoid installing under "C:\Program Files".)
     - Expanding zip package also takes quite long time.  Please be patient.
   - If not done yet, set up environment variable PATH to include MinGW binary path (C:\MinGW\bin)
 ```
@@ -89,13 +89,13 @@ Using MinGW, build Boost libraries.  The following is the step by step instructi
   - Change current directory to boost build directory and run bootstrap.bat.
 ```
     C:\> D:
-    D:\> cd D:\Builds\boost-1.57.0
-    D:\Builds\boost-1.57.0> bootstrap.bat mingw
+    D:\> cd D:\Builds\boost_1_58_0
+    D:\Builds\boost_1_58_0> bootstrap.bat mingw
 ```
   - bootstrap.bat will create b2.exe.  Run b2 to build and install package.
     - Building boost libraries also takes quite long time.  Please be patient.
 ```
-    D:\Builds\boost-1.57.0> b2 toolset=gcc variant=release threading=multi --without-mpi --without-python install
+    D:\Builds\boost_1_58_0> b2 toolset=gcc variant=release threading=multi --without-mpi --without-python install
 ```
 
 NOTE: If MinGW toolset version is updated for any reason, it is recommended to rebuild Boost libraries from scratch to avoid unnecessary troubles.
@@ -136,7 +136,7 @@ Once all dependent toolsets have been installed, use the following steps to buil
     - MINGW_ROOT: MinGW installation directory (C:\MinGW in this README)
     - WXWGT_ROOT: wxWidget installation directory (C:\wxWidgets in this README)
     - BOOST_ROOT: Boost installation directory (C:\Boost in this README)
-    - BOOST_VER: Boost version installed. (1_57 in this README)
+    - BOOST_VER: Boost version installed. (1_58 in this README)
     - BOOST_MINGW: MinGW version string in Boost libarry name. (mgw48 for MinGW 4.8 in this README)
   - Run b.bat to build binary MinFFS.exe
   - Run x.bat to run built MinFFS.exe.  It will copy necessary files to bin-debug and launch MinFFS.exe from bin-debug.
@@ -149,32 +149,34 @@ Once all dependent toolsets have been installed, use the following steps to buil
   - Run c.bat to clean up build.
 
 NOTE: When compiling, if the following error is seen, it is a MinGW bug http://ehc.ac/p/mingw/bugs/2250/ and need to manually update MinGW header.
+
 ...
-c:\mingw\include\math.h: In function 'float hypotf(float, float)':
-c:\mingw\include\math.h:635:30: error: '_hypot' was not declared in this scope
- { return (float)(_hypot (x, y)); }
+    c:\mingw\include\math.h: In function 'float hypotf(float, float)':
+    c:\mingw\include\math.h:635:30: error: '_hypot' was not declared in this scope
+    { return (float)(_hypot (x, y)); }
 ...
 
 Example of modification to get MinFFS compiled is as follows (but not sure if it works for all cases, please use a fixed version of MinGW as appropriate.)
+
 ...
-*** math.h      2015-10-25 14:50:00.285749700 -0500
---- math.h-fixed        2015-10-25 14:48:36.130069200 -0500
-***************
-*** 631,636 ****
---- 631,637 ----
-  extern double __cdecl hypot (double, double); /* in libmoldname.a */
-  extern float __cdecl hypotf (float, float);
-  #ifndef __NO_INLINE__
-+ _CRTIMP double __cdecl _hypot (double, double);
-  __CRT_INLINE float __cdecl hypotf (float x, float y)
-  { return (float)(_hypot (x, y)); }
-  #endif
+    *** math.h      2015-10-25 14:50:00.285749700 -0500
+    --- math.h-fixed        2015-10-25 14:48:36.130069200 -0500
+    ***************
+    *** 631,636 ****
+    --- 631,637 ----
+      extern double __cdecl hypot (double, double); /* in libmoldname.a */
+      extern float __cdecl hypotf (float, float);
+      #ifndef __NO_INLINE__
+    + _CRTIMP double __cdecl _hypot (double, double);
+      __CRT_INLINE float __cdecl hypotf (float x, float y)
+      { return (float)(_hypot (x, y)); }
+      #endif
 ...	    
 
 
 ### Toolset Versions
 
-As of Dec 31, 2014, MinFFS binary distribution is built by the following toolsets versions.
+As of Oct 30, 2015, MinFFS binary distribution is built by the following toolsets versions.
 
   - MinGW 4.8.1
   - wxWidgets 3.0.2

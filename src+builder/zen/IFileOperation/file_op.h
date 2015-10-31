@@ -26,12 +26,10 @@
 
 namespace fileop
 {
-    // freeString should actually be void, but making it to be the sam as
-    // getLockingProcesses in order to make funciton object work. keep
-    // this until a better solution is found...
+    // freeString is not compiled right now (as of 6.15 porting)
+    // TODO to clean up freeString issue. 10/31/2015
     typedef wchar_t* (*FunType_freeString)(const wchar_t*);
     typedef wchar_t* (*FunType_getLastErrorMessage)(void);
-    //typedef wchar_t* (*FunType_getLockingProcesses)(const wchar_t*);
     typedef wchar_t* (*FunType_getLockingProcesses)(const wchar_t*, const wchar_t*);
     typedef bool (*FunType_getRecycleBinStatus)(const wchar_t *, bool&);
     typedef bool (*FunType_moveToRecycleBin)(const wchar_t**,
