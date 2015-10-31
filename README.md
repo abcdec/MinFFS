@@ -78,6 +78,8 @@ NOTE: After initial installation, if MinGW toolset version is updated for any re
 
 Using MinGW, build Boost libraries.  The following is the step by step instruction.
 
+NOTE: There is an issue of compiling MinFFS using boost 1.59.  Use of different version is recommended for MinFFS.
+
   - Download Boost source zip https://www.boost.org/.  Pre-built binaries are not for MinGW, you will need to download source and build for MinGW.
     - The download package is like boost_1_58_0.zip found at http://sourceforge.net/projects/boost/files/boost/1.58.0. Note that the size of distribution package is relatively large (for example, boost-1_58_0.zip is 123.1 MB) so download might take some time.
   - Create a tempoary build directory and unpack ZIP.  This README assumes the temporary build directory as D:\Builds and unpacked sources are under D:\Builds\boost_1_58_0.  Intallation target directory will be C:\Boost by default. (If changed, please substitue all "C:\Boost" in this README with absolute path of your actual installation directory.    It is strongly suggested to install Boost in a directory without white space in the path name string. e.g. avoid installing under "C:\Program Files".)
@@ -150,15 +152,15 @@ Once all dependent toolsets have been installed, use the following steps to buil
 
 NOTE: When compiling, if the following error is seen, it is a MinGW bug http://ehc.ac/p/mingw/bugs/2250/ and need to manually update MinGW header.
 
-...
+```
     c:\mingw\include\math.h: In function 'float hypotf(float, float)':
     c:\mingw\include\math.h:635:30: error: '_hypot' was not declared in this scope
     { return (float)(_hypot (x, y)); }
-...
+```
 
 Example of modification to get MinFFS compiled is as follows (but not sure if it works for all cases, please use a fixed version of MinGW as appropriate.)
 
-...
+```
     *** math.h      2015-10-25 14:50:00.285749700 -0500
     --- math.h-fixed        2015-10-25 14:48:36.130069200 -0500
     ***************
@@ -171,7 +173,7 @@ Example of modification to get MinFFS compiled is as follows (but not sure if it
       __CRT_INLINE float __cdecl hypotf (float x, float y)
       { return (float)(_hypot (x, y)); }
       #endif
-...	    
+```
 
 
 ### Toolset Versions
