@@ -36,14 +36,24 @@ public:
         if (!win7OrLater()) //check *before* trying to load DLL
             throw TaskbarNotAvailable();
 
+        freeString_  = DllFun<FunType_freeString >(getDllName(), funName_freeString);
         setStatus_   = DllFun<FunType_setStatus  >(getDllName(), funName_setStatus);
         setProgress_ = DllFun<FunType_setProgress>(getDllName(), funName_setProgress);
 
-        if (!assocWindow || !setStatus_ || !setProgress_)
+        if (!assocWindow || !freeString_ || !setStatus_ || !setProgress_)
             throw TaskbarNotAvailable();
     }
 
-    ~Pimpl() { setStatus_(assocWindow, tbseven::STATUS_NOPROGRESS); }
+    ~Pimpl()
+    {
+        const wchar_t* errorMsg = nullptr;
+        setStatus_(assocWindow, tbseven::STATUS_NOPROGRESS, errorMsg);
+        if (errorMsg)
+        {
+            ZEN_ON_SCOPE_EXIT(freeString_(errorMsg));
+            assert(false);
+        }
+    }
 
     void setStatus(Status status)
     {
@@ -64,16 +74,30 @@ public:
                 break;
         }
 
-        setStatus_(assocWindow, tbSevenStatus);
+        const wchar_t* errorMsg = nullptr;
+        setStatus_(assocWindow, tbSevenStatus, errorMsg);
+        if (errorMsg)
+        {
+            ZEN_ON_SCOPE_EXIT(freeString_(errorMsg));
+            assert(false);
+        }
     }
 
     void setProgress(double fraction)
     {
-        setProgress_(assocWindow, fraction * 100000, 100000);
+        const wchar_t* errorMsg = nullptr;
+        setProgress_(assocWindow, fraction * 100000, 100000, errorMsg);
+        if (errorMsg)
+        {
+            ZEN_ON_SCOPE_EXIT(freeString_(errorMsg));
+            assert(false);
+        }
     }
 
 private:
     void* const assocWindow; //HWND
+
+    DllFun<FunType_freeString>  freeString_;
     DllFun<FunType_setStatus>   setStatus_;
     DllFun<FunType_setProgress> setProgress_;
 };
@@ -170,7 +194,7 @@ public:
 
 //########################################################################################################
 
-Taskbar::Taskbar(const wxFrame& window) : pimpl_(zen::make_unique<Pimpl>(window)) {} //throw TaskbarNotAvailable
+Taskbar::Taskbar(const wxFrame& window) : pimpl_(std::make_unique<Pimpl>(window)) {} //throw TaskbarNotAvailable
 Taskbar::~Taskbar() {}
 
 void Taskbar::setStatus(Status status) { pimpl_->setStatus(status); }

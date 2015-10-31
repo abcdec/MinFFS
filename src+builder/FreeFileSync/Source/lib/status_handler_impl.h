@@ -11,6 +11,7 @@
 #include <zen/file_error.h>
 #include "../process_callback.h"
 
+
 namespace zen
 {
 template <typename Function> inline
@@ -40,9 +41,6 @@ class StatisticsReporter
 {
 public:
     StatisticsReporter(int itemsExpected, std::int64_t bytesExpected, ProcessCallback& cb) :
-        taskCancelled(true),
-        itemsReported(),
-        bytesReported(),
         itemsExpected_(itemsExpected),
         bytesExpected_(bytesExpected),
         cb_(cb) {}
@@ -51,6 +49,10 @@ public:
     {
         if (taskCancelled)
             cb_.updateTotalData(itemsReported, bytesReported); //=> unexpected increase of total workload
+        else
+            //update statistics to consider the real amount of data, e.g. more than the "file size" for ADS streams,
+            //less for sparse and compressed files,  or file changed in the meantime!
+            cb_.updateTotalData(itemsReported - itemsExpected_, bytesReported - bytesExpected_); //noexcept!
     }
 
     void reportDelta(int itemsDelta, std::int64_t bytesDelta) //may throw!
@@ -77,16 +79,13 @@ public:
     void reportFinished() //nothrow!
     {
         assert(taskCancelled);
-        //update statistics to consider the real amount of data, e.g. more than the "file size" for ADS streams,
-        //less for sparse and compressed files,  or file changed in the meantime!
-        cb_.updateTotalData(itemsReported - itemsExpected_, bytesReported - bytesExpected_); //noexcept!
         taskCancelled = false;
     }
 
 private:
-    bool taskCancelled;
-    int itemsReported;
-    std::int64_t bytesReported;
+    bool taskCancelled = true;
+    int itemsReported = 0;
+    std::int64_t bytesReported = 0;
     const int itemsExpected_;
     const std::int64_t bytesExpected_;
     ProcessCallback& cb_;

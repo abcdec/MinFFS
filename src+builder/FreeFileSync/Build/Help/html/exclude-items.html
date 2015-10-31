@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<link rel="stylesheet" type="text/css" href="base.css" >
+	<title>Exclude Items</title>
+</head>
+
+<body>
+	<h1>Exclude Items</h1>
+
+	<p>
+		<img src="../images/filter.png" alt="File exclude filter"><br>
+		<br>
+		Files and directories are only considered for synchronization if they pass
+		all filter rules. They have to match <b>at least one</b> entry in the
+		include list and <b>none</b> of the entries in the exclude list as presented in the filter configuration dialog:
+	</p>
+
+	<div class="box-outer"><div class="greybox"><div class="box-inner">
+		<ul style="margin: 0">
+		<li>Each list item must be a file or directory path <b>relative</b> to synchronization base directories.
+			
+		<li>Multiple items must be separated by <b>;</b> or a new line.
+			
+		<li>Wild cards <b>*</b> and <b>?</b> may be used: <b>*</b> means zero or more characters while <b>?</b> represents exactly one character.
+		</ul>
+	</div></div></div>	
+	<br>
+	<br>
+
+	<h2>Example: <span style="font-weight:normal">Exclude items for mirror-sync from <span class="file-path">C:\Source</span> to <span class="file-path">D:\Target</span></span></h2>
+
+	<div class="box-outer"><div class="greybox"><div class="box-inner">
+		<table style="border-spacing:0;">
+			<tr>
+				<th><b>Description</b></th>
+				<th><b>Filter phrase</b></th>
+			</tr>
+			<tr>
+				<td>Single file <span class="file-path">C:\Source\file.txt</span></td>
+				<td><span class="file-path">\file.txt</span></td>
+			</tr>
+			<tr>
+				<td>Single folder <span class="file-path">C:\Source\SubFolder</span></td>
+				<td><span class="file-path">\SubFolder\</span></td>
+			</tr>
+			<tr>
+				<td>All files (and folders) named <span class="file-path">thumbs.db</span></td>
+				<td><span class="file-path">*\thumbs.db</span></td>
+			</tr>
+			<tr>
+				<td>All <span class="file-path">*.tmp</span> files located in <span class="file-path">SubFolder</span> only</td>
+				<td><span class="file-path">\SubFolder\*.tmp</span></td>
+			</tr>
+			<tr>
+				<td>Files and folders containing <span class="file-path">temp</span> somewhere in their path</td>
+				<td><span class="file-path">*temp*</span></td>
+			</tr>
+			<tr>
+				<td>Multiple entries separated by semicolon</td>
+				<td><span class="file-path">*.tmp; *.doc; *.bak</span></td>
+			</tr>
+			<tr>
+				<td>Exclude all subdirectories of the base directories</td>
+				<td><span class="file-path">*\</span></td>
+			</tr>
+			<tr>
+				<td>Exclude only <span class="file-path">*.txt</span> files located in subdirectories of base directories</td>
+				<td><span class="file-path">\*\*.txt</span></td>
+			</tr>				
+		</table>
+	</div></div></div>	
+	<br>
+
+	<div class="box-outer"><div class="bluebox"><div class="box-inner">
+		<b>Note</b>
+		<ul style="margin: 0">
+			<li>For simple exclusions just right-click and exclude one item or a list
+			of items directly via the context menu on main dialog.
+			
+			<li>A filter phrase is compared against
+			<b>both</b> file and directory paths. If you want to consider directories
+			only, you can give a hint by appending a path separator.
+			
+			<li>On Windows both slash (<b>/</b>) and backslash (<b>\</b>) may be used as path separator characters.
+		</ul>		
+	</div></div></div>
+</body>
+</html>

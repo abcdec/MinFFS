@@ -19,6 +19,8 @@
 #include "../lib/ffs_paths.h"
 #include "../lib/return_codes.h"
 #include "../lib/error_log.h"
+#include "../lib/help_provider.h"
+#include "../lib/resolve_path.h"
 
 #ifdef ZEN_WIN
     #include <zen/win_ver.h>
@@ -36,20 +38,6 @@ IMPLEMENT_APP(Application);
 
 namespace
 {
-/*
-boost::thread::id mainThreadId = boost::this_thread::get_id();
-
-void onTerminationRequested()
-{
-std::wstring msg = boost::this_thread::get_id() == mainThreadId ?
-                   L"Termination requested in main thread!\n\n" :
-                   L"Termination requested in worker thread!\n\n";
-msg += L"Please file a bug report at: http://sourceforge.net/projects/freefilesync";
-
-wxSafeShowMessage(_("An exception occurred"), msg);
-std::abort();
-}
-*/
 #ifdef _MSC_VER
 void crtInvalidParameterHandler(const wchar_t* expression, const wchar_t* function, const wchar_t* file, unsigned int line, uintptr_t pReserved) { assert(false); }
 #endif
@@ -60,8 +48,6 @@ const wxEventType EVENT_ENTER_EVENT_LOOP = wxNewEventType();
 
 bool Application::OnInit()
 {
-    //std::set_terminate(onTerminationRequested); //unlike wxWidgets uncaught exception handling, this works for all worker threads
-
 #ifdef ZEN_WIN
 #ifdef _MSC_VER
     _set_invalid_parameter_handler(crtInvalidParameterHandler); //see comment in <zen/time.h>
@@ -102,6 +88,7 @@ bool Application::OnInit()
 
 int Application::OnExit()
 {
+    uninitializeHelp();
     releaseWxLocale();
     return wxApp::OnExit();
 }
@@ -126,21 +113,21 @@ void Application::onEnterEventLoop(wxEvent& event)
     std::vector<Zstring> commandArgs;
     for (int i = 1; i < argc; ++i)
     {
-        Zstring filepath = toZ(argv[i]);
+        Zstring filePath = getResolvedFilePath(toZ(argv[i]));
 
-        if (!fileExists(filepath)) //be a little tolerant
+        if (!fileExists(filePath)) //be a little tolerant
         {
-            if (fileExists(filepath + Zstr(".ffs_real")))
-                filepath += Zstr(".ffs_real");
-            else if (fileExists(filepath + Zstr(".ffs_batch")))
-                filepath += Zstr(".ffs_batch");
+            if (fileExists(filePath + Zstr(".ffs_real")))
+                filePath += Zstr(".ffs_real");
+            else if (fileExists(filePath + Zstr(".ffs_batch")))
+                filePath += Zstr(".ffs_batch");
             else
             {
-                showNotificationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().setMainInstructions(replaceCpy(_("Cannot find file %x."), L"%x", fmtFileName(filepath))));
+                showNotificationDialog(nullptr, DialogInfoType::ERROR2, PopupDialogCfg().setMainInstructions(replaceCpy(_("Cannot find file %x."), L"%x", fmtPath(filePath))));
                 return;
             }
         }
-        commandArgs.push_back(filepath);
+        commandArgs.push_back(filePath);
     }
 
     Zstring cfgFilename;
@@ -170,11 +157,13 @@ int Application::OnRun()
         processException(utfCvrtTo<std::wstring>(e.what()));
         return FFS_RC_EXCEPTION;
     }
-    catch (...) //catch the rest
+    /* -> let it crash and create mini dump!!!
+    catch (...)
     {
         processException(L"Unknown error.");
         return FFS_RC_EXCEPTION;
     }
+    */
 
     return FFS_RC_SUCCESS; //program's return code
 }

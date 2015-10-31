@@ -21,12 +21,17 @@
 #include <wx+/image_resources.h>
 #include "gui_generated.h"
 #include "custom_grid.h"
+#include "folder_selector.h"
 #include "../algorithm.h"
 #include "../synchronization.h"
 #include "../lib/help_provider.h"
 #include "../lib/hard_filter.h"
 #include "../version/version.h"
 
+#ifdef ZEN_WIN_VISTA_AND_LATER
+    #include "sftp_folder_picker.h"
+    #include "../fs/sftp.h"
+#endif
 #ifdef ZEN_WIN
     #include <wx+/mouse_move_dlg.h>
 #endif
@@ -40,8 +45,8 @@ public:
     AboutDlg(wxWindow* parent);
 
 private:
-    void OnClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
     void OnOK    (wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_OKAY); }
+    void OnClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
     void OnDonate(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"http://www.freefilesync.org/donate.php"); }
 };
 
@@ -54,13 +59,13 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
 
     assert(m_buttonClose->GetId() == wxID_OK); //we cannot use wxID_CLOSE else Esc key won't work: yet another wxWidgets bug??
 
-    m_bitmap9 ->SetBitmap(getResourceImage(L"website"));
-    m_bitmap10->SetBitmap(getResourceImage(L"email"));
-    m_bitmap13->SetBitmap(getResourceImage(L"gpl"));
-    //m_bitmapSmiley->SetBitmap(getResourceImage(L"smiley"));
+    m_bitmapHomepage->SetBitmap(getResourceImage(L"website"));
+    m_bitmapEmail   ->SetBitmap(getResourceImage(L"email"));
+    m_bitmapGpl     ->SetBitmap(getResourceImage(L"gpl"));
+    m_bitmapDonate  ->SetBitmap(getResourceImage(L"paypal"));
 
-    m_animCtrlWink->SetAnimation(getResourceAnimation(L"wink"));
-    m_animCtrlWink->Play();
+    //m_animCtrlWink->SetAnimation(getResourceAnimation(L"wink"));
+    //m_animCtrlWink->Play();
 
     //create language credits
     for (const ExistingTranslations::Entry& trans : ExistingTranslations::get())
@@ -90,15 +95,19 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
 #error what is going on?
 #endif
 
-    build += zen::is64BitBuild ? L" x64" : L" x86";
-    static_assert(zen::is32BitBuild || zen::is64BitBuild, "");
+    build +=
+#ifdef ZEN_BUILD_32BIT
+        L" x86";
+#elif defined ZEN_BUILD_64BIT
+        L" x64";
+#endif
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 
     //generate logo: put *after* first Fit()
     Layout(); //make sure m_panelLogo has final width (required by wxGTK)
 
-    wxImage appnameImg = createImageFromText(wxString(L"FreeFileSync ") + zen::currentVersion,
+    wxImage appnameImg = createImageFromText(wxString(L"FreeFileSync ") + zen::ffsVersion,
                                              wxFont(wxNORMAL_FONT->GetPointSize() * 1.8, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, L"Tahoma"),
                                              *wxBLACK); //accessibility: align foreground/background colors!
     wxImage buildImg = createImageFromText(replaceCpy(_("Build: %x"), L"%x", build),
@@ -142,6 +151,254 @@ void zen::showAboutDialog(wxWindow* parent)
 
 //########################################################################################
 
+#ifdef ZEN_WIN_VISTA_AND_LATER
+class SftpSetupDlg : public SftpSetupDlgGenerated
+{
+public:
+    SftpSetupDlg(wxWindow* parent, Zstring& folderPathPhrase);
+
+private:
+    void OnOkay  (wxCommandEvent& event) override;
+    void OnCancel(wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void OnClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void OnToggleShowPassword(wxCommandEvent& event) override;
+    void OnBrowseSftpFolder  (wxCommandEvent& event) override;
+
+    std::pair<SftpLoginInfo, Zstring> getSftpLogin() const;
+
+    //output-only parameters:
+    Zstring& folderPathPhraseOut;
+};
+
+
+SftpSetupDlg::SftpSetupDlg(wxWindow* parent, Zstring& folderPathPhrase) : SftpSetupDlgGenerated(parent), folderPathPhraseOut(folderPathPhrase)
+{
+#ifdef ZEN_WIN
+    new zen::MouseMoveWindow(*this);
+#endif
+    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
+
+    m_bitmapSftp->SetBitmap(getResourceImage(L"sftp"));
+    m_checkBoxShowPassword->SetValue(false);
+    m_textCtrlPasswordVisible->Hide();
+
+    if (acceptsFolderPathPhraseSftp(folderPathPhrase)) //noexcept
+    {
+        const auto res = getResolvedSftpPath(folderPathPhrase); //noexcept
+        const SftpLoginInfo login         = res.first;
+        const Zstring       serverRelPath = res.second;
+
+        m_textCtrlServer        ->ChangeValue(utfCvrtTo<wxString>(login.server));
+        if (login.port > 0)
+            m_textCtrlPort->ChangeValue(numberTo<wxString>(login.port));
+        m_textCtrlUserName      ->ChangeValue(utfCvrtTo<wxString>(login.username));
+        m_textCtrlPasswordHidden->ChangeValue(utfCvrtTo<wxString>(login.password));
+        m_textCtrlServerPath    ->ChangeValue(utfCvrtTo<wxString>(serverRelPath));
+    }
+
+    GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
+    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+
+    m_buttonOkay->SetFocus();
+}
+
+
+void SftpSetupDlg::OnToggleShowPassword(wxCommandEvent& event)
+{
+    if (m_checkBoxShowPassword->GetValue())
+    {
+        m_textCtrlPasswordHidden ->Hide();
+        m_textCtrlPasswordVisible->Show();
+        m_textCtrlPasswordVisible->ChangeValue(m_textCtrlPasswordHidden->GetValue());
+    }
+    else
+    {
+        m_textCtrlPasswordVisible->Hide();
+        m_textCtrlPasswordHidden ->Show();
+        m_textCtrlPasswordHidden->ChangeValue(m_textCtrlPasswordVisible->GetValue());
+    }
+    Layout(); //needed! hidden items are not considered during resize
+}
+
+
+std::pair<SftpLoginInfo, Zstring /*host-relative path*/> SftpSetupDlg::getSftpLogin() const
+{
+    SftpLoginInfo login = {};
+    login.server   = utfCvrtTo<Zstring>(m_textCtrlServer  ->GetValue());
+    login.port     = stringTo<int>     (m_textCtrlPort    ->GetValue()); //0 if empty
+    login.username = utfCvrtTo<Zstring>(m_textCtrlUserName->GetValue());
+    login.password = utfCvrtTo<Zstring>((m_checkBoxShowPassword->GetValue() ? m_textCtrlPasswordVisible : m_textCtrlPasswordHidden)->GetValue());
+
+    Zstring serverRelPath = utfCvrtTo<Zstring>(m_textCtrlServerPath->GetValue());
+
+    return std::make_pair(login, serverRelPath); //noexcept
+}
+
+
+void SftpSetupDlg::OnBrowseSftpFolder(wxCommandEvent& event)
+{
+    const auto res = getSftpLogin();
+    const SftpLoginInfo login         = res.first;
+    Zstring             serverRelPath = res.second;
+
+    if (showSftpFolderPicker(this, login, serverRelPath) == ReturnSftpPicker::BUTTON_OKAY)
+    {
+        m_textCtrlServerPath->ChangeValue(utfCvrtTo<wxString>(serverRelPath));
+    }
+}
+
+
+void SftpSetupDlg::OnOkay(wxCommandEvent& event)
+{
+    const auto res = getSftpLogin();
+    const SftpLoginInfo login         = res.first;
+    const Zstring       serverRelPath = res.second;
+
+    folderPathPhraseOut = condenseToSftpFolderPathPhrase(login, serverRelPath); //noexcept
+
+    EndModal(ReturnSmallDlg::BUTTON_OKAY);
+}
+
+
+ReturnSmallDlg::ButtonPressed zen::showSftpSetupDialog(wxWindow* parent, Zstring& folderPathPhrase)
+{
+    SftpSetupDlg setupDlg(parent, folderPathPhrase);
+    return static_cast<ReturnSmallDlg::ButtonPressed>(setupDlg.ShowModal());
+}
+#endif
+
+//########################################################################################
+
+class CopyToDialog : public CopyToDlgGenerated
+{
+public:
+    CopyToDialog(wxWindow* parent,
+                 const std::vector<zen::FileSystemObject*>& rowsOnLeft,
+                 const std::vector<zen::FileSystemObject*>& rowsOnRight,
+                 Zstring& lastUsedPath,
+                 const std::shared_ptr<FolderHistory>& folderHistory,
+                 bool& keepRelPaths,
+                 bool& overwriteIfExists);
+
+private:
+    void OnOK    (wxCommandEvent& event) override;
+    void OnCancel(wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void OnClose (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+
+    std::unique_ptr<FolderSelector> targetFolder; //always bound
+    std::shared_ptr<FolderHistory> folderHistory_;
+
+    //output-only parameters:
+    Zstring& lastUsedPathOut;
+    bool& keepRelPathsOut;
+    bool& overwriteIfExistsOut;
+};
+
+
+CopyToDialog::CopyToDialog(wxWindow* parent,
+                           const std::vector<FileSystemObject*>& rowsOnLeft,
+                           const std::vector<FileSystemObject*>& rowsOnRight,
+                           Zstring& lastUsedPath,
+                           const std::shared_ptr<FolderHistory>& folderHistory,
+                           bool& keepRelPaths,
+                           bool& overwriteIfExists) :
+    CopyToDlgGenerated(parent),
+    folderHistory_(folderHistory),
+    lastUsedPathOut(lastUsedPath),
+    keepRelPathsOut(keepRelPaths),
+    overwriteIfExistsOut(overwriteIfExists)
+{
+#ifdef ZEN_WIN
+    new zen::MouseMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere...; ownership passed to "this"
+    wxWindowUpdateLocker dummy(this); //leads to GUI corruption problems on Linux/OS X!
+#endif
+
+    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOK).setCancel(m_buttonCancel));
+
+    setMainInstructionFont(*m_staticTextHeader);
+
+    m_bitmapCopyTo->SetBitmap(getResourceImage(L"copy_to"));
+
+    targetFolder = std::make_unique<FolderSelector>(*this, *m_buttonSelectTargetFolder, *m_bpButtonSelectAltTargetFolder, *m_targetFolderPath, nullptr /*staticText*/, nullptr /*wxWindow*/);
+
+    m_targetFolderPath->init(folderHistory_);
+
+#ifndef __WXGTK__  //wxWidgets holds portability promise by supporting multi-line controls...not
+    m_textCtrlFileList->SetMaxLength(0); //allow large entries!
+#endif
+    /*
+    There is a nasty bug on wxGTK under Ubuntu: If a multi-line wxTextCtrl contains so many lines that scrollbars are shown,
+    it re-enables all windows that are supposed to be disabled during the current modal loop!
+    This only affects Ubuntu/wxGTK! No such issue on Debian/wxGTK or Suse/wxGTK
+    => another Unity problem like the following?
+    http://trac.wxwidgets.org/ticket/14823 "Menu not disabled when showing modal dialogs in wxGTK under Unity"
+    */
+
+    const std::pair<std::wstring, int> selectionInfo = zen::getSelectedItemsAsString(rowsOnLeft, rowsOnRight);
+
+    const wxString header = _P("Copy the following item to another folder?",
+                               "Copy the following %x items to another folder?", selectionInfo.second);
+    m_staticTextHeader->SetLabel(header);
+    m_staticTextHeader->Wrap(460); //needs to be reapplied after SetLabel()
+
+    m_textCtrlFileList->ChangeValue(selectionInfo.first);
+
+    //----------------- set config ---------------------------------
+    targetFolder               ->setPath(lastUsedPath);
+    m_checkBoxKeepRelPath      ->SetValue(keepRelPaths);
+    m_checkBoxOverwriteIfExists->SetValue(overwriteIfExists);
+    //----------------- /set config --------------------------------
+
+    GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
+    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+
+    m_buttonOK->SetFocus();
+}
+
+
+void CopyToDialog::OnOK(wxCommandEvent& event)
+{
+    //------- parameter validation (BEFORE writing output!) -------
+    if (trimCpy(targetFolder->getPath()).empty())
+    {
+        showNotificationDialog(this, DialogInfoType::INFO, PopupDialogCfg().setMainInstructions(_("Please enter a target folder.")));
+        //don't show error icon to follow "Windows' encouraging tone"
+        m_targetFolderPath->SetFocus();
+        return;
+    }
+    //-------------------------------------------------------------
+
+    lastUsedPathOut      = targetFolder->getPath();
+    keepRelPathsOut      = m_checkBoxKeepRelPath->GetValue();
+    overwriteIfExistsOut = m_checkBoxOverwriteIfExists->GetValue();
+
+    folderHistory_->addItem(lastUsedPathOut);
+
+    EndModal(ReturnSmallDlg::BUTTON_OKAY);
+}
+
+
+ReturnSmallDlg::ButtonPressed zen::showCopyToDialog(wxWindow* parent,
+                                                    const std::vector<FileSystemObject*>& rowsOnLeft,
+                                                    const std::vector<FileSystemObject*>& rowsOnRight,
+                                                    Zstring& lastUsedPath,
+                                                    std::vector<Zstring>& folderPathHistory,
+                                                    size_t historySizeMax,
+                                                    bool& keepRelPaths,
+                                                    bool& overwriteIfExists)
+{
+
+    auto folderHistory = std::make_shared<FolderHistory>(folderPathHistory, historySizeMax);
+
+    CopyToDialog dlg(parent, rowsOnLeft, rowsOnRight, lastUsedPath, folderHistory, keepRelPaths, overwriteIfExists);
+    const auto rc = static_cast<ReturnSmallDlg::ButtonPressed>(dlg.ShowModal());
+
+    folderPathHistory = folderHistory->getList(); //unconditionally write path history: support manual item deletion + cancel
+    return rc;
+}
+
+//########################################################################################
+
 class DeleteDialog : public DeleteDlgGenerated
 {
 public:
@@ -160,8 +417,10 @@ private:
 
     const std::vector<zen::FileSystemObject*>& rowsToDeleteOnLeft;
     const std::vector<zen::FileSystemObject*>& rowsToDeleteOnRight;
-    bool& outRefuseRecycleBin;
     const TickVal tickCountStartup;
+
+    //output-only parameters:
+    bool& useRecycleBinOut;
 };
 
 
@@ -172,8 +431,8 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
     DeleteDlgGenerated(parent),
     rowsToDeleteOnLeft(rowsOnLeft),
     rowsToDeleteOnRight(rowsOnRight),
-    outRefuseRecycleBin(useRecycleBin),
-    tickCountStartup(getTicks())
+    tickCountStartup(getTicks()),
+    useRecycleBinOut(useRecycleBin)
 {
 #ifdef ZEN_WIN
     new zen::MouseMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere...; ownership passed to "this"
@@ -184,7 +443,7 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
 
     m_checkBoxUseRecycler->SetValue(useRecycleBin);
 
-#ifndef __WXGTK__  //wxWidgets holds portability promise by not supporting for multi-line controls...not
+#ifndef __WXGTK__  //wxWidgets holds portability promise by supporting multi-line controls...not
     m_textCtrlFileList->SetMaxLength(0); //allow large entries!
 #endif
 
@@ -205,8 +464,8 @@ void DeleteDialog::updateGui()
     wxWindowUpdateLocker dummy(this); //leads to GUI corruption problems on Linux/OS X!
 #endif
 
-    const std::pair<Zstring, int> delInfo = zen::deleteFromGridAndHDPreview(rowsToDeleteOnLeft,
-                                                                            rowsToDeleteOnRight);
+    const std::pair<std::wstring, int> delInfo = zen::getSelectedItemsAsString(rowsToDeleteOnLeft,
+                                                                               rowsToDeleteOnRight);
     wxString header;
     if (m_checkBoxUseRecycler->GetValue())
     {
@@ -223,11 +482,9 @@ void DeleteDialog::updateGui()
         m_buttonOK->SetLabel(_("Delete"));
     }
     m_staticTextHeader->SetLabel(header);
-    //it seems like Wrap() needs to be reapplied after SetLabel()
-    m_staticTextHeader->Wrap(460);
+    m_staticTextHeader->Wrap(460); //needs to be reapplied after SetLabel()
 
-    const wxString& fileList = utfCvrtTo<wxString>(delInfo.first);
-    m_textCtrlFileList->ChangeValue(fileList);
+    m_textCtrlFileList->ChangeValue(delInfo.first);
     /*
     There is a nasty bug on wxGTK under Ubuntu: If a multi-line wxTextCtrl contains so many lines that scrollbars are shown,
     it re-enables all windows that are supposed to be disabled during the current modal loop!
@@ -250,7 +507,7 @@ void DeleteDialog::OnOK(wxCommandEvent& event)
         if (dist(tickCountStartup, now) * 1000 / tps < 50)
             return;
 
-    outRefuseRecycleBin = m_checkBoxUseRecycler->GetValue();
+    useRecycleBinOut = m_checkBoxUseRecycler->GetValue();
 
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
 }
@@ -267,10 +524,7 @@ ReturnSmallDlg::ButtonPressed zen::showDeleteDialog(wxWindow* parent,
                                                     const std::vector<zen::FileSystemObject*>& rowsOnRight,
                                                     bool& useRecycleBin)
 {
-    DeleteDialog confirmDeletion(parent,
-                                 rowsOnLeft,
-                                 rowsOnRight,
-                                 useRecycleBin);
+    DeleteDialog confirmDeletion(parent, rowsOnLeft, rowsOnRight, useRecycleBin);
     return static_cast<ReturnSmallDlg::ButtonPressed>(confirmDeletion.ShowModal());
 }
 
@@ -284,11 +538,12 @@ public:
                         const zen::SyncStatistics& st,
                         bool& dontShowAgain);
 private:
-    void OnClose    (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
-    void OnCancel   (wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
     void OnStartSync(wxCommandEvent& event) override;
+    void OnCancel   (wxCommandEvent& event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
+    void OnClose    (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
 
-    bool& m_dontShowAgain;
+    //output-only parameters:
+    bool& dontShowAgainOut;
 };
 
 
@@ -297,7 +552,7 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
                                          const SyncStatistics& st,
                                          bool& dontShowAgain) :
     SyncConfirmationDlgGenerated(parent),
-    m_dontShowAgain(dontShowAgain)
+    dontShowAgainOut(dontShowAgain)
 {
 #ifdef ZEN_WIN
     new zen::MouseMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere...; ownership passed to "this"
@@ -349,7 +604,7 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
 
 void SyncConfirmationDlg::OnStartSync(wxCommandEvent& event)
 {
-    m_dontShowAgain = m_checkBoxDontShowAgain->GetValue();
+    dontShowAgainOut = m_checkBoxDontShowAgain->GetValue();
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
 }
 
@@ -381,7 +636,7 @@ private:
     void OnClose       (wxCloseEvent&   event) override { EndModal(ReturnSmallDlg::BUTTON_CANCEL); }
     void OnAddRow      (wxCommandEvent& event) override;
     void OnRemoveRow   (wxCommandEvent& event) override;
-    void OnHelpShowExamples(wxHyperlinkEvent& event) override { displayHelpEntry(L"html/External Applications.html", this); }
+    void OnHelpShowExamples(wxHyperlinkEvent& event) override { displayHelpEntry(L"html/external-applications.html", this); }
     void onResize(wxSizeEvent& event);
     void updateGui();
 
@@ -390,32 +645,33 @@ private:
     void setExtApp(const xmlAccess::ExternalApps& extApp);
     xmlAccess::ExternalApps getExtApp() const;
 
-    xmlAccess::XmlGlobalSettings& settings;
     std::map<std::wstring, std::wstring> descriptionTransToEng; //"translated description" -> "english" mapping for external application config
+
+    //output-only parameters:
+    xmlAccess::XmlGlobalSettings& globalSettingsOut;
 };
 
 
 OptionsDlg::OptionsDlg(wxWindow* parent, xmlAccess::XmlGlobalSettings& globalSettings) :
     OptionsDlgGenerated(parent),
-    settings(globalSettings)
+    globalSettingsOut(globalSettings)
 {
 #ifdef ZEN_WIN
     new zen::MouseMoveWindow(*this); //allow moving dialog by clicking (nearly) anywhere...; ownership passed to "this"
 #endif
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
-    warn_static("remove after test")
-    //#ifdef ZEN_MAC
-    //	SetTitle(_("Preferences")); //follow OS conventions
-    //#endif
+#ifdef ZEN_MAC
+    SetTitle(replaceCpy(_("&Preferences"), L"&", L"")); //follow OS conventions
+#endif
 
     //setMainInstructionFont(*m_staticTextHeader);
 
     m_gridCustomCommand->SetTabBehaviour(wxGrid::Tab_Leave);
 
-    m_bitmapSettings    ->SetBitmap     (getResourceImage(L"settings"));
-    m_bpButtonAddRow    ->SetBitmapLabel(getResourceImage(L"item_add"));
-    m_bpButtonRemoveRow ->SetBitmapLabel(getResourceImage(L"item_remove"));
+    m_bitmapSettings   ->SetBitmap     (getResourceImage(L"settings"));
+    m_bpButtonAddRow   ->SetBitmapLabel(getResourceImage(L"item_add"));
+    m_bpButtonRemoveRow->SetBitmapLabel(getResourceImage(L"item_remove"));
     setBitmapTextLabel(*m_buttonResetDialogs, getResourceImage(L"reset_dialogs").ConvertToImage(), m_buttonResetDialogs->GetLabel());
 
     m_checkBoxFailSafe       ->SetValue(globalSettings.failsafeFileCopy);
@@ -430,7 +686,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, xmlAccess::XmlGlobalSettings& globalSet
     updateGui();
 
 #ifdef ZEN_WIN
-    m_checkBoxCopyPermissions->SetLabel(_("Copy NTFS permissions"));
+    m_checkBoxCopyPermissions->SetLabel(_("Copy DACL, SACL, Owner, Group"));
 #elif defined ZEN_LINUX || defined ZEN_MAC
     bSizerLockedFiles->Show(false);
 #endif
@@ -487,15 +743,15 @@ void OptionsDlg::updateGui()
 
 void OptionsDlg::OnOkay(wxCommandEvent& event)
 {
-    //write settings only when okay-button is pressed!
-    settings.failsafeFileCopy    = m_checkBoxFailSafe->GetValue();
-    settings.copyLockedFiles     = m_checkBoxCopyLocked->GetValue();
-    settings.copyFilePermissions = m_checkBoxCopyPermissions->GetValue();
+    //write settings only when okay-button is pressed (except hidden dialog reset)!
+    globalSettingsOut.failsafeFileCopy    = m_checkBoxFailSafe->GetValue();
+    globalSettingsOut.copyLockedFiles     = m_checkBoxCopyLocked->GetValue();
+    globalSettingsOut.copyFilePermissions = m_checkBoxCopyPermissions->GetValue();
 
-    settings.automaticRetryCount = m_spinCtrlAutoRetryCount->GetValue();
-    settings.automaticRetryDelay = m_spinCtrlAutoRetryDelay->GetValue();
+    globalSettingsOut.automaticRetryCount = m_spinCtrlAutoRetryCount->GetValue();
+    globalSettingsOut.automaticRetryDelay = m_spinCtrlAutoRetryDelay->GetValue();
 
-    settings.gui.externelApplications = getExtApp();
+    globalSettingsOut.gui.externelApplications = getExtApp();
 
     EndModal(ReturnSmallDlg::BUTTON_OKAY);
 }
@@ -508,7 +764,7 @@ void OptionsDlg::OnResetDialogs(wxCommandEvent& event)
                                    _("&Show")))
     {
         case ConfirmationButton::DO_IT:
-            settings.optDialogs.resetDialogs();
+            globalSettingsOut.optDialogs = xmlAccess::OptionalDialogs();
             break;
         case ConfirmationButton::CANCEL:
             break;
@@ -536,7 +792,7 @@ void OptionsDlg::OnDefault(wxCommandEvent& event)
 void OptionsDlg::setExtApp(const xmlAccess::ExternalApps& extApp)
 {
     auto extAppTmp = extApp;
-    vector_remove_if(extAppTmp, [](decltype(extAppTmp[0])& entry) { return entry.first.empty() && entry.second.empty(); });
+    erase_if(extAppTmp, [](decltype(extAppTmp[0])& entry) { return entry.first.empty() && entry.second.empty(); });
 
     extAppTmp.resize(extAppTmp.size() + 1); //append empty row to facilitate insertions
 
@@ -639,27 +895,16 @@ private:
             m_calendarFrom->SetDate(m_calendarTo->GetDate());
     }
 
-    std::int64_t& timeFrom_;
-    std::int64_t& timeTo_;
+    //output-only parameters:
+    std::int64_t& timeFromOut;
+    std::int64_t& timeToOut;
 };
-
-
-wxDateTime utcToLocalDateTime(time_t utcTime)
-{
-    //wxDateTime models local(!) time (in contrast to what documentation says), but this constructor takes time_t UTC
-    return wxDateTime(utcTime);
-}
-
-time_t localDateTimeToUtc(const wxDateTime& localTime)
-{
-    return localTime.GetTicks();
-}
 
 
 SelectTimespanDlg::SelectTimespanDlg(wxWindow* parent, std::int64_t& timeFrom, std::int64_t& timeTo) :
     SelectTimespanDlgGenerated(parent),
-    timeFrom_(timeFrom),
-    timeTo_(timeTo)
+    timeFromOut(timeFrom),
+    timeToOut(timeTo)
 {
 #ifdef ZEN_WIN
     new zen::MouseMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere...; ownership passed to "this"
@@ -685,13 +930,17 @@ SelectTimespanDlg::SelectTimespanDlg(wxWindow* parent, std::int64_t& timeFrom, s
     m_calendarTo  ->SetWindowStyleFlag(style);
 
     //set default values
-    if (timeTo_ == 0)
-        timeTo_ = wxGetUTCTime(); //
-    if (timeFrom_ == 0)
-        timeFrom_ = timeTo_ - 7 * 24 * 3600; //default time span: one week from "now"
+    std::int64_t timeFromTmp = timeFrom;
+    std::int64_t timeToTmp   = timeTo;
 
-    m_calendarFrom->SetDate(utcToLocalDateTime(timeFrom_));
-    m_calendarTo  ->SetDate(utcToLocalDateTime(timeTo_));
+    if (timeToTmp == 0)
+        timeToTmp = std::time(nullptr); //
+    if (timeFromTmp == 0)
+        timeFromTmp = timeToTmp - 7 * 24 * 3600; //default time span: one week from "now"
+
+    //wxDateTime models local(!) time (in contrast to what documentation says), but it has a constructor taking time_t UTC
+    m_calendarFrom->SetDate(static_cast<time_t>(timeFromTmp));
+    m_calendarTo  ->SetDate(static_cast<time_t>(timeToTmp  ));
 
 #if wxCHECK_VERSION(2, 9, 5)
     //doesn't seem to be a problem here:
@@ -717,12 +966,12 @@ void SelectTimespanDlg::OnOkay(wxCommandEvent& event)
 
     //align to full days
     from.ResetTime();
-    to += wxTimeSpan::Day();
     to.ResetTime(); //reset local(!) time
+    to += wxTimeSpan::Day();
     to -= wxTimeSpan::Second(); //go back to end of previous day
 
-    timeFrom_ = localDateTimeToUtc(from);
-    timeTo_   = localDateTimeToUtc(to);
+    timeFromOut = from.GetTicks();
+    timeToOut   = to  .GetTicks();
 
     /*
     {

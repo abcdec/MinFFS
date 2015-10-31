@@ -33,6 +33,7 @@ struct TranslationHandler
 {
     virtual ~TranslationHandler() {}
 
+    //C++11: std::wstring should be thread-safe like an int
     virtual std::wstring translate(const std::wstring& text) = 0; //simple translation
     virtual std::wstring translate(const std::wstring& singular, const std::wstring& plural, std::int64_t n) = 0;
 };

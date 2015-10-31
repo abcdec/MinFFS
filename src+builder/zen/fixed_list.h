@@ -27,10 +27,7 @@ class FixedList
     };
 
 public:
-    FixedList() :
-        firstInsert(nullptr),
-        lastInsert(nullptr),
-        sz(0) {}
+    FixedList() {}
 
     ~FixedList() { clear(); }
 
@@ -151,9 +148,9 @@ private:
         delete oldNode;
     }
 
-    Node* firstInsert;
-    Node* lastInsert; //point to last insertion; required by efficient emplace_back()
-    size_t sz;
+    Node* firstInsert = nullptr;
+    Node* lastInsert  = nullptr; //point to last insertion; required by efficient emplace_back()
+    size_t sz = 0;
 };
 }
 

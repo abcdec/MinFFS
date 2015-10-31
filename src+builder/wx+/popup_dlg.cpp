@@ -145,7 +145,7 @@ public:
         else
             m_checkBoxCustom->Hide();
 
-        Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(StandardPopupDialog::OnKeyPressed), nullptr, this);
+        Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(StandardPopupDialog::OnKeyPressed), nullptr, this); //dialog-specific local key events
     }
 
 private:
@@ -154,11 +154,19 @@ private:
 
     void OnKeyPressed(wxKeyEvent& event)
     {
-        const int keyCode = event.GetKeyCode();
-        if (keyCode == WXK_ESCAPE) //handle case where cancel button is hidden!
+        switch (event.GetKeyCode())
         {
-            EndModal(static_cast<int>(ConfirmationButton3::CANCEL));
-            return;
+            case WXK_RETURN:
+            case WXK_NUMPAD_ENTER:
+            {
+                wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
+                OnButtonAffirmative(dummy);
+                return;
+            }
+
+            case WXK_ESCAPE: //handle case where cancel button is hidden!
+                EndModal(static_cast<int>(ConfirmationButton3::CANCEL));
+                return;
         }
         event.Skip();
     }

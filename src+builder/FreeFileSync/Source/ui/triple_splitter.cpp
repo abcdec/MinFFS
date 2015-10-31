@@ -174,7 +174,7 @@ void TripleSplitter::onMouseLeftDown(wxMouseEvent& event)
 
     const int posX = event.GetPosition().x;
     if (hitOnSashLine(posX))
-        activeMove = zen::make_unique<SashMove>(*this, posX, centerOffset);
+        activeMove = std::make_unique<SashMove>(*this, posX, centerOffset);
     event.Skip();
 }
 

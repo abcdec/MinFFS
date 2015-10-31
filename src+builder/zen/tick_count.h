@@ -65,8 +65,8 @@ public:
         return numeric::dist(lhs.val_.QuadPart, rhs.val_.QuadPart); //std::abs(a - b) can lead to overflow!
 #elif defined ZEN_LINUX
         //structure timespec documented with members:
-        //	time_t  tv_sec    seconds
-        //	long    tv_nsec   nanoseconds
+        //  time_t  tv_sec    seconds
+        //  long    tv_nsec   nanoseconds
         const int64_t deltaSec  = lhs.val_.tv_sec  - rhs.val_.tv_sec;
         const int64_t deltaNsec = lhs.val_.tv_nsec - rhs.val_.tv_nsec;
         return numeric::abs(deltaSec * 1000000000 + deltaNsec);
@@ -114,8 +114,8 @@ int64_t ticksPerSec() //return 0 on error
     if (::mach_timebase_info(&tbi) != KERN_SUCCESS)
         return 0;
     //structure mach_timebase_info_data_t documented with members:
-    //		uint32_t	numer;
-    //		uint32_t	denom;
+    //      uint32_t    numer;
+    //      uint32_t    denom;
     return static_cast<int64_t>(1000000000) * tbi.denom / tbi.numer;
 #endif
 }

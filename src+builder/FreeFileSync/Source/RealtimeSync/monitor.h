@@ -29,7 +29,7 @@ struct MonitorCallback
     virtual void requestUiRefresh       () = 0;
     virtual void reportError(const std::wstring& msg) = 0; //automatically retries after return!
 };
-void monitorDirectories(const std::vector<Zstring>& dirpathPhrases,
+void monitorDirectories(const std::vector<Zstring>& folderPathPhrases,
                         //non-formatted dirnames that yet require call to getFormattedDirectoryName(); empty directories must be checked by caller!
                         unsigned int delay,
                         MonitorCallback& callback);

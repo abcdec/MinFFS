@@ -7,6 +7,7 @@
 #include "dir_lock.h"
 #include "status_handler.h"
 
+
 namespace zen
 {
 //intermediate locks created by DirLock use this extension, too:
@@ -17,14 +18,12 @@ const Zchar LOCK_FILE_ENDING[]  = Zstr(".ffs_lock"); //don't use Zstring as glob
 class LockHolder
 {
 public:
-    LockHolder(const std::set<Zstring, LessFilename>& dirpathsExisting, //resolved dirpaths ending with path separator
+    LockHolder(const std::set<Zstring, LessFilePath>& dirpathsExisting, //resolved paths
                bool& warningDirectoryLockFailed,
                ProcessCallback& procCallback)
     {
-        for (const Zstring& dirpathFmt : dirpathsExisting)
+        for (const Zstring& dirpath : dirpathsExisting)
         {
-            assert(endsWith(dirpathFmt, FILE_NAME_SEPARATOR)); //this is really the contract, formatting does other things as well, e.g. macro substitution
-
             class WaitOnLockHandler : public DirLockCallback
             {
             public:
@@ -38,11 +37,11 @@ public:
             try
             {
                 //lock file creation is synchronous and may block noticeably for very slow devices (usb sticks, mapped cloud storages)
-                lockHolder.emplace_back(dirpathFmt + Zstr("sync") + LOCK_FILE_ENDING, &callback); //throw FileError
+                lockHolder.emplace_back(appendSeparator(dirpath) + Zstr("sync") + LOCK_FILE_ENDING, &callback); //throw FileError
             }
             catch (const FileError& e)
             {
-                const std::wstring msg = replaceCpy(_("Cannot set directory lock for %x."), L"%x", fmtFileName(dirpathFmt)) + L"\n\n" + e.toString();
+                const std::wstring msg = replaceCpy(_("Cannot set directory lock for %x."), L"%x", fmtPath(dirpath)) + L"\n\n" + e.toString();
                 procCallback.reportWarning(msg, warningDirectoryLockFailed); //may throw!
             }
         }

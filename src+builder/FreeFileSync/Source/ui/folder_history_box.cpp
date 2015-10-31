@@ -32,10 +32,7 @@ FolderHistoryBox::FolderHistoryBox(wxWindow* parent,
     /*##*/ SetMinSize(wxSize(150, -1)); //## workaround yet another wxWidgets bug: default minimum size is much too large for a wxComboBox
     //#####################################
 
-    Connect(wxEVT_KEY_DOWN,   wxKeyEventHandler  (FolderHistoryBox::OnKeyEvent  ), nullptr, this);
-
-    warn_static("mac")
-    warn_static("linux")
+    Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(FolderHistoryBox::OnKeyEvent), nullptr, this);
 
 #if defined ZEN_WIN
     //on Win, this mouse click event only fires, when clicking on the small down arrow, NOT when clicking on the text field
@@ -81,7 +78,7 @@ void FolderHistoryBox::setValueAndUpdateList(const wxString& dirpath)
     if (sharedHistory_.get())
     {
         std::vector<Zstring> tmp = sharedHistory_->getList();
-        std::sort(tmp.begin(), tmp.end(), LessFilename());
+        std::sort(tmp.begin(), tmp.end(), LessFilePath());
 
         if (!dirList.empty() && !tmp.empty())
             dirList.push_back(FolderHistory::separationLine());
@@ -110,6 +107,7 @@ void FolderHistoryBox::setValueAndUpdateList(const wxString& dirpath)
 void FolderHistoryBox::OnKeyEvent(wxKeyEvent& event)
 {
     const int keyCode = event.GetKeyCode();
+
     if (keyCode == WXK_DELETE ||
         keyCode == WXK_NUMPAD_DELETE)
     {
@@ -133,5 +131,24 @@ void FolderHistoryBox::OnKeyEvent(wxKeyEvent& event)
             return; //eat up key event
         }
     }
+
+#ifdef ZEN_MAC
+    //copy/paste is broken on wxCocoa: http://trac.wxwidgets.org/ticket/14953 => implement manually:
+    assert(CanCopy() && CanPaste() && CanCut());
+    if (event.ControlDown())
+        switch (keyCode)
+        {
+            case 'C': //Command + C
+                Copy();
+                return;
+            case 'V': //Command + V
+                Paste();
+                return;
+            case 'X': //Command + X
+                Cut();
+                return;
+        }
+#endif
+
     event.Skip();
 }

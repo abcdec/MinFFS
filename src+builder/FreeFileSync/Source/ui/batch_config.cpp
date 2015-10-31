@@ -10,7 +10,7 @@
 #include <wx+/font_size.h>
 #include <wx+/image_resources.h>
 #include "gui_generated.h"
-#include "dir_name.h"
+#include "folder_selector.h"
 #include "../ui/on_completion_box.h"
 #include "../lib/help_provider.h"
 
@@ -24,13 +24,6 @@ using namespace xmlAccess;
 
 namespace
 {
-enum ButtonPressed
-{
-    BUTTON_CANCEL,
-    BUTTON_SAVE_AS
-};
-
-
 class BatchDialog : public BatchDlgGenerated
 {
 public:
@@ -40,13 +33,13 @@ public:
                 size_t onCompletionHistoryMax);
 
 private:
-    void OnClose       (wxCloseEvent&   event) override { EndModal(BUTTON_CANCEL); }
-    void OnCancel      (wxCommandEvent& event) override { EndModal(BUTTON_CANCEL); }
+    void OnClose       (wxCloseEvent&   event) override { EndModal(ReturnBatchConfig::BUTTON_CANCEL); }
+    void OnCancel      (wxCommandEvent& event) override { EndModal(ReturnBatchConfig::BUTTON_CANCEL); }
     void OnSaveBatchJob(wxCommandEvent& event) override;
     void OnErrorPopup  (wxCommandEvent& event) override { localBatchCfg.handleError = ON_ERROR_POPUP;  updateGui(); }
     void OnErrorIgnore (wxCommandEvent& event) override { localBatchCfg.handleError = ON_ERROR_IGNORE; updateGui(); }
     void OnErrorStop   (wxCommandEvent& event) override { localBatchCfg.handleError = ON_ERROR_STOP;   updateGui(); }
-    void OnHelpScheduleBatch(wxHyperlinkEvent& event) override { displayHelpEntry(L"html/Schedule a Batch Job.html", this); }
+    void OnHelpScheduleBatch(wxHyperlinkEvent& event) override { displayHelpEntry(L"html/schedule-a-batch-job.html", this); }
 
     void OnToggleGenerateLogfile(wxCommandEvent& event) override { updateGui(); }
     void OnToggleLogfilesLimit  (wxCommandEvent& event) override { updateGui(); }
@@ -56,10 +49,12 @@ private:
     void setConfig(const XmlBatchConfig& batchCfg);
     XmlBatchConfig getConfig() const;
 
-    XmlBatchConfig& batchCfgOutRef; //output only!
+    XmlBatchConfig&       batchCfgOutRef; //output only!
+    std::vector<Zstring>& onCompletionHistoryOut; //
+
     XmlBatchConfig localBatchCfg; //a mixture of settings some of which have OWNERSHIP WITHIN GUI CONTROLS! use getConfig() to resolve
 
-    std::unique_ptr<DirectoryName<FolderHistoryBox>> logfileDir; //always bound, solve circular compile-time dependency
+    std::unique_ptr<FolderSelector> logfileDir; //always bound, solve circular compile-time dependency
 };
 
 //###################################################################################################################################
@@ -69,7 +64,8 @@ BatchDialog::BatchDialog(wxWindow* parent,
                          std::vector<Zstring>& onCompletionHistory,
                          size_t onCompletionHistoryMax) :
     BatchDlgGenerated(parent),
-    batchCfgOutRef(batchCfg)
+    batchCfgOutRef(batchCfg),
+    onCompletionHistoryOut(onCompletionHistory)
 {
 #ifdef ZEN_WIN
     new zen::MouseMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere...; ownership passed to "this"
@@ -79,11 +75,11 @@ BatchDialog::BatchDialog(wxWindow* parent,
 
     m_staticTextDescr->SetLabel(replaceCpy(m_staticTextDescr->GetLabel(), L"%x", L"FreeFileSync.exe <" + _("job name") + L">.ffs_batch"));
 
-    m_comboBoxOnCompletion->initHistory(onCompletionHistory, onCompletionHistoryMax);
+    m_comboBoxOnCompletion->setHistory(onCompletionHistory, onCompletionHistoryMax);
 
     m_bitmapBatchJob->SetBitmap(getResourceImage(L"batch"));
 
-    logfileDir = make_unique<DirectoryName<FolderHistoryBox>>(*m_panelLogfile, *m_buttonSelectLogfileDir, *m_logfileDir);
+    logfileDir = std::make_unique<FolderSelector>(*m_panelLogfile, *m_buttonSelectLogFolder, *m_bpButtonSelectAltLogFolder, *m_logFolderPath, nullptr /*staticText*/, nullptr /*wxWindow*/);
 
     setConfig(batchCfg);
 
@@ -103,19 +99,19 @@ void BatchDialog::updateGui() //re-evaluate gui after config changes
     m_panelLogfile        ->Enable(m_checkBoxGenerateLogfile->GetValue()); //enabled status is *not* directly dependent from resolved config! (but transitively)
     m_spinCtrlLogfileLimit->Enable(m_checkBoxGenerateLogfile->GetValue() && m_checkBoxLogfilesLimit->GetValue());
 
-    m_toggleBtnErrorIgnore->SetValue(false);
-    m_toggleBtnErrorPopup ->SetValue(false);
-    m_toggleBtnErrorStop  ->SetValue(false);
+    m_radioBtnIgnoreErrors  ->SetValue(false);
+    m_radioBtnPopupOnErrors ->SetValue(false);
+    m_radioBtnStopOnError   ->SetValue(false);
     switch (cfg.handleError) //*not* owned by GUI controls
     {
         case ON_ERROR_IGNORE:
-            m_toggleBtnErrorIgnore->SetValue(true);
+            m_radioBtnIgnoreErrors->SetValue(true);
             break;
         case ON_ERROR_POPUP:
-            m_toggleBtnErrorPopup->SetValue(true);
+            m_radioBtnPopupOnErrors->SetValue(true);
             break;
         case ON_ERROR_STOP:
-            m_toggleBtnErrorStop->SetValue(true);
+            m_radioBtnStopOnError->SetValue(true);
             break;
     }
 }
@@ -131,7 +127,7 @@ void BatchDialog::setConfig(const XmlBatchConfig& batchCfg)
 
     //transfer parameter ownership to GUI
     m_checkBoxRunMinimized->SetValue(batchCfg.runMinimized);
-    logfileDir->setPath(utfCvrtTo<wxString>(batchCfg.logFileDirectory));
+    logfileDir->setPath(batchCfg.logFolderPathPhrase);
     m_comboBoxOnCompletion->setValue(batchCfg.mainCfg.onCompletion);
 
     //map single parameter "logfiles limit" to all three checkboxs and spin ctrl:
@@ -152,7 +148,7 @@ XmlBatchConfig BatchDialog::getConfig() const
 
     //load structure with batch settings "batchCfg"
     batchCfg.runMinimized     = m_checkBoxRunMinimized->GetValue();
-    batchCfg.logFileDirectory = utfCvrtTo<Zstring>(logfileDir->getPath());
+    batchCfg.logFolderPathPhrase = utfCvrtTo<Zstring>(logfileDir->getPath());
     batchCfg.mainCfg.onCompletion = m_comboBoxOnCompletion->getValue();
     //get single parameter "logfiles limit" from all three checkboxes and spin ctrl:
     batchCfg.logfilesCountLimit = m_checkBoxGenerateLogfile->GetValue() ? (m_checkBoxLogfilesLimit->GetValue() ? m_spinCtrlLogfileLimit->GetValue() : -1) : 0;
@@ -165,16 +161,17 @@ void BatchDialog::OnSaveBatchJob(wxCommandEvent& event)
 {
     batchCfgOutRef = getConfig();
     m_comboBoxOnCompletion->addItemHistory(); //a good place to commit current "on completion" history item
-    EndModal(BUTTON_SAVE_AS);
+    onCompletionHistoryOut = m_comboBoxOnCompletion->getHistory();
+    EndModal(ReturnBatchConfig::BUTTON_SAVE_AS);
 }
 }
 
 
-bool zen::customizeBatchConfig(wxWindow* parent,
-                               xmlAccess::XmlBatchConfig& batchCfg, //in/out
-                               std::vector<Zstring>& onCompletionHistory,
-                               size_t onCompletionHistoryMax)
+ReturnBatchConfig::ButtonPressed zen::customizeBatchConfig(wxWindow* parent,
+                                                           xmlAccess::XmlBatchConfig& batchCfg, //in/out
+                                                           std::vector<Zstring>& onCompletionHistory,
+                                                           size_t onCompletionHistoryMax)
 {
     BatchDialog batchDlg(parent, batchCfg, onCompletionHistory, onCompletionHistoryMax);
-    return static_cast<ButtonPressed>(batchDlg.ShowModal()) == BUTTON_SAVE_AS;
+    return static_cast<ReturnBatchConfig::ButtonPressed>(batchDlg.ShowModal());
 }

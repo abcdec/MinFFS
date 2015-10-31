@@ -33,7 +33,7 @@ wxImage stackImages(const wxImage& img1, const wxImage& img2, ImageStackLayout d
 
 wxImage createImageFromText(const wxString& text, const wxFont& font, const wxColor& col);
 
-wxBitmap layOver(const wxBitmap& foreground, const wxBitmap& background); //merge
+wxBitmap layOver(const wxBitmap& background, const wxBitmap& foreground); //merge
 
 wxImage greyScale(const wxImage& img); //greyscale + brightness adaption
 wxBitmap greyScale(const wxBitmap& bmp); //
@@ -147,7 +147,7 @@ void adjustBrightness(wxImage& img, int targetLevel)
 
 
 inline
-wxBitmap layOver(const wxBitmap& foreground, const wxBitmap& background)
+wxBitmap layOver(const wxBitmap& background, const wxBitmap& foreground)
 {
     assert(foreground.HasAlpha() == background.HasAlpha()); //we don't support mixed-mode brittleness!
 
@@ -181,10 +181,10 @@ bool isEqual(const wxBitmap& lhs, const wxBitmap& rhs)
     if (imLhs.HasAlpha() != imRhs.HasAlpha())
         return false;
 
-	if (!std::equal(imLhs.GetData(), imLhs.GetData() + pixelCount * 3, imRhs.GetData()))
-		return false;
+    if (!std::equal(imLhs.GetData(), imLhs.GetData() + pixelCount * 3, imRhs.GetData()))
+        return false;
 
-	if (imLhs.HasAlpha())
+    if (imLhs.HasAlpha())
         if (!std::equal(imLhs.GetAlpha(), imLhs.GetAlpha() + pixelCount, imRhs.GetAlpha()))
             return false;
 

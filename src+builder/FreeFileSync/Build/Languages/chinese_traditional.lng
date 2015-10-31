@@ -7,6 +7,9 @@
 	<plural_definition>0</plural_definition>
 </header>
 
+<source>Port:</source>
+<target></target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>自上次同步後，兩邊均已變更過。</target>
 
@@ -55,8 +58,8 @@
 <source>Syntax error</source>
 <target>語法錯誤</target>
 
-<source>Cannot open file %x.</source>
-<target>無法開啟檔案 %x。</target>
+<source>Cannot find file %x.</source>
+<target>找不到檔案 %x。</target>
 
 <source>File %x does not contain a valid configuration.</source>
 <target>檔案 %x 不包含一個有效的配置。</target>
@@ -77,10 +80,10 @@
 <target>語法：</target>
 
 <source>global config file:</source>
-<target>整體配置檔案</target>
+<target>整體配置檔案：</target>
 
 <source>config files:</source>
-<target>配置檔案</target>
+<target>配置檔案：</target>
 
 <source>directory</source>
 <target>目錄</target>
@@ -94,8 +97,8 @@
 <source>Any number of alternative directory pairs for at most one config file.</source>
 <target>任意數量的替代配對目錄為最多一個配置檔案。</target>
 
-<source>Open configuration for edit without executing.</source>
-<target>只開啟配置來編輯而不執行。</target>
+<source>Open configuration for editing without executing it.</source>
+<target>開啟配置進行編輯而不執行。</target>
 
 <source>Cannot find the following folders:</source>
 <target>找不到下列資料夾：</target>
@@ -202,6 +205,86 @@
 <source>Update attributes on right</source>
 <target>更新右邊的屬性</target>
 
+<source>Cannot read file %x.</source>
+<target>無法讀取檔案 %x。</target>
+
+<source>
+Unexpected size of data stream.
+Expected: %x bytes
+Actual: %y bytes
+</source>
+<target>
+非預期的資料流大小。
+預期：%x 位元組
+實際：%y 位元組
+</target>
+
+<source>Cannot write permissions of %x.</source>
+<target>無法寫入 %x 的權限。</target>
+
+<source>Operation not supported for different base folder types.</source>
+<target>不支援不同基本資料夾類型的操作。</target>
+
+<source>Cannot write file %x.</source>
+<target>無法寫入檔案 %x。</target>
+
+<source>Cannot copy symbolic link %x to %y.</source>
+<target>無法複製符號連結 %x 到 %y。</target>
+
+<source>Cannot move file %x to %y.</source>
+<target>無法移動檔案 %x 到 %y。</target>
+
+<source>Cannot enumerate directory %x.</source>
+<target>無法枚舉目錄 %x。</target>
+
+<source>Cannot read file attributes of %x.</source>
+<target>無法讀取 %x 的檔案屬性。</target>
+
+<source>Cannot find %x.</source>
+<target>找不到 %x。</target>
+
+<source>Cannot open file %x.</source>
+<target>無法開啟檔案 %x。</target>
+
+<source>Cannot find device %x.</source>
+<target>找不到裝置 %x。</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>無法確定 %x 的可用磁碟空間。</target>
+
+<source>Cannot create directory %x.</source>
+<target>無法新建目錄 %x。</target>
+
+<source>Cannot delete directory %x.</source>
+<target>無法刪除目錄 %x。</target>
+
+<source>Cannot delete file %x.</source>
+<target>無法刪除目錄 %x。</target>
+
+<source>Cannot write modification time of %x.</source>
+<target>無法寫入 %x 的修改時間。</target>
+
+<source>Cannot determine final path for %x.</source>
+<target>無法確定最後路徑為 %x。</target>
+
+<source>Cannot resolve symbolic link %x.</source>
+<target>無法解析符號連結 %x。</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>無法將 %x 移動到資源回收筒。</target>
+
+<source>Cannot open directory %x.</source>
+<target>無法開啟目錄 %x。</target>
+
+<source>Incorrect command line:</source>
+<target>不正確的命令列：</target>
+
+<source>Error Code %x:</source>
+<target>錯誤代碼 %x：</target>
+
+<source>Failed to connect to SFTP server %x.</source>
+<target>無法連接到SFTP伺服器 %x。</target>
+
 <source>
 <pluralform>1 byte</pluralform>
 <pluralform>%x bytes</pluralform>
@@ -234,26 +317,20 @@
 <source>Database file is corrupt:</source>
 <target>資料庫檔案已損毀：</target>
 
-<source>Cannot write file %x.</source>
-<target>無法寫入檔案 %x。</target>
-
-<source>Cannot read file %x.</source>
-<target>無法讀取檔案 %x。</target>
-
 <source>Database files do not share a common session.</source>
 <target>資料庫檔案不會共享一個共同的連線。</target>
 
 <source>Searching for folder %x...</source>
 <target>正在搜尋資料夾 %x...</target>
 
-<source>Cannot read file attributes of %x.</source>
-<target>無法讀取 %x 的檔案屬性。</target>
+<source>Time out while searching for folder %x.</source>
+<target>搜尋資料夾 %x 時超時。</target>
 
 <source>Cannot get process information.</source>
 <target>無法得到進程資訊。</target>
 
 <source>Waiting while directory is locked:</source>
-<target>等待同時目錄被鎖定...</target>
+<target>等待同時目錄被鎖定：</target>
 
 <source>Lock owner:</source>
 <target>鎖定擁有者：</target>
@@ -334,6 +411,15 @@
 <source>Unable to create time stamp for versioning:</source>
 <target>無法新建時間戳記的版本控制：</target>
 
+<source>Drag && drop</source>
+<target>拖放</target>
+
+<source>Cannot find folder %x.</source>
+<target>找不到資料夾 %x。</target>
+
+<source>Select a folder</source>
+<target>選擇一個資料夾</target>
+
 <source>&Open...</source>
 <target>開啟(&O)...</target>
 
@@ -382,11 +468,8 @@
 <source>Browse</source>
 <target>瀏覽</target>
 
-<source>Select a folder</source>
-<target>選擇一個資料夾</target>
-
 <source>Idle time (in seconds):</source>
-<target>閒置時間(以秒為單位)</target>
+<target>閒置時間(以秒為單位)：</target>
 
 <source>Idle time between last detected change and execution of command</source>
 <target>最後檢測到變更和執行命令之間的閒置時間</target>
@@ -437,9 +520,6 @@ The command is triggered if:
 
 <source>&Quit</source>
 <target>離開(&Q)</target>
-
-<source>Incorrect command line:</source>
-<target>不正確的命令列：</target>
 
 <source>&Retry</source>
 <target>重試(&R)</target>
@@ -495,17 +575,17 @@ The command is triggered if:
 <source>Updating attributes of %x</source>
 <target>正在更新 %x 個屬性</target>
 
+<source>%x and %y have different content.</source>
+<target>%x 和 %y 擁有的內容不同。</target>
+
+<source>Data verification error:</source>
+<target>資料驗證錯誤：</target>
+
 <source>Creating a Volume Shadow Copy for %x...</source>
 <target>正在新建卷影複製為 %x...</target>
 
-<source>Data verification error: %x and %y have different content.</source>
-<target>資料驗證錯誤：%x 和 %y 內容不同！</target>
-
 <source>Target folder %x already existing.</source>
 <target>目標資料夾 %x 已存在。</target>
-
-<source>Cannot find folder %x.</source>
-<target>找不到資料夾 %x。</target>
 
 <source>Target folder input field must not be empty.</source>
 <target>目標資料夾輸入欄位不能為空。</target>
@@ -519,8 +599,8 @@ The command is triggered if:
 <source>The following items have unresolved conflicts and will not be synchronized:</source>
 <target>下列項目有未解決的衝突，將不會同步：</target>
 
-<source>The following folders are significantly different. Make sure you are matching the correct folders for synchronization.</source>
-<target>下列資料夾明顯不同。請確定要進行同步的資料夾匹配正確。</target>
+<source>The following folders are significantly different. Make sure you have selected the correct folders for synchronization.</source>
+<target>下列資料夾明顯不同。請確保同步中所選資料夾是正確的。</target>
 
 <source>Not enough free disk space available in:</source>
 <target>沒有足夠的可用空間：</target>
@@ -546,11 +626,17 @@ The command is triggered if:
 <source>Synchronization stopped</source>
 <target>同步已停止。</target>
 
+<source>Stopped</source>
+<target>已停止</target>
+
 <source>Synchronization completed with errors</source>
 <target>同步完成但有錯誤</target>
 
 <source>Synchronization completed with warnings</source>
 <target>同步已完成，但出現警告</target>
+
+<source>Warning</source>
+<target>警告</target>
 
 <source>Nothing to synchronize</source>
 <target>沒有什麼東西可同步</target>
@@ -560,9 +646,6 @@ The command is triggered if:
 
 <source>Cleaning up old log files...</source>
 <target>清理舊日誌檔...</target>
-
-<source>Stopped</source>
-<target>已停止</target>
 
 <source>You can switch to FreeFileSync's main window to resolve this issue.</source>
 <target>您可以切換到FreeFileSync的主視窗中來解決此問題。</target>
@@ -615,7 +698,7 @@ The command is triggered if:
 <target>無法連接到www.freefilesync.org。</target>
 
 <source>Cannot find current FreeFileSync version number online. Do you want to check manually?</source>
-<target>找不到目前線上FreeFileSync版號！是否要手動檢查？</target>
+<target>找不到線上目前FreeFileSync版號！是否要手動檢查？</target>
 
 <source>&Check</source>
 <target>檢查(&C)</target>
@@ -653,9 +736,6 @@ The command is triggered if:
 <source>Action</source>
 <target>動作</target>
 
-<source>Drag && drop</source>
-<target>拖放</target>
-
 <source>Local comparison settings</source>
 <target>本機比對設定</target>
 
@@ -686,6 +766,9 @@ The command is triggered if:
 <source>Local Synchronization Settings</source>
 <target>本機同步設定</target>
 
+<source>The selected folder %x cannot be used with FreeFileSync. Please select a folder on a local file system, network or an MTP device.</source>
+<target>所選資料夾 %x 不能用在FreeFileSync。請選擇一個本機檔案系統、網路或MTP裝置上的資料夾。</target>
+
 <source>&New</source>
 <target>新增(&N)</target>
 
@@ -693,7 +776,7 @@ The command is triggered if:
 <target>儲存(&S)</target>
 
 <source>Save as &batch job...</source>
-<target>另存為批次處理作業(&b)</target>
+<target>另存為批次處理作業(&b)...</target>
 
 <source>Start &comparison</source>
 <target>開始比對(&c)</target>
@@ -720,7 +803,7 @@ The command is triggered if:
 <target>語言(&L)</target>
 
 <source>&Find...</source>
-<target>尋找(&F)</target>
+<target>尋找(&F)...</target>
 
 <source>&Reset layout</source>
 <target>重置佈局(&R)</target>
@@ -754,6 +837,9 @@ The command is triggered if:
 
 <source>Remove folder pair</source>
 <target>移除配對資料夾</target>
+
+<source>Select SFTP folder</source>
+<target>選擇SFTP資料夾</target>
 
 <source>Swap sides</source>
 <target>兩邊交換</target>
@@ -812,8 +898,8 @@ The command is triggered if:
 <source>Identify equal files by comparing the file content.</source>
 <target>由比對檔案內容來判斷相同檔案。</target>
 
-<source>Ignore time shift (in hours)</source>
-<target>忽略時間的轉變(以小時為單位)</target>
+<source>&Ignore time shift (in hours)</source>
+<target>忽略時間轉變(小時)(&I)</target>
 
 <source>Consider file times with specified offset as equal</source>
 <target>考慮檔案時間和相等的指定偏移量</target>
@@ -821,14 +907,14 @@ The command is triggered if:
 <source>Handle daylight saving time</source>
 <target>日光節約時間處理</target>
 
-<source>Include symbolic links:</source>
-<target>包括的符號連結：</target>
+<source>Include &symbolic links:</source>
+<target>包括符號連結(&s)：</target>
 
-<source>Direct</source>
-<target>直接</target>
+<source>&Follow</source>
+<target>按照(&F)</target>
 
-<source>Follow</source>
-<target>遵從</target>
+<source>&Direct</source>
+<target>直接(&D)</target>
 
 <source>More information</source>
 <target>詳細資訊</target>
@@ -861,20 +947,20 @@ The command is triggered if:
 <target>選擇從同步中排除某些檔案的篩選器規則。輸入相對於其對應的配對資料夾路徑。</target>
 
 <source>C&lear</source>
-<target>清除(&C)</target>
+<target>清除(&l)</target>
 
 <source>Detect moved files</source>
 <target>檢測被移動的檔案</target>
 
 <source>
-- Detection active after initial sync
-- Requires and creates database files
 - Not supported by all file systems
+- Requires and creates database files
+- Detection not available for first sync
 </source>
 <target>
-- 初始化同步後檢測活動
-- 要求並新建資料庫檔案
 - 不支援所有檔案系統
+- 需要新建資料庫檔案
+- 檢測不可用於第一次同步
 </target>
 
 <source>Detect synchronization directions with the help of database files</source>
@@ -922,6 +1008,27 @@ The command is triggered if:
 <source>OK</source>
 <target>確定</target>
 
+<source>Enter your SFTP login details:</source>
+<target>請輸入您的SFTP登錄詳細資訊：</target>
+
+<source>Server name or IP address:</source>
+<target>伺服器名稱或IP位址：</target>
+
+<source>Examples:</source>
+<target>範例：</target>
+
+<source>User name:</source>
+<target>使用者名稱：</target>
+
+<source>Password:</source>
+<target>密碼：</target>
+
+<source>&Show password</source>
+<target>顯示密碼(&S)：</target>
+
+<source>Directory on server:</source>
+<target>在伺服器上的目錄：</target>
+
 <source>Start synchronization now?</source>
 <target>現在開始同步？</target>
 
@@ -930,6 +1037,9 @@ The command is triggered if:
 
 <source>&Don't show this dialog again</source>
 <target>不要再顯示此對話框(&D)</target>
+
+<source>Arrange folder pair</source>
+<target>排列配對資料夾</target>
 
 <source>Items found:</source>
 <target>尋找項目：</target>
@@ -947,7 +1057,7 @@ The command is triggered if:
 <target>最小化到通知區域</target>
 
 <source>Bytes copied:</source>
-<target>已複製的位元組:</target>
+<target>已複製的位元組：</target>
 
 <source>Close</source>
 <target>關閉</target>
@@ -971,7 +1081,7 @@ The command is triggered if:
 <target>最小化執行</target>
 
 <source>Save log:</source>
-<target>儲存日誌</target>
+<target>儲存日誌：</target>
 
 <source>Limit:</source>
 <target>限制：</target>
@@ -1004,7 +1114,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>複製被鎖定的檔案</target>
 
 <source>Copy shared or locked files using the Volume Shadow Copy Service.</source>
-<target>共用的副本或鎖定的檔案使用卷影複製服務</target>
+<target>共用的副本或鎖定的檔案使用卷影複製服務。</target>
 
 <source>(requires administrator rights)</source>
 <target>(需要管理員權限)</target>
@@ -1040,10 +1150,10 @@ This guarantees a consistent state even in case of a serious error.
 <target>預設(&D)</target>
 
 <source>Source code written in C++ using:</source>
-<target>使用C++編寫的原始碼</target>
+<target>使用C++編寫的原始碼：</target>
 
-<source>If you like FreeFileSync</source>
-<target>如果您喜歡FreeFileSync</target>
+<source>If you like FreeFileSync:</source>
+<target>如果您喜歡FreeFileSync：</target>
 
 <source>Donate with PayPal</source>
 <target>使用PayPal捐款</target>
@@ -1063,6 +1173,9 @@ This guarantees a consistent state even in case of a serious error.
 <source>Many thanks for localization:</source>
 <target>非常感謝本地化語系翻譯工作人員：</target>
 
+<source>SSH File Transfer Protocol</source>
+<target>SSH檔案傳輸協議</target>
+
 <source>Save as Batch Job</source>
 <target>另存為批次處理作業</target>
 
@@ -1075,8 +1188,11 @@ This guarantees a consistent state even in case of a serious error.
 <source>Select Time Span</source>
 <target>選擇時間間隔</target>
 
-<source>&Preferences...</source>
+<source>&Preferences</source>
 <target>偏好設定(&P)</target>
+
+<source>Main Bar</source>
+<target>主欄位</target>
 
 <source>Folder Pairs</source>
 <target>配對資料夾</target>
@@ -1092,9 +1208,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Overview</source>
 <target>摘要</target>
-
-<source>Main Bar</source>
-<target>主欄位</target>
 
 <source>Confirm</source>
 <target>確認</target>
@@ -1195,13 +1308,13 @@ This guarantees a consistent state even in case of a serious error.
 <target>是否要儲存變更到 %x？</target>
 
 <source>Never save &changes</source>
-<target>都不保存更改(&c)</target>
+<target>不儲存變更(&c)</target>
 
 <source>Do&n't save</source>
 <target>不儲存(&N)</target>
 
-<source>Delete selected configurations</source>
-<target>刪除選定的配置</target>
+<source>Remove entry from list</source>
+<target>從清單中項目刪除</target>
 
 <source>Synchronization Settings</source>
 <target>同步設定</target>
@@ -1254,8 +1367,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Show filtered or temporarily excluded files</source>
 <target>顯示已篩選或暫時排除的檔案</target>
 
-<source>Set as default</source>
-<target>設為預設值</target>
+<source>Save as default</source>
+<target>儲存為預設值</target>
 
 <source>Filter</source>
 <target>篩選器</target>
@@ -1265,6 +1378,12 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Cannot find %x</source>
 <target>找不到 %x</target>
+
+<source>Move up</source>
+<target>向上移動</target>
+
+<source>Move down</source>
+<target>向下移動</target>
 
 <source>Comma-separated values</source>
 <target>以逗號分隔值</target>
@@ -1278,17 +1397,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Close progress dialog</source>
 <target>關閉進度對話框</target>
 
-<source>Standby</source>
-<target>待機</target>
-
 <source>Log off</source>
 <target>登出</target>
 
+<source>Standby</source>
+<target>待機</target>
+
 <source>Shut down</source>
 <target>關機</target>
-
-<source>Hibernate</source>
-<target>休眠</target>
 
 <source>Scanning...</source>
 <target>正在掃瞄...</target>
@@ -1298,9 +1414,6 @@ This guarantees a consistent state even in case of a serious error.
 
 <source>Info</source>
 <target>訊息</target>
-
-<source>Warning</source>
-<target>警告</target>
 
 <source>Select all</source>
 <target>全選</target>
@@ -1345,8 +1458,8 @@ This guarantees a consistent state even in case of a serious error.
 <source>Preferences</source>
 <target>偏好設定</target>
 
-<source>Copy NTFS permissions</source>
-<target>複製NTFS權限</target>
+<source>Copy DACL, SACL, Owner, Group</source>
+<target>複製DACL、SACL、擁有者、群組</target>
 
 <source>Integrate external applications into context menu. The following macros are available:</source>
 <target>整合內容功能表中的外部應用程式。可以使用下面的巨集：</target>
@@ -1441,26 +1554,20 @@ This guarantees a consistent state even in case of a serious error.
 <source>Percentage</source>
 <target>百分比</target>
 
+<source>Unable to register to receive system messages.</source>
+<target>無法登錄接收系統訊息。</target>
+
+<source>Unable to register device notifications for %x.</source>
+<target>%x 無法註冊裝置通知。</target>
+
 <source>Cannot monitor directory %x.</source>
 <target>無法監測目錄 %x。</target>
-
-<source>Cannot delete file %x.</source>
-<target>無法刪除目錄 %x。</target>
 
 <source>The file is locked by another process:</source>
 <target>檔案被另一個進程鎖定：</target>
 
-<source>Cannot move file %x to %y.</source>
-<target>無法移動檔案 %x 到 %y。</target>
-
-<source>Cannot delete directory %x.</source>
-<target>無法刪除目錄 %x。</target>
-
 <source>Cannot write file attributes of %x.</source>
 <target>無法寫入 %x 的檔案屬性。</target>
-
-<source>Cannot write modification time of %x.</source>
-<target>無法寫入 %x 的修改時間。</target>
 
 <source>Cannot read security context of %x.</source>
 <target>無法讀取 %x 的安全內容。</target>
@@ -1471,32 +1578,20 @@ This guarantees a consistent state even in case of a serious error.
 <source>Cannot read permissions of %x.</source>
 <target>無法讀取 %x 的權限。</target>
 
-<source>Cannot write permissions of %x.</source>
-<target>無法寫入 %x 的權限。</target>
-
-<source>Cannot create directory %x.</source>
-<target>無法新建目錄 %x。</target>
-
-<source>Cannot copy symbolic link %x to %y.</source>
-<target>無法複製符號連結 %x 到 %y。</target>
+<source>Cannot copy permissions from %x to %y.</source>
+<target>無法從 %x 複製權限到 %y。</target>
 
 <source>Cannot find system function %x.</source>
 <target>找不到系統函數 %x。</target>
 
+<source>Cannot copy attributes from %x to %y.</source>
+<target>無法從 %x 複製屬性到 %y。</target>
+
 <source>Cannot copy file %x to %y.</source>
-<target>無法複製檔案 %x 到 %y。</target>
+<target>無法從 %x 複製檔案到 %y。</target>
 
 <source>Type of item %x is not supported:</source>
 <target>項目類型 %x 不被支援：</target>
-
-<source>Cannot resolve symbolic link %x.</source>
-<target>無法解析符號連結 %x。</target>
-
-<source>Cannot open directory %x.</source>
-<target>無法開啟目錄 %x。</target>
-
-<source>Cannot enumerate directory %x.</source>
-<target>無法枚舉目錄 %x。</target>
 
 <source>%x TB</source>
 <target>%x TB</target>
@@ -1528,9 +1623,6 @@ This guarantees a consistent state even in case of a serious error.
 <pluralform>%x 天</pluralform>
 </target>
 
-<source>Unable to register to receive system messages.</source>
-<target>無法登錄接收系統訊息。</target>
-
 <source>Cannot set privilege %x.</source>
 <target>無法設定權限 %x。</target>
 
@@ -1540,23 +1632,14 @@ This guarantees a consistent state even in case of a serious error.
 <source>Cannot change process I/O priorities.</source>
 <target>無法更改I/O處理優先順序。</target>
 
-<source>Unable to move %x to the recycle bin.</source>
-<target>無法將 %x 移動到資源回收筒。</target>
-
 <source>Checking recycle bin failed for folder %x.</source>
 <target>正在檢查資源回收筒的資料夾 %x 失敗。</target>
 
-<source>Cannot determine final path for %x.</source>
-<target>無法確定最後路徑為 %x。</target>
-
-<source>Error Code %x:</source>
-<target>錯誤代碼 %x：</target>
-
-<source>Cannot read the following XML elements:</source>
+<source>The following XML elements could not be read:</source>
 <target>無法讀取下列XML元素：</target>
 
-<source>Configuration file %x loaded partially only.</source>
-<target>只載入設定檔 %x 的一部份。</target>
+<source>Configuration file %x is incomplete. The missing elements will be set to their default values.</source>
+<target>配置檔案 %x 是不完整的。缺少的元素將設定為其預設值。</target>
 
 <source>Prepare installation</source>
 <target>準備安裝</target>
@@ -1577,7 +1660,7 @@ This guarantees a consistent state even in case of a serious error.
 <target>建議</target>
 
 <source>Save settings to "%APPDATA%\FreeFileSync"</source>
-<target>儲存到"%APPDATA%\FreeFileSync"</target>
+<target>儲存到 "%APPDATA%\FreeFileSync"</target>
 
 <source>Register FreeFileSync file extensions</source>
 <target>註冊FreeFileSync檔案副檔名</target>

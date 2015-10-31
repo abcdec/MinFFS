@@ -25,7 +25,7 @@
 namespace lngfile
 {
 //singular forms
-typedef std::map <std::string, std::string> TranslationMap;  //orig |-> translation
+typedef std::map <std::string, std::string> TranslationMap; //orig |-> translation
 
 //plural forms
 typedef std::pair<std::string, std::string> SingularPluralPair; //1 house| n houses
@@ -454,6 +454,8 @@ private:
 
     void validateTranslation(const std::string& original, const std::string& translation) //throw ParsingError
     {
+        using namespace zen;
+
         if (original.empty())
             throw ParsingError(L"Source translation is empty", scn.posRow(), scn.posCol());
 
@@ -462,9 +464,9 @@ private:
             //if original contains placeholder, so must translation!
             auto checkPlaceholder = [&](const std::string& placeholder)
             {
-                if (zen::contains(original, placeholder) &&
-                    !zen::contains(translation, placeholder))
-                    throw ParsingError(zen::replaceCpy<std::wstring>(L"Placeholder %x missing in translation", L"%x", zen::utfCvrtTo<std::wstring>(placeholder)), scn.posRow(), scn.posCol());
+                if (contains(original, placeholder) &&
+                    !contains(translation, placeholder))
+                    throw ParsingError(replaceCpy<std::wstring>(L"Placeholder %x missing in translation", L"%x", utfCvrtTo<std::wstring>(placeholder)), scn.posRow(), scn.posCol());
             };
             checkPlaceholder("%x");
             checkPlaceholder("%y");
@@ -472,7 +474,7 @@ private:
 
             auto ampersandTokenCount = [](const std::string& str) -> size_t
             {
-                const std::string tmp = zen::replaceCpy(str, "&&", ""); //make sure to not catch && which windows resolves as just one & for display!
+                const std::string tmp = replaceCpy(str, "&&", ""); //make sure to not catch && which windows resolves as just one & for display!
                 return std::count(tmp.begin(), tmp.end(), '&');
             };
 
@@ -484,31 +486,30 @@ private:
 
             //ampersand at the end makes buggy wxWidgets crash miserably
             if (ampCountOrig > 0)
-                if ((zen::endsWith(original,    "&") && !zen::endsWith(original,    "&&")) ||
-                    (zen::endsWith(translation, "&") && !zen::endsWith(translation, "&&")))
+                if ((endsWith(original,    "&") && !endsWith(original,    "&&")) ||
+                    (endsWith(translation, "&") && !endsWith(translation, "&&")))
                     throw ParsingError(L"The & character to mark a menu item access key must not occur at the end of a string", scn.posRow(), scn.posCol());
 
-#if 0
             //if source ends with colon, so must translation (note: character seems to be universally used, even for asian and arabic languages)
-            if (zen::endsWith(original, ":") &&
-                !zen::endsWith(translation, ":") &&
-                !zen::endsWith(translation, "\xef\xbc\x9a")) //chinese colon
+            if (endsWith(original, ":") &&
+                !endsWith(translation, ":") &&
+                !endsWith(translation, "\xef\xbc\x9a")) //chinese colon
                 throw ParsingError(L"Source text ends with a colon character \":\", but translation does not", scn.posRow(), scn.posCol());
 
-            auto endsWithSingleDot = [](const std::string& s) { return zen::endsWith(s, ".") && !zen::endsWith(s, ".."); };
+            auto endsWithSingleDot = [](const std::string& s) { return endsWith(s, ".") && !endsWith(s, ".."); };
 
             //if source ends with a period, so must translation (note: character seems to be universally used, even for asian and arabic languages)
             if (endsWithSingleDot(original) &&
                 !endsWithSingleDot(translation) &&
-                !zen::endsWith(translation, "\xe3\x80\x82")) //chinese period
+                !endsWith(translation, "\xe0\xa5\xa4") && //hindi period
+                !endsWith(translation, "\xe3\x80\x82")) //chinese period
                 throw ParsingError(L"Source text ends with a punctuation mark character \".\", but translation does not", scn.posRow(), scn.posCol());
 
             //if source ends with an ellipsis, so must translation (note: character seems to be universally used, even for asian and arabic languages)
-            if (zen::endsWith(original, "...") &&
-                !zen::endsWith(translation, "...") &&
-                !zen::endsWith(translation, "\xe2\x80\xa6")) //narrow ellipsis (spanish?)
+            if (endsWith(original, "...") &&
+                !endsWith(translation, "...") &&
+                !endsWith(translation, "\xe2\x80\xa6")) //narrow ellipsis (spanish?)
                 throw ParsingError(L"Source text ends with an ellipsis \"...\", but translation does not", scn.posRow(), scn.posCol());
-#endif
         }
     }
 

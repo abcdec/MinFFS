@@ -28,7 +28,7 @@ using namespace zen;
 
 namespace
 {
-Zstring resolveRelativePath(const Zstring& relativePath) //note: ::GetFullPathName() is documented to be not thread-safe!
+Zstring resolveRelativePath(const Zstring& relativePath) //note: ::GetFullPathName() is documented to be NOT thread-safe!
 {
 #ifdef ZEN_WIN
     //- don't use long path prefix here! does not work with relative paths "." and ".."
@@ -65,7 +65,7 @@ Zstring resolveRelativePath(const Zstring& relativePath) //note: ::GetFullPathNa
                 return relativePath; //error! no further processing!
 
             if (startsWith(relativePath, "~/"))
-                return appendSeparator(homeDir) + afterFirst(relativePath, '/');
+                return appendSeparator(homeDir) + afterFirst(relativePath, '/', IF_MISSING_RETURN_NONE);
             else if (relativePath == "~")
                 return homeDir;
         }
@@ -86,10 +86,13 @@ Zstring resolveRelativePath(const Zstring& relativePath) //note: ::GetFullPathNa
 class CsidlConstants
 {
 public:
-    typedef std::map<Zstring, Zstring, LessFilename> CsidlToDirMap; //case-insensitive comparison
+    typedef std::map<Zstring, Zstring, LessFilePath> CsidlToDirMap; //case-insensitive comparison
 
     static const CsidlToDirMap& get()
     {
+#if defined _MSC_VER && _MSC_VER < 1900
+#error function scope static initialization is not yet thread-safe!
+#endif
         //function scope static initialization: avoid static initialization order problem in global namespace!
         static const CsidlToDirMap inst = createCsidlMapping();
         return inst;
@@ -105,9 +108,9 @@ private:
             wchar_t buffer[MAX_PATH] = {};
             if (SUCCEEDED(::SHGetFolderPath(nullptr,                        //__in   HWND hwndOwner,
                                             csidl | CSIDL_FLAG_DONT_VERIFY, //__in   int nFolder,
-                                            nullptr,				        //__in   HANDLE hToken,
+                                            nullptr,                        //__in   HANDLE hToken,
                                             0 /* == SHGFP_TYPE_CURRENT*/,   //__in   DWORD dwFlags,
-                                            buffer)))					  	//__out  LPTSTR pszPath
+                                            buffer)))                       //__out  LPTSTR pszPath
             {
                 Zstring dirpath = buffer;
                 if (!dirpath.empty())
@@ -117,9 +120,6 @@ private:
 
         //================================================================================================
         //SHGetKnownFolderPath: API available only with Windows Vista and later:
-#ifdef __MINGW32__
-#define KF_FLAG_DONT_VERIFY 0x00004000
-#endif
         typedef HRESULT (STDAPICALLTYPE* SHGetKnownFolderPathFunc)(REFKNOWNFOLDERID rfid, DWORD dwFlags, HANDLE hToken, PWSTR* ppszPath);
         const SysDllFun<SHGetKnownFolderPathFunc> shGetKnownFolderPath(L"Shell32.dll", "SHGetKnownFolderPath");
 
@@ -183,32 +183,29 @@ private:
         addFolderId(FOLDERID_QuickLaunch,     L"csidl_QuickLaunch");     // C:\Users\<user>\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch
 
         /*
-        CSIDL_APPDATA				covered by %AppData%
-        CSIDL_LOCAL_APPDATA			covered by %LocalAppData% -> not on XP!
-        CSIDL_COMMON_APPDATA		covered by %ProgramData%  -> not on XP!
-        CSIDL_PROFILE				covered by %UserProfile%
-        CSIDL_WINDOWS				covered by %WinDir%
-        CSIDL_SYSTEM				covered by %WinDir%
-        CSIDL_SYSTEMX86				covered by %WinDir%
-        CSIDL_PROGRAM_FILES			covered by %ProgramFiles%
-        CSIDL_PROGRAM_FILES_COMMON	covered by %CommonProgramFiles%
-        CSIDL_PROGRAM_FILESX86			covered by %ProgramFiles(x86)%       -> not on XP!
-        CSIDL_PROGRAM_FILES_COMMONX86	covered by %CommonProgramFiles(x86)% -> not on XP!
-        CSIDL_ADMINTOOLS			not relevant?
-        CSIDL_COMMON_ADMINTOOLS		not relevant?
+        CSIDL_APPDATA               covered by %AppData%
+        CSIDL_LOCAL_APPDATA         covered by %LocalAppData% -> not on XP!
+        CSIDL_COMMON_APPDATA        covered by %ProgramData%  -> not on XP!
+        CSIDL_PROFILE               covered by %UserProfile%
+        CSIDL_WINDOWS               covered by %WinDir%
+        CSIDL_SYSTEM                covered by %WinDir%
+        CSIDL_SYSTEMX86             covered by %WinDir%
+        CSIDL_PROGRAM_FILES         covered by %ProgramFiles%
+        CSIDL_PROGRAM_FILES_COMMON  covered by %CommonProgramFiles%
+        CSIDL_PROGRAM_FILESX86          covered by %ProgramFiles(x86)%       -> not on XP!
+        CSIDL_PROGRAM_FILES_COMMONX86   covered by %CommonProgramFiles(x86)% -> not on XP!
+        CSIDL_ADMINTOOLS            not relevant?
+        CSIDL_COMMON_ADMINTOOLS     not relevant?
 
-        FOLDERID_Public				covered by %Public%
+        FOLDERID_Public             covered by %Public%
         */
         return output;
     }
 };
-
-//caveat: function scope static initialization is not thread-safe in VS 2010!
-auto& dummy = CsidlConstants::get();
 #endif
 
 
-Opt<Zstring> getEnvironmentVar(const Zstring& envName) //return nullptr if not found
+Opt<Zstring> getEnvironmentVar(const Zstring& envName) //return null if not found
 {
     wxString value;
     if (!wxGetEnv(utfCvrtTo<wxString>(envName), &value))
@@ -292,12 +289,12 @@ Zstring expandMacros(const Zstring& text, const std::vector<std::pair<Zstring, Z
 {
     if (contains(text, MACRO_SEP))
     {
-        Zstring prefix = beforeFirst(text, MACRO_SEP);
-        Zstring rest   = afterFirst (text, MACRO_SEP);
+        Zstring prefix = beforeFirst(text, MACRO_SEP, IF_MISSING_RETURN_NONE);
+        Zstring rest   = afterFirst (text, MACRO_SEP, IF_MISSING_RETURN_NONE);
         if (contains(rest, MACRO_SEP))
         {
-            Zstring potentialMacro = beforeFirst(rest, MACRO_SEP);
-            Zstring postfix        = afterFirst (rest, MACRO_SEP); //text == prefix + MACRO_SEP + potentialMacro + MACRO_SEP + postfix
+            Zstring potentialMacro = beforeFirst(rest, MACRO_SEP, IF_MISSING_RETURN_NONE);
+            Zstring postfix        = afterFirst (rest, MACRO_SEP, IF_MISSING_RETURN_NONE); //text == prefix + MACRO_SEP + potentialMacro + MACRO_SEP + postfix
 
             if (Opt<Zstring> value = resolveMacro(potentialMacro, ext))
                 return prefix + *value + expandMacros(postfix, ext);
@@ -353,8 +350,8 @@ Opt<Zstring> getPathByVolumenName(const Zstring& volumeName) //return no value o
                 nullptr,     //__out_opt  LPDWORD lpFileSystemFlags,
                 nullptr,     //__out      LPTSTR  lpFileSystemNameBuffer,
                 0))          //__in       DWORD nFileSystemNameSize
-                    if (EqualFilename()(volumeName, Zstring(&volName[0])))
-                        return zen::make_unique<Zstring>(path);
+                    if (EqualFilePath()(volumeName, &volName[0]))
+                        return std::make_unique<Zstring>(path);
                 return nullptr;
             });
         }
@@ -396,9 +393,7 @@ Zstring expandVolumeName(const Zstring& text)  // [volname]:\folder       [volna
     //this would be a nice job for a C++11 regex...
 
     //we only expect the [.*] pattern at the beginning => do not touch dir names like "C:\somedir\[stuff]"
-    Zstring textTmp = text;
-    trim(textTmp, true, false);
-
+    const Zstring textTmp = trimCpy(text, true, false);
     if (startsWith(textTmp, Zstr("[")))
     {
         size_t posEnd = textTmp.find(Zstr("]"));
@@ -408,9 +403,9 @@ Zstring expandVolumeName(const Zstring& text)  // [volname]:\folder       [volna
             Zstring rest    = Zstring(textTmp.c_str() + posEnd + 1);
 
             if (startsWith(rest, Zstr(':')))
-                rest = afterFirst(rest, Zstr(':'));
+                rest = afterFirst(rest, Zstr(':'), IF_MISSING_RETURN_NONE);
             if (startsWith(rest, FILE_NAME_SEPARATOR))
-                rest = afterFirst(rest, FILE_NAME_SEPARATOR);
+                rest = afterFirst(rest, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
 #ifdef ZEN_WIN
             //[.*] pattern was found...
             if (!volname.empty())
@@ -440,12 +435,12 @@ Zstring expandVolumeName(const Zstring& text)  // [volname]:\folder       [volna
 }
 
 
-void getDirectoryAliasesRecursive(const Zstring& dirpath, std::set<Zstring, LessFilename>& output)
+void getDirectoryAliasesRecursive(const Zstring& dirpath, std::set<Zstring, LessFilePath>& output)
 {
 #ifdef ZEN_WIN
     //1. replace volume path by volume name: c:\dirpath -> [SYSTEM]\dirpath
     if (dirpath.size() >= 3 &&
-        std::iswalpha(dirpath[0]) &&
+        isAlpha(dirpath[0]) &&
         dirpath[1] == L':' &&
         dirpath[2] == L'\\')
     {
@@ -495,14 +490,6 @@ void getDirectoryAliasesRecursive(const Zstring& dirpath, std::set<Zstring, Less
         addEnvVar("HOME"); //Linux: /home/<user>  Mac: /Users/<user>
 #endif
         //substitute paths by symbolic names
-        auto pathStartsWith = [](const Zstring& path, const Zstring& prefix) -> bool
-        {
-#if defined ZEN_WIN || defined ZEN_MAC
-            return startsWith(makeUpperCopy(path), makeUpperCopy(prefix));
-#elif defined ZEN_LINUX
-            return startsWith(path, prefix);
-#endif
-        };
         for (const auto& entry : envToDir)
             if (pathStartsWith(dirpath, entry.second))
                 output.insert(MACRO_SEP + entry.first + MACRO_SEP + (dirpath.c_str() + entry.second.size()));
@@ -518,14 +505,13 @@ void getDirectoryAliasesRecursive(const Zstring& dirpath, std::set<Zstring, Less
 }
 
 
-std::vector<Zstring> zen::getDirectoryAliases(const Zstring& dirpathPhrase)
+std::vector<Zstring> zen::getDirectoryAliases(const Zstring& folderPathPhrase)
 {
-    Zstring dirpath = dirpathPhrase;
-    trim(dirpath, true, false);
+    const Zstring dirpath = trimCpy(folderPathPhrase, true, false);
     if (dirpath.empty())
         return std::vector<Zstring>();
 
-    std::set<Zstring, LessFilename> tmp;
+    std::set<Zstring, LessFilePath> tmp;
     getDirectoryAliasesRecursive(dirpath, tmp);
 
     tmp.erase(dirpath);
@@ -535,23 +521,26 @@ std::vector<Zstring> zen::getDirectoryAliases(const Zstring& dirpathPhrase)
 }
 
 
-Zstring zen::getFormattedDirectoryPath(const Zstring& dirpassPhrase) // throw()
+//coordinate changes with acceptsFolderPathPhraseNative()!
+Zstring zen::getResolvedFilePath(const Zstring& pathPhrase) //noexcept
 {
-    //formatting is needed since functions expect the directory to end with '\' to be able to split the relative names.
+    Zstring path = pathPhrase;
 
-    Zstring dirpath = dirpassPhrase;
+    path = expandMacros(path); //expand before trimming!
 
     //remove leading/trailing whitespace before allowing misinterpretation in applyLongPathPrefix()
-    trim(dirpath, true, false);
-    while (endsWith(dirpath, Zstr(' '))) //don't remove all whitespace from right, e.g. 0xa0 may be used as part of dir name
-        dirpath.resize(dirpath.size() - 1);
+    trim(path, true, false);
+    while (endsWith(path, Zstr(' '))) //don't remove all whitespace from right, e.g. 0xa0 may be used as part of dir name
+        path.resize(path.size() - 1);
 
-    if (dirpath.empty()) //an empty string would later be resolved as "\"; this is not desired
+#ifdef ZEN_WIN
+    path = removeLongPathPrefix(path);
+#endif
+
+    path = expandVolumeName(path); //may block for slow USB sticks and idle HDDs!
+
+    if (path.empty()) //an empty string would later be resolved as "\"; this is not desired
         return Zstring();
-
-    dirpath = expandMacros(dirpath);
-    dirpath = expandVolumeName(dirpath); //may block for slow USB sticks!
-
     /*
     need to resolve relative paths:
     WINDOWS:
@@ -562,9 +551,23 @@ Zstring zen::getFormattedDirectoryPath(const Zstring& dirpassPhrase) // throw()
     WINDOWS/LINUX:
      - detection of dependent directories, e.g. "\" and "C:\test"
      */
-    dirpath = resolveRelativePath(dirpath);
+    path = resolveRelativePath(path);
 
-    return appendSeparator(dirpath);
+    auto isVolumeRoot = [](const Zstring& dirPath)
+    {
+#ifdef ZEN_WIN
+        return dirPath.size() == 3 && isAlpha(dirPath[0]) && dirPath[1] == L':' && dirPath[2] == L'\\';
+#elif defined ZEN_LINUX || defined ZEN_MAC
+        return dirPath == "/";
+#endif
+    };
+
+    //remove trailing slash, unless volume root:
+    if (endsWith(path, FILE_NAME_SEPARATOR))
+        if (!isVolumeRoot(path))
+            path = beforeLast(path, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
+
+    return path;
 }
 
 
@@ -574,23 +577,23 @@ void zen::loginNetworkShare(const Zstring& dirpathOrig, bool allowUserInteractio
     /*
     ATTENTION: it is not safe to retrieve UNC path via ::WNetGetConnection() for every type of network share:
 
-    network type				 |::WNetGetConnection rv   | lpRemoteName				     | existing UNC path
+    network type                 |::WNetGetConnection rv   | lpRemoteName                    | existing UNC path
     -----------------------------|-------------------------|---------------------------------|----------------
-    inactive local network share | ERROR_CONNECTION_UNAVAIL| \\192.168.1.27\new2			 | YES
-    WebDrive					 | NO_ERROR				   | \\Webdrive-ZenJu\GNU		     | NO
-    Box.net (WebDav)			 | NO_ERROR				   | \\www.box.net\DavWWWRoot\dav    | YES
-    NetDrive					 | ERROR_NOT_CONNECTED     | <empty>						 | NO
+    inactive local network share | ERROR_CONNECTION_UNAVAIL| \\192.168.1.27\new2             | YES
+    WebDrive                     | NO_ERROR                | \\Webdrive-ZenJu\GNU            | NO
+    Box.net (WebDav)             | NO_ERROR                | \\www.box.net\DavWWWRoot\dav    | YES
+    NetDrive                     | ERROR_NOT_CONNECTED     | <empty>                         | NO
     ____________________________________________________________________________________________________________
 
     Windows Login Prompt Naming Conventions:
-    	network share:	\\<server>\<share>	e.g. \\WIN-XP\folder or \\192.168.1.50\folder
-    	user account:	<Domain>\<user>		e.g. WIN-XP\Zenju    or 192.168.1.50\Zenju
+        network share:  \\<server>\<share>  e.g. \\WIN-XP\folder or \\192.168.1.50\folder
+        user account:   <Domain>\<user>     e.g. WIN-XP\Zenju    or 192.168.1.50\Zenju
 
     Windows Command Line:
     - list *all* active network connections, including deviceless ones which are hidden in Explorer:
-    		net use
+            net use
     - delete active connection:
-    		net use /delete \\server\share
+            net use /delete \\server\share
     ____________________________________________________________________________________________________________
 
     Scenario: XP-shared folder is accessed by Win 7 over LAN with access limited to a certain user
@@ -608,11 +611,11 @@ void zen::loginNetworkShare(const Zstring& dirpathOrig, bool allowUserInteractio
                                         nullptr, //__in  LPCTSTR lpPassword,
                                         nullptr, //__in  LPCTSTR lpUsername,
                                         0);      //__in  DWORD dwFlags
-        //53L	ERROR_BAD_NETPATH		The network path was not found.
+        //53L   ERROR_BAD_NETPATH       The network path was not found.
         //67L   ERROR_BAD_NET_NAME
-        //86L	ERROR_INVALID_PASSWORD
-        //1219L	ERROR_SESSION_CREDENTIAL_CONFLICT	Multiple connections to a server or shared resource by the same user, using more than one user name, are not allowed. Disconnect all previous connections to the server or shared resource and try again.
-        //1326L	ERROR_LOGON_FAILURE	Logon failure: unknown user name or bad password.
+        //86L   ERROR_INVALID_PASSWORD
+        //1219L ERROR_SESSION_CREDENTIAL_CONFLICT   Multiple connections to a server or shared resource by the same user, using more than one user name, are not allowed. Disconnect all previous connections to the server or shared resource and try again.
+        //1326L ERROR_LOGON_FAILURE Logon failure: unknown user name or bad password.
         //1236L ERROR_CONNECTION_ABORTED
         if (somethingExists(trgRes.lpRemoteName)) //blocks!
             return; //success: connection usable! -> don't care about "rv"
@@ -627,8 +630,8 @@ void zen::loginNetworkShare(const Zstring& dirpathOrig, bool allowUserInteractio
         {
             //avoid problem II.)
             DWORD rv2= ::WNetCancelConnection2(trgRes.lpRemoteName, //_In_  LPCTSTR lpName,
-                                               0,					  //_In_  DWORD dwFlags,
-                                               true);				  //_In_  BOOL fForce
+                                               0,                     //_In_  DWORD dwFlags,
+                                               true);                 //_In_  BOOL fForce
             //2250L ERROR_NOT_CONNECTED
 
             //enforce login prompt

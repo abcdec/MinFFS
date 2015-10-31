@@ -15,6 +15,7 @@
 #include "i18n.h"
 #include "string_base.h"
 
+
 namespace zen
 {
 enum MessageType

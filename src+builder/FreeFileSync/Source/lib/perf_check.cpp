@@ -35,7 +35,7 @@ PerfCheck::~PerfCheck()
         outputFile.Write(wxT(";"));
         outputFile.Write(numberTo<wxString>(it->second.objCount_));
         outputFile.Write(wxT(";"));
-    	outputFile.Write(numberTo<wxString>(it->second.data_));
+        outputFile.Write(numberTo<wxString>(it->second.data_));
         outputFile.Write(wxT("\n"));
     }
     */

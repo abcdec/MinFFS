@@ -17,10 +17,10 @@
 A context menu supporting C++11 lambda callbacks!
 
 Usage:
-	ContextMenu menu;
-	menu.addItem(L"Some Label", [&]{ ...do something... }); -> capture by reference is fine, as long as captured variables have at least scope of ContextMenu::popup()!
-	...
-	menu.popup(wnd);
+    ContextMenu menu;
+    menu.addItem(L"Some Label", [&]{ ...do something... }); -> capture by reference is fine, as long as captured variables have at least scope of ContextMenu::popup()!
+    ...
+    menu.popup(wnd);
 */
 
 namespace zen
@@ -28,7 +28,7 @@ namespace zen
 class ContextMenu : private wxEvtHandler
 {
 public:
-    ContextMenu() : menu(zen::make_unique<wxMenu>()) {}
+    ContextMenu() : menu(std::make_unique<wxMenu>()) {}
 
     void addItem(const wxString& label, const std::function<void()>& command, const wxBitmap* bmp = nullptr, bool enabled = true)
     {

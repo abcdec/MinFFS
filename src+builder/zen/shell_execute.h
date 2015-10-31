@@ -31,6 +31,49 @@ enum ExecutionType
 
 namespace
 {
+#ifdef ZEN_WIN
+template <class Function>
+bool shellExecuteImpl(Function fillExecInfo, ExecutionType type)
+{
+    SHELLEXECUTEINFO execInfo = {};
+    execInfo.cbSize = sizeof(execInfo);
+    execInfo.lpVerb = nullptr;
+    execInfo.nShow  = SW_SHOWNORMAL;
+    execInfo.fMask  = type == EXEC_TYPE_SYNC ? (SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NOASYNC) : 0;
+    //don't use SEE_MASK_ASYNCOK -> different async mode than the default which returns successful despite errors!
+    execInfo.fMask |= SEE_MASK_FLAG_NO_UI; //::ShellExecuteEx() shows a non-blocking pop-up dialog on errors -> we want a blocking one
+    //for the record, SEE_MASK_UNICODE does nothing: http://blogs.msdn.com/b/oldnewthing/archive/2014/02/27/10503519.aspx
+
+    fillExecInfo(execInfo);
+
+    if (!::ShellExecuteEx(&execInfo)) //__inout  LPSHELLEXECUTEINFO lpExecInfo
+        return false;
+
+    if (execInfo.hProcess)
+    {
+        ZEN_ON_SCOPE_EXIT(::CloseHandle(execInfo.hProcess));
+
+        if (type == EXEC_TYPE_SYNC)
+            ::WaitForSingleObject(execInfo.hProcess, INFINITE);
+    }
+    return true;
+}
+
+
+void shellExecute(const void* /*PCIDLIST_ABSOLUTE*/ shellItemPidl, const std::wstring& displayPath, ExecutionType type) //throw FileError
+{
+    auto fillExecInfo = [&](SHELLEXECUTEINFO& execInfo)
+    {
+        execInfo.fMask |= SEE_MASK_IDLIST;
+        execInfo.lpIDList = const_cast<void*>(shellItemPidl); //lpIDList is documented as PCIDLIST_ABSOLUTE!
+    };
+
+    if (!shellExecuteImpl(fillExecInfo , type)) //throw FileError
+        THROW_LAST_FILE_ERROR(_("Incorrect command line:") + L"\n" + fmtPath(displayPath), L"ShellExecuteEx");
+}
+#endif
+
+
 void shellExecute(const Zstring& command, ExecutionType type) //throw FileError
 {
 #ifdef ZEN_WIN
@@ -56,27 +99,14 @@ void shellExecute(const Zstring& command, ExecutionType type) //throw FileError
                          (iter->empty() || std::any_of(iter->begin(), iter->end(), &isWhiteSpace<wchar_t>) ? L"\"" + *iter + L"\"" : *iter);
     }
 
-    SHELLEXECUTEINFO execInfo = {};
-    execInfo.cbSize = sizeof(execInfo);
-
-    //SEE_MASK_NOASYNC is equal to SEE_MASK_FLAG_DDEWAIT, but former is defined not before Win SDK 6.0
-    execInfo.fMask        = type == EXEC_TYPE_SYNC ? (SEE_MASK_NOCLOSEPROCESS | SEE_MASK_FLAG_DDEWAIT) : 0; //don't use SEE_MASK_ASYNCOK -> returns successful despite errors!
-    execInfo.fMask       |= SEE_MASK_UNICODE | SEE_MASK_FLAG_NO_UI; //::ShellExecuteEx() shows a non-blocking pop-up dialog on errors -> we want a blocking one
-    execInfo.lpVerb       = nullptr;
-    execInfo.lpFile       = filepath.c_str();
-    execInfo.lpParameters = arguments.c_str();
-    execInfo.nShow        = SW_SHOWNORMAL;
-
-    if (!::ShellExecuteEx(&execInfo)) //__inout  LPSHELLEXECUTEINFO lpExecInfo
-        throwFileError(_("Incorrect command line:") + L"\nFile: " + filepath + L"\nArg: " + arguments, L"ShellExecuteEx", ::GetLastError());
-
-    if (execInfo.hProcess)
+    auto fillExecInfo = [&](SHELLEXECUTEINFO& execInfo)
     {
-        ZEN_ON_SCOPE_EXIT(::CloseHandle(execInfo.hProcess));
+        execInfo.lpFile       = filepath.c_str();
+        execInfo.lpParameters = arguments.c_str();
+    };
 
-        if (type == EXEC_TYPE_SYNC)
-            ::WaitForSingleObject(execInfo.hProcess, INFINITE);
-    }
+    if (!shellExecuteImpl(fillExecInfo, type))
+        THROW_LAST_FILE_ERROR(_("Incorrect command line:") + L"\nFile: " + fmtPath(filepath) + L"\nArg: " + copyStringTo<std::wstring>(arguments), L"ShellExecuteEx");
 
 #elif defined ZEN_LINUX || defined ZEN_MAC
     /*
@@ -91,10 +121,10 @@ void shellExecute(const Zstring& command, ExecutionType type) //throw FileError
         //Posix::system - execute a shell command
         int rv = ::system(command.c_str()); //do NOT use std::system as its documentation says nothing about "WEXITSTATUS(rv)", ect...
         if (rv == -1 || WEXITSTATUS(rv) == 127) //http://linux.die.net/man/3/system    "In case /bin/sh could not be executed, the exit status will be that of a command that does exit(127)"
-            throw FileError(_("Incorrect command line:") + L"\n" + command);
+            throw FileError(_("Incorrect command line:") + L"\n" + utfCvrtTo<std::wstring>(command));
     }
     else
-        async([=] { int rv = ::system(command.c_str()); (void)rv; });
+        runAsync([=] { int rv = ::system(command.c_str()); (void)rv; });
 #endif
 }
 }

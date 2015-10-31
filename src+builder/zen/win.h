@@ -7,6 +7,10 @@
 #ifndef YAWFWH_YET_ANOTHER_WRAPPER_FOR_WINDOWS_H
 #define YAWFWH_YET_ANOTHER_WRAPPER_FOR_WINDOWS_H
 
+#ifndef _WINSOCKAPI_ //prevent inclusion of winsock.h in windows.h: obsoleted by and conflicting with winsock2.h
+    #define _WINSOCKAPI_
+#endif
+
 //------------------------------------------------------
 #ifdef __WXMSW__ //we have wxWidgets
     #include <wx/msw/wrapwin.h> //includes "windows.h"

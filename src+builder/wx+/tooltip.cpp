@@ -73,7 +73,7 @@ void Tooltip::show(const wxString& text, wxPoint mousePos, const wxBitmap* bmp)
     }
 
     tipWindow->GetSizer()->SetSizeHints(tipWindow); //~=Fit() + SetMinSize()
-    //Linux: Fit() seems to be somewhat broken => this needs to be called EVERY time inside show, not only if text or bmp change
+    //Linux: Fit() seems to be broken => this needs to be called EVERY time inside show, not only if text or bmp change
 
     const wxPoint newPos = wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ?
                            mousePos - wxPoint(30 + tipWindow->GetSize().GetWidth(), 0) :

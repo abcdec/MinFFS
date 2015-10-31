@@ -39,20 +39,13 @@ class DirectoryPanel : public FolderGenerated
 public:
     DirectoryPanel(wxWindow* parent) :
         FolderGenerated(parent),
-        dirpath_(*this, *m_buttonSelectDir, *m_txtCtrlDirectory)
-    {
-#ifdef ZEN_LINUX
-        //file drag and drop directly into the text control unhelpfully inserts in format "file://..<cr><nl>"; see folder_history_box.cpp
-        if (GtkWidget* widget = m_txtCtrlDirectory->GetConnectWidget())
-            ::gtk_drag_dest_unset(widget);
-#endif
-    }
+        folderSelector_(*this, *m_buttonSelectFolder, *m_txtCtrlDirectory, nullptr /*staticText*/) {}
 
-    void setPath(const wxString& dirpath) { dirpath_.setPath(dirpath); }
-    wxString getPath() const { return dirpath_.getPath(); }
+    void setPath(const Zstring& dirpath) { folderSelector_.setPath(dirpath); }
+    Zstring getPath() const { return folderSelector_.getPath(); }
 
 private:
-    zen::DirectoryName<wxTextCtrl> dirpath_;
+    zen::FolderSelector2 folderSelector_;
 };
 
 
@@ -70,12 +63,6 @@ MainDialog::MainDialog(wxDialog* dlg, const Zstring& cfgFileName)
     wxWindowUpdateLocker dummy(this); //leads to GUI corruption problems on Linux/OS X!
 #endif
 
-#ifdef ZEN_LINUX
-    //file drag and drop directly into the text control unhelpfully inserts in format "file://..<cr><nl>"; see folder_history_box.cpp
-    if (GtkWidget* widget = m_txtCtrlDirectoryMain->GetConnectWidget())
-        ::gtk_drag_dest_unset(widget);
-#endif
-
     SetIcon(getRtsIcon()); //set application icon
 
     setRelativeFontSize(*m_buttonStart, 1.5);
@@ -87,12 +74,11 @@ MainDialog::MainDialog(wxDialog* dlg, const Zstring& cfgFileName)
     m_bpButtonRemoveTopFolder->SetBitmapLabel(getResourceImage(L"item_remove"));
     setBitmapTextLabel(*m_buttonStart, getResourceImage(L"startRts").ConvertToImage(), m_buttonStart->GetLabel(), 5, 8);
 
-
     //register key event
     Connect(wxEVT_CHAR_HOOK, wxKeyEventHandler(MainDialog::OnKeyPressed), nullptr, this);
 
     //prepare drag & drop
-    dirpathFirst = zen::make_unique<DirectoryName<wxTextCtrl>>(*m_panelMainFolder, *m_buttonSelectDirMain, *m_txtCtrlDirectoryMain, m_staticTextFinalPath);
+    dirpathFirst = std::make_unique<FolderSelector2>(*m_panelMainFolder, *m_buttonSelectFolderMain, *m_txtCtrlDirectoryMain, m_staticTextFinalPath);
 
     //--------------------------- load config values ------------------------------------
     xmlAccess::XmlRealConfig newConfig;
@@ -142,8 +128,6 @@ MainDialog::MainDialog(wxDialog* dlg, const Zstring& cfgFileName)
     //drag and drop .ffs_real and .ffs_batch on main dialog
     setupFileDrop(*m_panelMain);
     m_panelMain->Connect(EVENT_DROP_FILE, FileDropEventHandler(MainDialog::onFilesDropped), nullptr, this);
-
-    timerForAsyncTasks.Connect(wxEVT_TIMER, wxEventHandler(MainDialog::onProcessAsyncTasks), nullptr, this);
 }
 
 
@@ -170,15 +154,6 @@ void MainDialog::onQueryEndSession()
 }
 
 
-void MainDialog::onProcessAsyncTasks(wxEvent& event)
-{
-    //schedule and run long-running tasks asynchronously
-    asyncTasks.evalResults(); //process results on GUI queue
-    if (asyncTasks.empty())
-        timerForAsyncTasks.Stop();
-}
-
-
 const Zstring& MainDialog::lastConfigFileName()
 {
     static Zstring instance = zen::getConfigDir() + Zstr("LastRun.ffs_real");
@@ -188,7 +163,7 @@ const Zstring& MainDialog::lastConfigFileName()
 
 void MainDialog::OnShowHelp(wxCommandEvent& event)
 {
-    zen::displayHelpEntry(L"html/RealtimeSync.html", this);
+    zen::displayHelpEntry(L"html/realtimesync.html", this);
 }
 
 
@@ -200,8 +175,12 @@ void MainDialog::OnMenuAbout(wxCommandEvent& event)
 #error what is going on?
 #endif
 
-    build += zen::is64BitBuild ? L" x64" : L" x86";
-    static_assert(zen::is32BitBuild || zen::is64BitBuild, "");
+    build +=
+#ifdef ZEN_BUILD_32BIT
+        L" x86";
+#elif defined ZEN_BUILD_64BIT
+        L" x64";
+#endif
 
     showNotificationDialog(this, DialogInfoType::INFO, PopupDialogCfg().
                            setTitle(_("About")).
@@ -256,15 +235,14 @@ void MainDialog::OnConfigSave(wxCommandEvent& event)
 {
     Zstring defaultFileName = currentConfigFileName.empty() ? Zstr("Realtime.ffs_real") : currentConfigFileName;
     //attention: currentConfigFileName may be an imported *.ffs_batch file! We don't want to overwrite it with a GUI config!
-    if (endsWith(defaultFileName, Zstr(".ffs_batch")))
-        replace(defaultFileName, Zstr(".ffs_batch"), Zstr(".ffs_real"), false);
-
+    if (pathEndsWith(defaultFileName, Zstr(".ffs_batch")))
+        defaultFileName = beforeLast(defaultFileName, Zstr("."), IF_MISSING_RETURN_NONE) + Zstr(".ffs_real");
 
     wxFileDialog filePicker(this,
                             wxEmptyString,
                             //OS X really needs dir/file separated like this:
-                            utfCvrtTo<wxString>(beforeLast(defaultFileName, FILE_NAME_SEPARATOR)), //default dir; empty string if / not found
-                            utfCvrtTo<wxString>(afterLast (defaultFileName, FILE_NAME_SEPARATOR)), //default file; whole string if / not found
+                            utfCvrtTo<wxString>(beforeLast(defaultFileName, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)), //default dir
+                            utfCvrtTo<wxString>(afterLast (defaultFileName, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)), //default file
                             wxString(L"RealtimeSync (*.ffs_real)|*.ffs_real") + L"|" +_("All files") + L" (*.*)|*",
                             wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
     if (filePicker.ShowModal() != wxID_OK)
@@ -329,7 +307,7 @@ void MainDialog::OnConfigLoad(wxCommandEvent& event)
 {
     wxFileDialog filePicker(this,
                             wxEmptyString,
-                            utfCvrtTo<wxString>(beforeLast(currentConfigFileName, FILE_NAME_SEPARATOR)), //default dir; empty string if / not found
+                            utfCvrtTo<wxString>(beforeLast(currentConfigFileName, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)), //default dir
                             wxEmptyString,
                             wxString(L"RealtimeSync (*.ffs_real; *.ffs_batch)|*.ffs_real;*.ffs_batch") + L"|" +_("All files") + L" (*.*)|*",
                             wxFD_OPEN);
@@ -340,22 +318,22 @@ void MainDialog::OnConfigLoad(wxCommandEvent& event)
 
 void MainDialog::onFilesDropped(FileDropEvent& event)
 {
-    const auto& files = event.getFiles();
-    if (!files.empty())
-        loadConfig(utfCvrtTo<Zstring>(files[0]));
+    const auto& filePaths = event.getPaths();
+    if (!filePaths.empty())
+        loadConfig(utfCvrtTo<Zstring>(filePaths[0]));
 }
 
 
 void MainDialog::setConfiguration(const xmlAccess::XmlRealConfig& cfg)
 {
     //clear existing folders
-    dirpathFirst->setPath(wxString());
+    dirpathFirst->setPath(Zstring());
     clearAddFolders();
 
     if (!cfg.directories.empty())
     {
         //fill top folder
-        dirpathFirst->setPath(utfCvrtTo<wxString>(*cfg.directories.begin()));
+        dirpathFirst->setPath(*cfg.directories.begin());
 
         //fill additional folders
         addFolder(std::vector<Zstring>(cfg.directories.begin() + 1, cfg.directories.end()));
@@ -389,7 +367,7 @@ void MainDialog::OnAddFolder(wxCommandEvent& event)
     const Zstring topFolder = utfCvrtTo<Zstring>(dirpathFirst->getPath());
 
     //clear existing top folder first
-    dirpathFirst->setPath(wxString());
+    dirpathFirst->setPath(Zstring());
 
     std::vector<Zstring> newFolders;
     newFolders.push_back(topFolder);
@@ -462,7 +440,7 @@ void MainDialog::addFolder(const std::vector<Zstring>& newFolders, bool addFront
         newFolder->m_bpButtonRemoveFolder->Connect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(MainDialog::OnRemoveFolder), nullptr, this );
 
         //insert directory name
-        newFolder->setPath(utfCvrtTo<wxString>(dirpath));
+        newFolder->setPath(dirpath);
     }
 
     //set size of scrolled window
@@ -496,7 +474,7 @@ void MainDialog::removeAddFolder(size_t pos)
         //the deferred deletion it is expected to do (and which is implemented correctly on Windows and Linux)
         //http://bb10.com/python-wxpython-devel/2012-09/msg00004.html
         //=> since we're in a mouse button callback of a sub-component of "pairToDelete" we need to delay deletion ourselves:
-        processAsync2([] {}, [pairToDelete] { pairToDelete->Destroy(); });
+        guiQueue.processAsync([] {}, [pairToDelete] { pairToDelete->Destroy(); });
 
         //set size of scrolled window
         const size_t additionalRows = std::min(dirpathsExtra.size(), MAX_ADD_FOLDERS); //up to MAX_ADD_FOLDERS additional folders shall be shown

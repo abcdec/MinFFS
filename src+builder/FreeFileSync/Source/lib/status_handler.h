@@ -87,7 +87,7 @@ protected:
     {
         abortRequested = true;
         statusText_ = _("Stop requested: Waiting for current operation to finish...");
-    } //called from GUI code: this does NOT call abortProcessNow() immediately, but when we're out of the C GUI call stack
+    } //called from GUI code: this does NOT call abortProcessNow() immediately, but later when we're out of the C GUI call stack
 
     //implement Statistics
     Phase currentPhase() const override { return currentPhase_; }

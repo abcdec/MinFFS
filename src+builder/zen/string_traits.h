@@ -7,6 +7,7 @@
 #ifndef STRING_TRAITS_HEADER_813274321443234
 #define STRING_TRAITS_HEADER_813274321443234
 
+#include <cstring> //strlen
 #include "type_tools.h"
 
 //uniform access to string-like types, both classes and character arrays
@@ -15,21 +16,21 @@ namespace zen
 /*
 IsStringLike<>::value:
     IsStringLike<const wchar_t*>::value; //equals "true"
-	IsStringLike<const int*>    ::value; //equals "false"
+    IsStringLike<const int*>    ::value; //equals "false"
 
 GetCharType<>::Type:
-	GetCharType<std::wstring>::Type  //equals wchar_t
-	GetCharType<wchar_t[5]>  ::Type  //equals wchar_t
+    GetCharType<std::wstring>::Type  //equals wchar_t
+    GetCharType<wchar_t[5]>  ::Type  //equals wchar_t
 
 strLength():
-	strLength(str);   //equals str.length()
-	strLength(array); //equals cStringLength(array)
+    strLength(str);   //equals str.length()
+    strLength(array); //equals cStringLength(array)
 
 strBegin():         -> not null-terminated! -> may be nullptr if length is 0!
-	std::wstring str(L"dummy");
-	char array[] = "dummy";
-	strBegin(str);   //returns str.c_str()
-	strBegin(array); //returns array
+    std::wstring str(L"dummy");
+    char array[] = "dummy";
+    strBegin(str);   //returns str.c_str()
+    strBegin(array); //returns array
 */
 
 //reference a sub-string for consumption by zen string_tools
@@ -38,14 +39,15 @@ class StringRef
 {
 public:
     template <class Iterator>
-    StringRef(Iterator first, Iterator last) : length_(last - first), data_(first != last ? &*first : nullptr) {}
+    StringRef(Iterator first, Iterator last) : len_(last - first), str_(first != last ? &*first : nullptr) {}
+    //StringRef(const Char* str, size_t len) : str_(str), len_(len) {} -> needless constraint! Char* not available for empty range!
 
-    size_t length() const { return length_; }
-    const Char* data() const { return data_; } //1. no null-termination! 2. may be nullptr!
+    const Char* data() const { return str_; } //1. no null-termination! 2. may be nullptr!
+    size_t length() const { return len_; }
 
 private:
-    size_t length_;
-    const Char* data_;
+    size_t len_;
+    const Char* str_;
 };
 
 
@@ -98,6 +100,10 @@ struct GetCharTypeImpl<S, true> :
 template <> struct GetCharTypeImpl<char,    false> : ResultType<char   > {};
 template <> struct GetCharTypeImpl<wchar_t, false> : ResultType<wchar_t> {};
 
+template <> struct GetCharTypeImpl<StringRef<char   >, false> : ResultType<char   > {};
+template <> struct GetCharTypeImpl<StringRef<wchar_t>, false> : ResultType<wchar_t> {};
+
+
 ZEN_INIT_DETECT_MEMBER_TYPE(value_type);
 ZEN_INIT_DETECT_MEMBER(c_str);  //we don't know the exact declaration of the member attribute and it may be in a base class!
 ZEN_INIT_DETECT_MEMBER(length); //
@@ -127,28 +133,6 @@ public:
         IsSameType<CharType, wchar_t>::value
     };
 };
-
-
-template <> class StringTraits<StringRef<char>>
-{
-public:
-    enum
-    {
-        isStringClass = false,
-        isStringLike = true
-    };
-    typedef char CharType;
-};
-template <> class StringTraits<StringRef<wchar_t>>
-{
-public:
-    enum
-    {
-        isStringClass = false,
-        isStringLike = true
-    };
-    typedef wchar_t CharType;
-};
 }
 
 template <class T>
@@ -160,24 +144,25 @@ struct GetCharType : ResultType<typename implementation::StringTraits<T>::CharTy
 
 namespace implementation
 {
-template <class C> inline
-size_t cStringLength(const C* str) //naive implementation seems somewhat faster than "optimized" strlen/wcslen!
-{
-#if defined _MSC_VER && _MSC_VER > 1800
-    static_assert(false, "strlen/wcslen are vectorized in VS14 CTP3 -> test again!");
-#endif
+//strlen/wcslen are vectorized since VS14 CTP3
+inline size_t cStringLength(const char*    str) { return std::strlen(str); }
+inline size_t cStringLength(const wchar_t* str) { return std::wcslen(str); }
 
+//no significant perf difference for "comparison" test case between cStringLength/wcslen:
+#if 0
+template <class C> inline
+size_t cStringLength(const C* str)
+{
     static_assert(IsSameType<C, char>::value || IsSameType<C, wchar_t>::value, "");
     size_t len = 0;
     while (*str++ != 0)
         ++len;
     return len;
 }
-}
+#endif
 
-
-template <class S> inline
-const typename GetCharType<S>::Type* strBegin(const S& str, typename EnableIf<implementation::StringTraits<S>::isStringClass>::Type* = nullptr) //SFINAE: T must be a "string"
+template <class S, typename = typename EnableIf<implementation::StringTraits<S>::isStringClass>::Type> inline
+const typename GetCharType<S>::Type* strBegin(const S& str) //SFINAE: T must be a "string"
 {
     return str.c_str();
 }
@@ -190,18 +175,35 @@ inline const char*    strBegin(const StringRef<char   >& ref) { return ref.data(
 inline const wchar_t* strBegin(const StringRef<wchar_t>& ref) { return ref.data(); }
 
 
-template <class S> inline
-size_t strLength(const S& str, typename EnableIf<implementation::StringTraits<S>::isStringClass>::Type* = nullptr) //SFINAE: T must be a "string"
+template <class S, typename = typename EnableIf<implementation::StringTraits<S>::isStringClass>::Type> inline
+size_t strLength(const S& str) //SFINAE: T must be a "string"
 {
     return str.length();
 }
 
-inline size_t strLength(const char*    str) { return implementation::cStringLength(str); }
-inline size_t strLength(const wchar_t* str) { return implementation::cStringLength(str); }
+inline size_t strLength(const char*    str) { return cStringLength(str); }
+inline size_t strLength(const wchar_t* str) { return cStringLength(str); }
 inline size_t strLength(char)               { return 1; }
 inline size_t strLength(wchar_t)            { return 1; }
 inline size_t strLength(const StringRef<char   >& ref) { return ref.length(); }
 inline size_t strLength(const StringRef<wchar_t>& ref) { return ref.length(); }
+}
+
+
+template <class S> inline
+auto strBegin(S&& str) -> const typename GetCharType<S>::Type*
+{
+    static_assert(IsStringLike<S>::value, "");
+    return implementation::strBegin(std::forward<S>(str));
+}
+
+
+template <class S> inline
+size_t strLength(S&& str)
+{
+    static_assert(IsStringLike<S>::value, "");
+    return implementation::strLength(std::forward<S>(str));
+}
 }
 
 #endif //STRING_TRAITS_HEADER_813274321443234

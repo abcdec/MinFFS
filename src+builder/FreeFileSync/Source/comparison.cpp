@@ -5,22 +5,15 @@
 // **************************************************************************
 
 #include "comparison.h"
-#include <stdexcept>
-#include <numeric>
-#include <zen/perf.h>
-#include <zen/scope_guard.h>
 #include <zen/process_priority.h>
-#include <zen/symlink_target.h>
-#include <zen/format_unit.h>
-#include <zen/stl_tools.h>
+#include <zen/perf.h>
 #include "algorithm.h"
 #include "lib/parallel_scan.h"
-#include "lib/resolve_path.h"
 #include "lib/dir_exist_async.h"
 #include "lib/binary.h"
 #include "lib/cmp_filetime.h"
 #include "lib/status_handler_impl.h"
-#include "lib/parallel_scan.h"
+#include "fs/concrete.h"
 
 using namespace zen;
 
@@ -28,17 +21,14 @@ using namespace zen;
 std::vector<FolderPairCfg> zen::extractCompareCfg(const MainConfiguration& mainCfg, int fileTimeTolerance)
 {
     //merge first and additional pairs
-    std::vector<FolderPairEnh> allPairs;
-    allPairs.push_back(mainCfg.firstPair);
-    allPairs.insert(allPairs.end(),
-                    mainCfg.additionalPairs.begin(), //add additional pairs
-                    mainCfg.additionalPairs.end());
+    std::vector<FolderPairEnh> allPairs = { mainCfg.firstPair };
+    append(allPairs, mainCfg.additionalPairs);
 
     std::vector<FolderPairCfg> output;
     std::transform(allPairs.begin(), allPairs.end(), std::back_inserter(output),
                    [&](const FolderPairEnh& enhPair) -> FolderPairCfg
     {
-        return FolderPairCfg(enhPair.dirpathPhraseLeft, enhPair.dirpathPhraseRight,
+        return FolderPairCfg(enhPair.folderPathPhraseLeft_, enhPair.folderPathPhraseRight_,
         enhPair.altCmpConfig.get() ? enhPair.altCmpConfig->compareVar       : mainCfg.cmpConfig.compareVar,
         enhPair.altCmpConfig.get() ? enhPair.altCmpConfig->handleSymlinks   : mainCfg.cmpConfig.handleSymlinks,
         fileTimeTolerance,
@@ -56,62 +46,70 @@ namespace
 {
 struct ResolvedFolderPair
 {
-    ResolvedFolderPair(const Zstring& left, const Zstring& right) :
-        dirpathLeft(left),
-        dirpathRight(right) {}
+    ResolvedFolderPair(const std::shared_ptr<ABF>& left,
+                       const std::shared_ptr<ABF>& right) :
+        abfLeft (left),
+        abfRight(right) {}
 
-    Zstring dirpathLeft;  //resolved directory names
-    Zstring dirpathRight; //
+    std::shared_ptr<ABF> abfLeft;  //always bound
+    std::shared_ptr<ABF> abfRight; //
 };
 
 
-std::vector<ResolvedFolderPair> resolveDirectoryNames(const std::vector<FolderPairCfg>& cfgList)
-{
-    std::vector<ResolvedFolderPair> output;
-
-    for (const FolderPairCfg& fpCfg : cfgList)
-        output.emplace_back(getFormattedDirectoryPath(fpCfg.dirpathPhraseLeft),
-                            getFormattedDirectoryPath(fpCfg.dirpathPhraseRight));
-    warn_static("get volume by name for idle HDD! => call async getFormattedDirectoryPath, but currently not thread-safe")
-    return output;
-}
-
-
-struct ResolutionInfo
+struct ResolvedBaseFolders
 {
     std::vector<ResolvedFolderPair> resolvedPairs;
-    std::set<Zstring, LessFilename> existingDirs;
+    std::set<const ABF*, ABF::LessItemPath> existingBaseFolders; //references "resolvedPairs" variable!!!
 };
 
 
-ResolutionInfo resolveFolderPairs(const std::vector<FolderPairCfg>& cfgList,
-                                  bool allowUserInteraction,
-                                  ProcessCallback& callback)
+ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& cfgList,
+                                          bool allowUserInteraction,
+                                          ProcessCallback& callback)
 {
-    ResolutionInfo output;
+    ResolvedBaseFolders output;
 
     tryReportingError([&]
     {
-        //support "retry" for environment variable and and variable driver letter resolution!
-        output.resolvedPairs = resolveDirectoryNames(cfgList);
-        assert(output.resolvedPairs.size() == cfgList.size()); //postcondition!
+        std::set<const ABF*, ABF::LessItemPath> uniqueBaseFolders;
 
-        std::set<Zstring, LessFilename> dirpaths;
-        for (const ResolvedFolderPair& fp : output.resolvedPairs)
+        //support "retry" for environment variable and and variable driver letter resolution!
+        output.resolvedPairs.clear();
+        for (const FolderPairCfg& fpCfg : cfgList)
         {
-            dirpaths.insert(fp.dirpathLeft);
-            dirpaths.insert(fp.dirpathRight);
+            std::shared_ptr<ABF> abfLeft  = createAbstractBaseFolder(fpCfg.folderPathPhraseLeft_);
+            std::shared_ptr<ABF> abfRight = createAbstractBaseFolder(fpCfg.folderPathPhraseRight_);
+
+            uniqueBaseFolders.insert(abfLeft .get());
+            uniqueBaseFolders.insert(abfRight.get());
+
+            output.resolvedPairs.emplace_back(abfLeft, abfRight);
         }
 
-        const DirectoryStatus dirStatus = getExistingDirsUpdating(dirpaths, allowUserInteraction, callback); //check *all* directories on each try!
-        output.existingDirs = dirStatus.existing;
+        const DirectoryStatus status = checkFolderExistenceUpdating(uniqueBaseFolders, allowUserInteraction, callback); //re-check *all* directories on each try!
+        output.existingBaseFolders = status.existingBaseFolder;
 
-        if (!dirStatus.missing.empty())
+        if (!status.missingBaseFolder.empty() || !status.failedChecks.empty())
         {
-            std::wstring msg = _("Cannot find the following folders:") + L"\n";
-            for (const Zstring& dirpath : dirStatus.missing)
-                msg += std::wstring(L"\n") + dirpath;
-            throw FileError(msg, _("You can ignore this error to consider each folder as empty. The folders then will be created automatically during synchronization."));
+            std::wstring errorMsg = _("Cannot find the following folders:") + L"\n";
+
+            for (const auto& baseFolder : status.missingBaseFolder)
+                errorMsg += L"\n" + ABF::getDisplayPath(baseFolder->getAbstractPath());
+
+            for (const auto& fc : status.failedChecks)
+                errorMsg += L"\n" + ABF::getDisplayPath(fc.first->getAbstractPath());
+
+            errorMsg += L"\n\n";
+            errorMsg +=  _("You can ignore this error to consider each folder as empty. The folders then will be created automatically during synchronization.");
+
+            if (!status.failedChecks.empty())
+            {
+                errorMsg += L"\n___________________________________________";
+                for (const auto& fc : status.failedChecks)
+                    errorMsg += std::wstring(L"\n\n") + replaceCpy(fc.second.toString(), L"\n\n", L"\n");
+            }
+
+            throw FileError(errorMsg);
         }
     }, callback); //throw X?
 
@@ -125,9 +123,9 @@ void checkForIncompleteInput(const std::vector<ResolvedFolderPair>& folderPairs,
     bool haveFullPair    = false;
 
     for (const ResolvedFolderPair& fp : folderPairs)
-        if (fp.dirpathLeft.empty() != fp.dirpathRight.empty())
+        if (fp.abfLeft->emptyBaseFolderPath() != fp.abfRight->emptyBaseFolderPath())
             havePartialPair = true;
-        else if (!fp.dirpathLeft.empty())
+        else if (!fp.abfLeft->emptyBaseFolderPath())
             haveFullPair = true;
 
     if (havePartialPair == haveFullPair) //error if: all empty or exist both full and partial pairs -> support single-dir scenario
@@ -140,28 +138,21 @@ void checkForIncompleteInput(const std::vector<ResolvedFolderPair>& folderPairs,
 //similar check if one directory is read/written by multiple pairs not before beginning of synchronization
 void checkFolderDependency(const std::vector<ResolvedFolderPair>& folderPairs, bool& warningDependentFolders, ProcessCallback& callback) //returns warning message, empty if all ok
 {
-    std::vector<std::pair<Zstring, Zstring>> dependentDirs;
-
-    auto havePathDependency = [](const Zstring& lhs, const Zstring& rhs)
-    {
-        return EqualFilename()(Zstring(lhs.c_str(), std::min(lhs.length(), rhs.length())), //note: this is NOT an equivalence relation!
-                               Zstring(rhs.c_str(), std::min(lhs.length(), rhs.length())));
-    };
+    std::vector<ResolvedFolderPair> dependentFolderPairs;
 
     for (const ResolvedFolderPair& fp : folderPairs)
-        if (!fp.dirpathLeft.empty() && !fp.dirpathRight.empty()) //empty folders names may be accepted by user
-        {
-            if (havePathDependency(fp.dirpathLeft, fp.dirpathRight)) //test wheter leftDirectory begins with rightDirectory or the other way round
-                dependentDirs.emplace_back(fp.dirpathLeft, fp.dirpathRight);
-        }
+        if (!fp.abfLeft->emptyBaseFolderPath() && !fp.abfRight->emptyBaseFolderPath()) //empty folders names may be accepted by user
+            //test wheter leftDirectory begins with rightDirectory or the other way round
+            if (ABF::havePathDependency(*fp.abfLeft, *fp.abfRight))
+                dependentFolderPairs.push_back(fp);
 
-    if (!dependentDirs.empty())
+    if (!dependentFolderPairs.empty())
     {
         std::wstring warningMsg = _("The following folder paths are dependent from each other:");
-        for (auto it = dependentDirs.begin(); it != dependentDirs.end(); ++it)
-            warningMsg += std::wstring(L"\n\n") +
-                          it->first + L"\n" +
-                          it->second;
+        for (const ResolvedFolderPair& pair : dependentFolderPairs)
+            warningMsg += L"\n\n" +
+                          ABF::getDisplayPath(pair.abfLeft ->getAbstractPath()) + L"\n" +
+                          ABF::getDisplayPath(pair.abfRight->getAbstractPath());
 
         callback.reportWarning(warningMsg, warningDependentFolders);
     }
@@ -197,9 +188,7 @@ ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& keysToRead, Pro
     class CbImpl : public FillBufferCallback
     {
     public:
-        CbImpl(ProcessCallback& pcb) :
-            callback_(pcb),
-            itemsReported(0) {}
+        CbImpl(ProcessCallback& pcb) : callback_(pcb) {}
 
         void reportStatus(const std::wstring& statusMsg, int itemsTotal) override
         {
@@ -227,7 +216,7 @@ ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& keysToRead, Pro
 
     private:
         ProcessCallback& callback_;
-        int itemsReported;
+        int itemsReported = 0;
     } cb(callback);
 
     fillBuffer(keysToRead, //in
@@ -246,9 +235,9 @@ const wchar_t arrowRight[] = L"-->";
 
 
 //check for very old dates or dates in the future
-std::wstring getConflictInvalidDate(const Zstring& fileNameFull, std::int64_t utcTime)
+std::wstring getConflictInvalidDate(const std::wstring& displayPath, std::int64_t utcTime)
 {
-    return replaceCpy(_("File %x has an invalid date."), L"%x", fmtFileName(fileNameFull)) + L"\n" +
+    return replaceCpy(_("File %x has an invalid date."), L"%x", fmtPath(displayPath)) + L"\n" +
            _("Date:") + L" " + utcToLocalTimeString(utcTime);
 }
 
@@ -256,7 +245,7 @@ std::wstring getConflictInvalidDate(const Zstring& fileNameFull, std::int64_t ut
 //check for changed files with same modification date
 std::wstring getConflictSameDateDiffSize(const FilePair& fileObj)
 {
-    return replaceCpy(_("Files %x have the same date but a different size."), L"%x", fmtFileName(fileObj.getPairRelativePath())) + L"\n" +
+    return replaceCpy(_("Files %x have the same date but a different size."), L"%x", fmtPath(fileObj.getPairRelativePath())) + L"\n" +
            L"    " + arrowLeft  + L" " + _("Date:") + L" " + utcToLocalTimeString(fileObj.getLastWriteTime<LEFT_SIDE >()) + L"    " + _("Size:") + L" " + toGuiString(fileObj.getFileSize<LEFT_SIDE>()) + L"\n" +
            L"    " + arrowRight + L" " + _("Date:") + L" " + utcToLocalTimeString(fileObj.getLastWriteTime<RIGHT_SIDE>()) + L"    " + _("Size:") + L" " + toGuiString(fileObj.getFileSize<RIGHT_SIDE>());
 }
@@ -264,15 +253,15 @@ std::wstring getConflictSameDateDiffSize(const FilePair& fileObj)
 
 std::wstring getConflictSkippedBinaryComparison(const FilePair& fileObj)
 {
-    return replaceCpy(_("Content comparison was skipped for excluded files %x."), L"%x", fmtFileName(fileObj.getPairRelativePath()));
+    return replaceCpy(_("Content comparison was skipped for excluded files %x."), L"%x", fmtPath(fileObj.getPairRelativePath()));
 }
 
 
 std::wstring getDescrDiffMetaShortnameCase(const FileSystemObject& fsObj)
 {
     return _("Items differ in attributes only") + L"\n" +
-           L"    " + arrowLeft  + L" " + fmtFileName(fsObj.getItemName<LEFT_SIDE >()) + L"\n" +
-           L"    " + arrowRight + L" " + fmtFileName(fsObj.getItemName<RIGHT_SIDE>());
+           L"    " + arrowLeft  + L" " + fmtPath(fsObj.getItemName<LEFT_SIDE >()) + L"\n" +
+           L"    " + arrowRight + L" " + fmtPath(fsObj.getItemName<RIGHT_SIDE>());
 }
 
 
@@ -312,11 +301,11 @@ void categorizeSymlinkByTime(SymlinkPair& linkObj, int fileTimeTolerance, unsign
             break;
 
         case TimeResult::LEFT_INVALID:
-            linkObj.setCategoryConflict(getConflictInvalidDate(linkObj.getFullPath<LEFT_SIDE>(), linkObj.getLastWriteTime<LEFT_SIDE>()));
+            linkObj.setCategoryConflict(getConflictInvalidDate(ABF::getDisplayPath(linkObj.getAbstractPath<LEFT_SIDE>()), linkObj.getLastWriteTime<LEFT_SIDE>()));
             break;
 
         case TimeResult::RIGHT_INVALID:
-            linkObj.setCategoryConflict(getConflictInvalidDate(linkObj.getFullPath<RIGHT_SIDE>(), linkObj.getLastWriteTime<RIGHT_SIDE>()));
+            linkObj.setCategoryConflict(getConflictInvalidDate(ABF::getDisplayPath(linkObj.getAbstractPath<RIGHT_SIDE>()), linkObj.getLastWriteTime<RIGHT_SIDE>()));
             break;
     }
 }
@@ -364,11 +353,11 @@ std::shared_ptr<BaseDirPair> ComparisonBuffer::compareByTimeSize(const ResolvedF
                 break;
 
             case TimeResult::LEFT_INVALID:
-                fileObj->setCategoryConflict(getConflictInvalidDate(fileObj->getFullPath<LEFT_SIDE>(), fileObj->getLastWriteTime<LEFT_SIDE>()));
+                fileObj->setCategoryConflict(getConflictInvalidDate(ABF::getDisplayPath(fileObj->getAbstractPath<LEFT_SIDE>()), fileObj->getLastWriteTime<LEFT_SIDE>()));
                 break;
 
             case TimeResult::RIGHT_INVALID:
-                fileObj->setCategoryConflict(getConflictInvalidDate(fileObj->getFullPath<RIGHT_SIDE>(), fileObj->getLastWriteTime<RIGHT_SIDE>()));
+                fileObj->setCategoryConflict(getConflictInvalidDate(ABF::getDisplayPath(fileObj->getAbstractPath<RIGHT_SIDE>()), fileObj->getLastWriteTime<RIGHT_SIDE>()));
                 break;
         }
     }
@@ -383,11 +372,12 @@ void categorizeSymlinkByContent(SymlinkPair& linkObj, int fileTimeTolerance, uns
     Zstring targetPathRawR;
     Opt<std::wstring> errMsg = tryReportingError([&]
     {
-        callback.reportStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtFileName(linkObj.getFullPath<LEFT_SIDE>())));
-        targetPathRawL = getSymlinkTargetRaw(linkObj.getFullPath<LEFT_SIDE>()); //throw FileError
+        callback.reportStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(ABF::getDisplayPath(linkObj.getAbstractPath<LEFT_SIDE>()))));
 
-        callback.reportStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtFileName(linkObj.getFullPath<RIGHT_SIDE>())));
-        targetPathRawR = getSymlinkTargetRaw(linkObj.getFullPath<RIGHT_SIDE>()); //throw FileError
+        targetPathRawL = ABF::getSymlinkContentBuffer(linkObj.getAbstractPath<LEFT_SIDE>()); //throw FileError
+
+        callback.reportStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(ABF::getDisplayPath(linkObj.getAbstractPath<RIGHT_SIDE>()))));
+        targetPathRawR = ABF::getSymlinkContentBuffer(linkObj.getAbstractPath<RIGHT_SIDE>()); //throw FileError
     }, callback); //throw X?
 
     if (errMsg)
@@ -397,8 +387,8 @@ void categorizeSymlinkByContent(SymlinkPair& linkObj, int fileTimeTolerance, uns
         if (targetPathRawL == targetPathRawR
 #ifdef ZEN_WIN //type of symbolic link is relevant for Windows only
             &&
-            dirExists(linkObj.getFullPath<LEFT_SIDE >()) == //check if dir-symlink
-            dirExists(linkObj.getFullPath<RIGHT_SIDE>())    //
+            ABF::folderExists(linkObj.getAbstractPath<LEFT_SIDE >()) == //check if dir-symlink
+            ABF::folderExists(linkObj.getAbstractPath<RIGHT_SIDE>())    //
 #endif
            )
         {
@@ -478,7 +468,7 @@ std::list<std::shared_ptr<BaseDirPair>> ComparisonBuffer::compareByContent(const
     //compare files (that have same size) bytewise...
     for (FilePair* fileObj : filesToCompareBytewise)
     {
-        callback_.reportStatus(replaceCpy(txtComparingContentOfFiles, L"%x", fmtFileName(fileObj->getPairRelativePath()), false));
+        callback_.reportStatus(replaceCpy(txtComparingContentOfFiles, L"%x", fmtPath(fileObj->getPairRelativePath())));
 
         //check files that exist in left and right model but have different content
 
@@ -489,8 +479,8 @@ std::list<std::shared_ptr<BaseDirPair>> ComparisonBuffer::compareByContent(const
 
             auto onUpdateStatus = [&](std::int64_t bytesDelta) { statReporter.reportDelta(0, bytesDelta); };
 
-            haveSameContent = filesHaveSameContent(fileObj->getFullPath<LEFT_SIDE>(),
-                                                   fileObj->getFullPath<RIGHT_SIDE>(), onUpdateStatus); //throw FileError
+            haveSameContent = filesHaveSameContent(fileObj->getAbstractPath<LEFT_SIDE>(),
+                                                   fileObj->getAbstractPath<RIGHT_SIDE>(), onUpdateStatus); //throw FileError
             statReporter.reportDelta(1, 0);
 
             statReporter.reportFinished();
@@ -526,7 +516,7 @@ std::list<std::shared_ptr<BaseDirPair>> ComparisonBuffer::compareByContent(const
 class MergeSides
 {
 public:
-    MergeSides(const std::map<Zstring, std::wstring, LessFilename>& failedItemReads,
+    MergeSides(const std::map<Zstring, std::wstring, LessFilePath>& failedItemReads,
                std::vector<FilePair*>& undefinedFilesOut,
                std::vector<SymlinkPair*>& undefinedLinksOut) :
         failedItemReads_(failedItemReads),
@@ -550,7 +540,7 @@ private:
 
     const std::wstring* checkFailedRead(FileSystemObject& fsObj, const std::wstring* errorMsg);
 
-    const std::map<Zstring, std::wstring, LessFilename>& failedItemReads_; //base-relative paths or empty if read-error for whole base directory
+    const std::map<Zstring, std::wstring, LessFilePath>& failedItemReads_; //base-relative paths or empty if read-error for whole base directory
     std::vector<FilePair*>& undefinedFiles;
     std::vector<SymlinkPair*>& undefinedLinks;
 };
@@ -716,15 +706,17 @@ void stripExcludedDirectories(HierarchyObject& hierObj, const HardFilter& filter
 
     //remove superfluous directories:
     //   this does not invalidate "std::vector<FilePair*>& undefinedFiles", since we delete folders only
-    //	 and there is no side-effect for memory positions of FilePair and SymlinkPair thanks to zen::FixedList!
+    //   and there is no side-effect for memory positions of FilePair and SymlinkPair thanks to zen::FixedList!
+    static_assert(IsSameType<FixedList<DirPair>, HierarchyObject::SubDirVec>::value, "");
+
     hierObj.refSubDirs().remove_if([&](DirPair& dirObj)
     {
-        const bool included = filterProc.passDirFilter(dirObj.getPairRelativePath(), nullptr); //subObjMightMatch is false, child items were already excluded during scanning
+        const bool included = filterProc.passDirFilter(dirObj.getPairRelativePath(), nullptr); //childItemMightMatch is false, child items were already excluded during scanning
 
         if (!included) //falsify only! (e.g. might already be inactive due to read error!)
             dirObj.setActive(false);
 
-        return !included & //don't check active status, but eval filter directly!
+        return !included && //don't check active status, but eval filter directly!
                dirObj.refSubDirs ().empty() &&
                dirObj.refSubLinks().empty() &&
                dirObj.refSubFiles().empty();
@@ -741,25 +733,25 @@ std::shared_ptr<BaseDirPair> ComparisonBuffer::performComparison(const ResolvedF
     callback_.reportStatus(_("Generating file list..."));
     callback_.forceUiRefresh();
 
-    auto getDirValue = [&](const Zstring& dirpathFmt) -> const DirectoryValue*
+    auto getDirValue = [&](const ABF& baseFolder) -> const DirectoryValue*
     {
-        auto it = directoryBuffer.find(DirectoryKey(dirpathFmt, fpCfg.filter.nameFilter, fpCfg.handleSymlinks));
+        auto it = directoryBuffer.find(DirectoryKey(baseFolder, fpCfg.filter.nameFilter, fpCfg.handleSymlinks));
         return it != directoryBuffer.end() ? &it->second : nullptr;
     };
 
-    const DirectoryValue* bufValueLeft  = getDirValue(fp.dirpathLeft);
-    const DirectoryValue* bufValueRight = getDirValue(fp.dirpathRight);
+    const DirectoryValue* bufValueLeft  = getDirValue(*fp.abfLeft);
+    const DirectoryValue* bufValueRight = getDirValue(*fp.abfRight);
 
-    std::map<Zstring, std::wstring, LessFilename> failedReads; //base-relative paths or empty if read-error for whole base directory
+    std::map<Zstring, std::wstring, LessFilePath> failedReads; //base-relative paths or empty if read-error for whole base directory
     {
         //mix failedDirReads with failedItemReads:
         //mark directory errors already at directory-level (instead for child items only) to show on GUI! See "MergeSides"
         //=> minor pessimization for "excludefilterFailedRead" which needlessly excludes parent folders, too
-        if (bufValueLeft ) set_append(failedReads, bufValueLeft ->failedDirReads);
-        if (bufValueRight) set_append(failedReads, bufValueRight->failedDirReads);
+        if (bufValueLeft ) append(failedReads, bufValueLeft ->failedDirReads);
+        if (bufValueRight) append(failedReads, bufValueRight->failedDirReads);
 
-        if (bufValueLeft ) set_append(failedReads, bufValueLeft ->failedItemReads);
-        if (bufValueRight) set_append(failedReads, bufValueRight->failedItemReads);
+        if (bufValueLeft ) append(failedReads, bufValueLeft ->failedItemReads);
+        if (bufValueRight) append(failedReads, bufValueRight->failedItemReads);
     }
 
     Zstring excludefilterFailedRead;
@@ -769,9 +761,9 @@ std::shared_ptr<BaseDirPair> ComparisonBuffer::performComparison(const ResolvedF
         for (const auto& item : failedReads)
             excludefilterFailedRead += item.first + Zstr("\n"); //exclude item AND (potential) child items!
 
-    std::shared_ptr<BaseDirPair> output = std::make_shared<BaseDirPair>(fp.dirpathLeft,
+    std::shared_ptr<BaseDirPair> output = std::make_shared<BaseDirPair>(fp.abfLeft,
                                                                         bufValueLeft != nullptr, //dir existence must be checked only once: available iff buffer entry exists!
-                                                                        fp.dirpathRight,
+                                                                        fp.abfRight,
                                                                         bufValueRight != nullptr,
                                                                         fpCfg.filter.nameFilter->copyFilterAddingExclusion(excludefilterFailedRead),
                                                                         fpCfg.compareVar,
@@ -800,21 +792,20 @@ std::shared_ptr<BaseDirPair> ComparisonBuffer::performComparison(const ResolvedF
 }
 
 
-void zen::compare(xmlAccess::OptionalDialogs& warnings,
-                  bool allowUserInteraction,
-                  bool runWithBackgroundPriority,
-                  bool createDirLocks,
-                  std::unique_ptr<LockHolder>& dirLocks,
-                  const std::vector<FolderPairCfg>& cfgList,
-                  FolderComparison& output,
-                  ProcessCallback& callback)
+FolderComparison zen::compare(xmlAccess::OptionalDialogs& warnings,
+                              bool allowUserInteraction,
+                              bool runWithBackgroundPriority,
+                              bool createDirLocks,
+                              std::unique_ptr<LockHolder>& dirLocks,
+                              const std::vector<FolderPairCfg>& cfgList,
+                              ProcessCallback& callback)
 {
     //specify process and resource handling priorities
     std::unique_ptr<ScheduleForBackgroundProcessing> backgroundPrio;
     if (runWithBackgroundPriority)
         try
         {
-            backgroundPrio = make_unique<ScheduleForBackgroundProcessing>(); //throw FileError
+            backgroundPrio = std::make_unique<ScheduleForBackgroundProcessing>(); //throw FileError
         }
         catch (const FileError& e) //not an error in this context
         {
@@ -825,7 +816,7 @@ void zen::compare(xmlAccess::OptionalDialogs& warnings,
     std::unique_ptr<PreventStandby> noStandby;
     try
     {
-        noStandby = make_unique<PreventStandby>(); //throw FileError
+        noStandby = std::make_unique<PreventStandby>(); //throw FileError
     }
     catch (const FileError& e) //not an error in this context
     {
@@ -841,7 +832,7 @@ void zen::compare(xmlAccess::OptionalDialogs& warnings,
 
     //-------------------some basic checks:------------------------------------------
 
-    const ResolutionInfo& resInfo = resolveFolderPairs(cfgList, allowUserInteraction, callback);
+    const ResolvedBaseFolders& resInfo = initializeBaseFolders(cfgList, allowUserInteraction, callback);
 
     //directory existence only checked *once* to avoid race conditions!
     if (resInfo.resolvedPairs.size() != cfgList.size())
@@ -854,7 +845,7 @@ void zen::compare(xmlAccess::OptionalDialogs& warnings,
 
     //-------------------end of basic checks------------------------------------------
 
-    auto dirAvailable = [&](const Zstring& dirpathFmt) { return resInfo.existingDirs.find(dirpathFmt) != resInfo.existingDirs.end(); };
+    auto basefolderExisting = [&](const ABF& baseFolder) { return resInfo.existingBaseFolders.find(&baseFolder) != resInfo.existingBaseFolders.end(); };
 
     std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>> totalWorkLoad;
     for (size_t i = 0; i < cfgList.size(); ++i)
@@ -862,7 +853,14 @@ void zen::compare(xmlAccess::OptionalDialogs& warnings,
 
     //lock (existing) directories before comparison
     if (createDirLocks)
-        dirLocks = zen::make_unique<LockHolder>(resInfo.existingDirs, warnings.warningDirectoryLockFailed, callback);
+    {
+        std::set<Zstring, LessFilePath> dirPathsExisting;
+        for (const ABF* baseFolder : resInfo.existingBaseFolders)
+            if (Opt<Zstring> folderPath = ABF::getNativeItemPath(baseFolder->getAbstractPath())) //restrict directory locking to native paths until further
+                dirPathsExisting.insert(*folderPath);
+
+        dirLocks = std::make_unique<LockHolder>(dirPathsExisting, warnings.warningDirectoryLockFailed, callback);
+    }
 
     try
     {
@@ -871,13 +869,13 @@ void zen::compare(xmlAccess::OptionalDialogs& warnings,
 
         for (const auto& w : totalWorkLoad)
         {
-            if (dirAvailable(w.first.dirpathLeft)) //only traverse *currently existing* directories: at this point user is aware that non-ex + empty string are seen as empty folder!
-                dirsToRead.emplace(w.first.dirpathLeft,  w.second.filter.nameFilter, w.second.handleSymlinks);
-            if (dirAvailable(w.first.dirpathRight))
-                dirsToRead.emplace(w.first.dirpathRight, w.second.filter.nameFilter, w.second.handleSymlinks);
+            if (basefolderExisting(*w.first.abfLeft)) //only traverse *currently existing* directories: at this point user is aware that non-ex + empty string are seen as empty folder!
+                dirsToRead.emplace(*w.first.abfLeft,  w.second.filter.nameFilter, w.second.handleSymlinks);
+            if (basefolderExisting(*w.first.abfRight))
+                dirsToRead.emplace(*w.first.abfRight, w.second.filter.nameFilter, w.second.handleSymlinks);
         }
 
-        FolderComparison outputTmp; //write to output as a transaction!
+        FolderComparison output;
 
         //reduce peak memory by restricting lifetime of ComparisonBuffer to have ended when loading potentially huge InSyncDir instance in redetermineSyncDirection()
         {
@@ -904,41 +902,42 @@ void zen::compare(xmlAccess::OptionalDialogs& warnings,
                 switch (w.second.compareVar)
                 {
                     case CMP_BY_TIME_SIZE:
-                        outputTmp.push_back(cmpBuff.compareByTimeSize(w.first, w.second));
+                        output.push_back(cmpBuff.compareByTimeSize(w.first, w.second));
                         break;
                     case CMP_BY_CONTENT:
                         assert(!outputByContent.empty());
                         if (!outputByContent.empty())
                         {
-                            outputTmp.push_back(outputByContent.front());
+                            output.push_back(outputByContent.front());
                             outputByContent.pop_front();
                         }
                         break;
                 }
         }
 
-        assert(outputTmp.size() == cfgList.size());
+        assert(output.size() == cfgList.size());
 
         //--------- set initial sync-direction --------------------------------------------------
 
-        for (auto j = begin(outputTmp); j != end(outputTmp); ++j)
+        for (auto j = begin(output); j != end(output); ++j)
         {
-            const FolderPairCfg& fpCfg = cfgList[j - outputTmp.begin()];
+            const FolderPairCfg& fpCfg = cfgList[j - output.begin()];
 
             callback.reportStatus(_("Calculating sync directions..."));
             callback.forceUiRefresh();
+
             zen::redetermineSyncDirection(fpCfg.directionCfg, *j,
-            [&](const std::wstring& warning) { callback.reportWarning(warning, warnings.warningDatabaseError); });
+            [&](const std::wstring& warning) { callback.reportWarning(warning, warnings.warningDatabaseError); },
+            [&](std::int64_t bytesDelta) { callback.requestUiRefresh(); });//throw X
         }
 
-        //output is written only if everything was processed correctly
-        //note: output mustn't change during this process to be in sync with GUI grid view!!!
-        outputTmp.swap(output);
+        return output;
     }
     catch (const std::bad_alloc& e)
     {
         callback.reportFatalError(_("Out of memory.") + L" " + utfCvrtTo<std::wstring>(e.what()));
         //we need to maintain the "output.size() == cfgList.size()" contract in ALL cases! => abort
         callback.abortProcessNow(); //throw X
+        throw std::logic_error("Programming Error: Contract violation! " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
     }
 }

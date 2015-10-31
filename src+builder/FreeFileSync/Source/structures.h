@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef FREEFILESYNC_H_INCLUDED
-#define FREEFILESYNC_H_INCLUDED
+#ifndef STRUCTURES_H_8210478915019450901745
+#define STRUCTURES_H_8210478915019450901745
 
 #include <vector>
 #include <memory>
@@ -29,7 +29,7 @@ enum SymLinkHandling
 };
 
 
-enum class SyncDirection : unsigned char //we need to save space for use in FileSystemObject!
+enum class SyncDirection : unsigned char //save space for use in FileSystemObject!
 {
     LEFT,
     RIGHT,
@@ -102,20 +102,12 @@ std::wstring getSymbol(SyncOperation op); //method used for exporting .csv file 
 
 struct DirectionSet
 {
-    DirectionSet() :
-        exLeftSideOnly (SyncDirection::RIGHT),
-        exRightSideOnly(SyncDirection::LEFT),
-        leftNewer      (SyncDirection::RIGHT),
-        rightNewer     (SyncDirection::LEFT),
-        different      (SyncDirection::NONE),
-        conflict       (SyncDirection::NONE) {}
-
-    SyncDirection exLeftSideOnly;
-    SyncDirection exRightSideOnly;
-    SyncDirection leftNewer;  //CMP_BY_TIME_SIZE only!
-    SyncDirection rightNewer; //
-    SyncDirection different; //CMP_BY_CONTENT only!
-    SyncDirection conflict;
+    SyncDirection exLeftSideOnly  = SyncDirection::RIGHT;
+    SyncDirection exRightSideOnly = SyncDirection::LEFT;
+    SyncDirection leftNewer       = SyncDirection::RIGHT; //CMP_BY_TIME_SIZE only!
+    SyncDirection rightNewer      = SyncDirection::LEFT;  //
+    SyncDirection different       = SyncDirection::NONE; //CMP_BY_CONTENT only!
+    SyncDirection conflict        = SyncDirection::NONE;
 };
 
 DirectionSet getTwoWayUpdateSet();
@@ -141,11 +133,9 @@ struct DirectionConfig //technical representation of sync-config
         CUSTOM     //use custom directions
     };
 
-    DirectionConfig() : var(TWOWAY), detectMovedFiles(false) {}
-
-    Variant var;
-    DirectionSet custom; //custom sync directions
-    bool detectMovedFiles; //dependent from Variant: e.g. always active for DirectionConfig::TWOWAY! => use functions below for evaluation!
+    Variant var = TWOWAY;
+    DirectionSet custom; //sync directions for variant CUSTOM
+    bool detectMovedFiles = false; //dependent from Variant: e.g. always active for DirectionConfig::TWOWAY! => use functions below for evaluation!
 };
 
 inline
@@ -175,14 +165,9 @@ bool effectivelyEqual(const DirectionConfig& lhs, const DirectionConfig& rhs)
 
 struct CompConfig
 {
-    CompConfig() :
-        compareVar(CMP_BY_TIME_SIZE),
-        handleSymlinks(SYMLINK_EXCLUDE),
-        optTimeShiftHours(0) {}
-
-    CompareVariant compareVar;
-    SymLinkHandling handleSymlinks;
-    unsigned int optTimeShiftHours; //if != 0: treat modification times with this offset as equal
+    CompareVariant compareVar = CMP_BY_TIME_SIZE;
+    SymLinkHandling handleSymlinks = SYMLINK_EXCLUDE;
+    unsigned int optTimeShiftHours = 0; //if != 0: treat modification times with this offset as equal
 };
 
 inline
@@ -212,17 +197,13 @@ enum VersioningStyle
 
 struct SyncConfig
 {
-    SyncConfig() :
-        handleDeletion(DELETE_TO_RECYCLER),
-        versioningStyle(VER_STYLE_REPLACE) {}
-
     //sync direction settings
     DirectionConfig directionCfg;
 
-    DeletionPolicy handleDeletion; //use Recycle, delete permanently or move to user-defined location
+    DeletionPolicy handleDeletion = DELETE_TO_RECYCLER; //use Recycle, delete permanently or move to user-defined location
     //versioning options
-    VersioningStyle versioningStyle;
-    Zstring versioningDirectory;
+    VersioningStyle versioningStyle = VER_STYLE_REPLACE;
+    Zstring versioningFolderPhrase;
     //int versionCountLimit; //max versions per file (DELETE_TO_VERSIONING); < 0 := no limit
 };
 
@@ -230,10 +211,10 @@ struct SyncConfig
 inline
 bool operator==(const SyncConfig& lhs, const SyncConfig& rhs)
 {
-    return lhs.directionCfg        == rhs.directionCfg   &&
-           lhs.handleDeletion      == rhs.handleDeletion &&
-           lhs.versioningStyle     == rhs.versioningStyle &&
-           lhs.versioningDirectory == rhs.versioningDirectory;
+    return lhs.directionCfg           == rhs.directionCfg   &&
+           lhs.handleDeletion         == rhs.handleDeletion &&
+           lhs.versioningStyle        == rhs.versioningStyle &&
+           lhs.versioningFolderPhrase == rhs.versioningFolderPhrase;
     //adapt effectivelyEqual() on changes, too!
 }
 
@@ -245,7 +226,7 @@ bool effectivelyEqual(const SyncConfig& lhs, const SyncConfig& rhs)
            lhs.handleDeletion == rhs.handleDeletion &&
            (lhs.handleDeletion != DELETE_TO_VERSIONING || //only compare deletion directory if required!
             (lhs.versioningStyle   == rhs.versioningStyle &&
-             lhs.versioningDirectory == rhs.versioningDirectory));
+             lhs.versioningFolderPhrase == rhs.versioningFolderPhrase));
 }
 
 
@@ -269,14 +250,15 @@ enum UnitTime
 
 struct FilterConfig
 {
-    FilterConfig(const Zstring& include  = Zstr("*"),
-                 const Zstring& exclude  = Zstring(),
-                 size_t   timeSpanIn     = 0,
-                 UnitTime unitTimeSpanIn = UTIME_NONE,
-                 size_t   sizeMinIn      = 0,
-                 UnitSize unitSizeMinIn  = USIZE_NONE,
-                 size_t   sizeMaxIn      = 0,
-                 UnitSize unitSizeMaxIn  = USIZE_NONE) :
+    FilterConfig() {}
+    FilterConfig(const Zstring& include,
+                 const Zstring& exclude,
+                 size_t   timeSpanIn,
+                 UnitTime unitTimeSpanIn,
+                 size_t   sizeMinIn,
+                 UnitSize unitSizeMinIn,
+                 size_t   sizeMaxIn,
+                 UnitSize unitSizeMaxIn) :
         includeFilter(include),
         excludeFilter(exclude),
         timeSpan     (timeSpanIn),
@@ -291,7 +273,7 @@ struct FilterConfig
     1. using it creates a NEW folder hierarchy! -> must be considered by <Automatic>-mode! (fortunately it turns out, doing nothing already has perfect semantics :)
     2. it applies equally to both sides => it always matches either both sides or none! => can be used while traversing a single folder!
     */
-    Zstring includeFilter;
+    Zstring includeFilter = Zstr("*");
     Zstring excludeFilter;
 
     /*
@@ -300,14 +282,14 @@ struct FilterConfig
     2. => it is applied after traversing and just marks rows, (NO deletions after comparison are allowed)
     3. => equivalent to a user temporarily (de-)selecting rows -> not relevant for <Automatic>-mode! ;)
     */
-    size_t timeSpan;
-    UnitTime unitTimeSpan;
+    size_t timeSpan = 0;
+    UnitTime unitTimeSpan = UTIME_NONE;
 
-    size_t sizeMin;
-    UnitSize unitSizeMin;
+    size_t sizeMin = 0;
+    UnitSize unitSizeMin = USIZE_NONE;
 
-    size_t sizeMax;
-    UnitSize unitSizeMax;
+    size_t sizeMax = 0;
+    UnitSize unitSizeMax = USIZE_NONE;
 };
 
 inline
@@ -335,19 +317,19 @@ struct FolderPairEnh //enhanced folder pairs with (optional) alternate configura
 {
     FolderPairEnh() {}
 
-    FolderPairEnh(const Zstring& phraseLeft,
-                  const Zstring& phraseRight,
+    FolderPairEnh(const Zstring& folderPathPhraseLeft,
+                  const Zstring& folderPathPhraseRight,
                   const std::shared_ptr<const CompConfig>& cmpConfig,
                   const std::shared_ptr<const SyncConfig>& syncConfig,
                   const FilterConfig& filter) :
-        dirpathPhraseLeft (phraseLeft),
-        dirpathPhraseRight(phraseRight),
+        folderPathPhraseLeft_ (folderPathPhraseLeft),
+        folderPathPhraseRight_(folderPathPhraseRight),
         altCmpConfig(cmpConfig),
         altSyncConfig(syncConfig),
         localFilter(filter) {}
 
-    Zstring dirpathPhraseLeft;  //unresolved directory names as entered by user!
-    Zstring dirpathPhraseRight; //
+    Zstring folderPathPhraseLeft_;  //unresolved directory names as entered by user!
+    Zstring folderPathPhraseRight_; //
 
     std::shared_ptr<const CompConfig> altCmpConfig;  //optional
     std::shared_ptr<const SyncConfig> altSyncConfig; //
@@ -358,8 +340,8 @@ struct FolderPairEnh //enhanced folder pairs with (optional) alternate configura
 inline
 bool operator==(const FolderPairEnh& lhs, const FolderPairEnh& rhs)
 {
-    return lhs.dirpathPhraseLeft  == rhs.dirpathPhraseLeft  &&
-           lhs.dirpathPhraseRight == rhs.dirpathPhraseRight &&
+    return lhs.folderPathPhraseLeft_  == rhs.folderPathPhraseLeft_  &&
+           lhs.folderPathPhraseRight_ == rhs.folderPathPhraseRight_ &&
 
            (lhs.altCmpConfig.get() && rhs.altCmpConfig.get() ?
             *lhs.altCmpConfig == *rhs.altCmpConfig :
@@ -405,4 +387,4 @@ bool operator==(const MainConfiguration& lhs, const MainConfiguration& rhs)
 MainConfiguration merge(const std::vector<MainConfiguration>& mainCfgs);
 }
 
-#endif // FREEFILESYNC_H_INCLUDED
+#endif //STRUCTURES_H_8210478915019450901745

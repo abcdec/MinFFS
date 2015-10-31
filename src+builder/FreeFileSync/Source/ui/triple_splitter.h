@@ -15,14 +15,14 @@
 //a not-so-crappy splitter window
 
 /* manage three contained windows:
-	1. left and right window are stretched
-	2. middle window is fixed size
-	3. middle window position can be changed via mouse with two sash lines
-	-----------------
-	|      | |      |
-	|      | |      |
-	|      | |      |
-	-----------------
+    1. left and right window are stretched
+    2. middle window is fixed size
+    3. middle window position can be changed via mouse with two sash lines
+    -----------------
+    |      | |      |
+    |      | |      |
+    |      | |      |
+    -----------------
 */
 
 namespace zen

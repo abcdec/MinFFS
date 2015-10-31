@@ -2,10 +2,10 @@ APPNAME = RealtimeSync
 prefix = /usr
 BINDIR = $(DESTDIR)$(prefix)/bin
 
-CXXFLAGS  = -std=c++11 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../../.. -I../../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" -Wall \
+CXXFLAGS  = -std=c++14 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../../.. -I../../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" -Wall \
 -O3 -DNDEBUG `wx-config --cxxflags --debug=no` -DZEN_LINUX -pthread
 
-LINKFLAGS = -s `wx-config --libs std, aui --debug=no` -lboost_thread -lboost_system -lz -pthread
+LINKFLAGS = -s `wx-config --libs std, aui --debug=no` -lboost_thread -lboost_chrono -lboost_system -lz -pthread
 
 #Gtk - support "no button border"
 CXXFLAGS  += `pkg-config --cflags gtk+-2.0`
@@ -18,9 +18,8 @@ CPP_LIST+=main_dlg.cpp
 CPP_LIST+=tray_menu.cpp
 CPP_LIST+=monitor.cpp
 CPP_LIST+=xml_proc.cpp
+CPP_LIST+=folder_selector2.cpp
 CPP_LIST+=../structures.cpp
-CPP_LIST+=../ui/dir_name.cpp
-CPP_LIST+=../ui/folder_history_box.cpp
 CPP_LIST+=../lib/localization.cpp
 CPP_LIST+=../lib/process_xml.cpp
 CPP_LIST+=../lib/resolve_path.cpp

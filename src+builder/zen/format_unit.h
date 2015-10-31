@@ -11,6 +11,7 @@
 #include <cstdint>
 #include "string_tools.h"
 
+
 namespace zen
 {
 std::wstring filesizeToShortString(std::int64_t filesize);

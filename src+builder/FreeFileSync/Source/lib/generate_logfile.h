@@ -8,10 +8,10 @@
 #define GEN_LOGFILE_H_93172643216748973216458732165415
 
 #include <zen/error_log.h>
-#include <zen/file_io.h>
 #include <zen/serialize.h>
 #include <zen/format_unit.h>
 #include "ffs_paths.h"
+#include "../fs/abstract.h"
 
 
 namespace zen
@@ -43,26 +43,19 @@ Zstring getLastSyncsLogfilePath();
 
 struct OnUpdateLogfileStatusNoThrow
 {
-    OnUpdateLogfileStatusNoThrow(ProcessCallback& pc, const Zstring& logfilePath) : pc_(pc), logfilePath_(logfilePath), bytesWritten(),
-        msg(replaceCpy(_("Saving file %x..."), L"%x", fmtFileName(logfilePath_))) {}
+    OnUpdateLogfileStatusNoThrow(ProcessCallback& pc, const std::wstring& logfileDisplayPath) : pc_(pc),
+        msg(replaceCpy(_("Saving file %x..."), L"%x", fmtPath(logfileDisplayPath))) {}
 
     void operator()(std::int64_t bytesDelta)
     {
         bytesWritten += bytesDelta;
-
-        if (updateUiIsAllowed()) //test if specific time span between ui updates is over
-            try
-            {
-                pc_.reportStatus(msg + L" (" + filesizeToShortString(bytesWritten) + L")"); //throw?
-                pc_.forceUiRefresh(); //throw?
-            }
-            catch (...) {}
+        try { pc_.reportStatus(msg + L" (" + filesizeToShortString(bytesWritten) + L")"); /*throw X*/ }
+        catch (...) {}
     }
 
 private:
     ProcessCallback& pc_;
-    const Zstring logfilePath_;
-    std::int64_t bytesWritten;
+    std::int64_t bytesWritten = 0;
     const std::wstring msg;
 };
 
@@ -126,24 +119,34 @@ std::wstring generateLogHeader(const SummaryInfo& s)
 inline
 void saveLogToFile(const SummaryInfo& summary, //throw FileError
                    const ErrorLog& log,
-                   FileOutput& fileOut,
+                   ABF::OutputStream& streamOut,
                    const std::function<void(std::int64_t bytesDelta)>& onUpdateSaveStatus)
 {
-    Utf8String header = utfCvrtTo<Utf8String>(generateLogHeader(summary));
-    replace(header, '\n', LINE_BREAK); //don't replace line break any earlier
-    header += LINE_BREAK; //make sure string is not empty!
+    //write log items in blocks instead of creating one big string: memory allocation might fail; think 1 million entries!
+    const size_t blockSize = streamOut.optimalBlockSize();
+    Utf8String msgBuffer;
 
-    fileOut.write(&*header.begin(), header.size()); //throw FileError
+    auto flushToFile = [&]
+    {
+        streamOut.write(&*msgBuffer.begin(), msgBuffer.size()); //throw FileError
+        if (onUpdateSaveStatus)
+            onUpdateSaveStatus(msgBuffer.size());
+        msgBuffer.clear();
+    };
 
-    //write log items one after the other instead of creating one big string: memory allocation might fail; think 1 million entries!
+    msgBuffer += replaceCpy(utfCvrtTo<Utf8String>(generateLogHeader(summary)), '\n', LINE_BREAK); //don't replace line break any earlier
+    msgBuffer += LINE_BREAK;
+
     for (const LogEntry& entry : log)
     {
-        Utf8String msg = replaceCpy(utfCvrtTo<Utf8String>(formatMessage<std::wstring>(entry)), '\n', LINE_BREAK);
-        msg += LINE_BREAK; //make sure string is not empty!
+        msgBuffer += replaceCpy(utfCvrtTo<Utf8String>(formatMessage<std::wstring>(entry)), '\n', LINE_BREAK);
+        msgBuffer += LINE_BREAK; //=> string is not empty!
 
-        fileOut.write(&*msg.begin(), msg.size()); //throw FileError
-        if (onUpdateSaveStatus) onUpdateSaveStatus(msg.size());
+        if (msgBuffer.size() > blockSize)
+            flushToFile();
     }
+    if (!msgBuffer.empty())
+        flushToFile();
 }
 
 
@@ -152,7 +155,7 @@ Zstring getLastSyncsLogfilePath() { return getConfigDir() + Zstr("LastSyncs.log"
 
 
 inline
-void saveToLastSyncsLog(const SummaryInfo& summary,  //throw FileError
+void saveToLastSyncsLog(const SummaryInfo& summary, //throw FileError
                         const ErrorLog& log,
                         size_t maxBytesToWrite, //log may be *huge*, e.g. 1 million items; LastSyncs.log *must not* create performance problems!
                         const std::function<void(std::int64_t bytesDelta)>& onUpdateSaveStatus)
@@ -180,14 +183,14 @@ void saveToLastSyncsLog(const SummaryInfo& summary,  //throw FileError
     //fill up the rest of permitted space by appending old log
     if (newStream.size() < maxBytesToWrite)
     {
-        std::function<void(std::int64_t bytesDelta)> onUpdateLoadStatus;
-        if (onUpdateSaveStatus)
-            onUpdateLoadStatus = [&](std::int64_t bytesDelta) { onUpdateSaveStatus(0); };
+        //std::function<void(std::int64_t bytesDelta)> onUpdateLoadStatus;
+        //if (onUpdateSaveStatus)
+        //    onUpdateLoadStatus = [&](std::int64_t bytesDelta) { onUpdateSaveStatus(0); };
 
         Utf8String oldStream;
         try
         {
-            oldStream = loadBinStream<Utf8String>(filepath, onUpdateLoadStatus); //throw FileError
+            oldStream = loadBinStream<Utf8String>(filepath, onUpdateSaveStatus); //throw FileError
         }
         catch (FileError&) {}
 

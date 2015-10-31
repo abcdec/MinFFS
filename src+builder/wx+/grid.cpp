@@ -40,7 +40,15 @@ const int GridData::COLUMN_GAP_LEFT = 4;
 
 namespace
 {
-//------------ Grid Constants --------------------------------
+//------------------------------ Grid Parameters --------------------------------
+wxColor getColorLabelText() { return wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT); }
+
+wxColor getColorLabelGradientFrom     () { return wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW); }
+wxColor getColorLabelGradientTo       () { return wxColour(200, 200, 200); } //light grey
+
+wxColor getColorLabelGradientFocusFrom() { return getColorLabelGradientFrom(); }
+wxColor getColorLabelGradientFocusTo  () { return getColorSelectionGradientFrom(); }
+
 const double MOUSE_DRAG_ACCELERATION = 1.5; //unit: [rows / (pixel * sec)] -> same value as Explorer!
 const int DEFAULT_COL_LABEL_BORDER = 6; //top + bottom border in addition to label height
 //const int COLUMN_LABEL_BORDER      = GridData::COLUMN_GAP_LEFT;
@@ -49,12 +57,6 @@ const int COLUMN_MIN_WIDTH         = 40; //only honored when resizing manually!
 const int ROW_LABEL_BORDER         = 3;
 const int COLUMN_RESIZE_TOLERANCE  = 6; //unit [pixel]
 const int COLUMN_FILL_GAP_TOLERANCE = 10; //enlarge column to fill full width when resizing
-
-const wxColor COLOR_LABEL_GRADIENT_FROM = *wxWHITE;
-const wxColor COLOR_LABEL_GRADIENT_TO   = wxColour(200, 200, 200); //light grey
-
-const wxColor COLOR_LABEL_GRADIENT_FROM_FOCUS = COLOR_LABEL_GRADIENT_FROM;
-const wxColor COLOR_LABEL_GRADIENT_TO_FOCUS   = getColorSelectionGradientFrom();
 
 const wxColor colorGridLine = wxColour(192, 192, 192); //light grey
 
@@ -160,9 +162,9 @@ void drawTextLabelFitting(wxDC& dc, const wxString& text, const wxRect& rect, in
     wxDC::GetMultiLineTextExtent() is implemented in terms of wxDC::GetTextExtent()
 
     average total times:
-    							Windows Linux
-    single wxDC::DrawText()		 7탎     50탎
-    wxDC::DrawLabel() +			10탎     90탎
+                                Windows Linux
+    single wxDC::DrawText()      7탎     50탎
+    wxDC::DrawLabel() +         10탎     90탎
     repeated GetTextExtent()
     */
 
@@ -202,7 +204,7 @@ wxRect GridData::drawColumnLabelBorder(wxDC& dc, const wxRect& rect) //returns r
     //draw border (with gradient)
     {
         wxDCPenChanger dummy(dc, wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW), 1, wxSOLID));
-        dc.GradientFillLinear(wxRect(rect.GetTopRight(), rect.GetBottomRight()), COLOR_LABEL_GRADIENT_FROM, dc.GetPen().GetColour(), wxSOUTH);
+        dc.GradientFillLinear(wxRect(rect.GetTopRight(), rect.GetBottomRight()), getColorLabelGradientFrom(), dc.GetPen().GetColour(), wxSOUTH);
         dc.DrawLine(rect.GetBottomLeft(), rect.GetBottomRight() + wxPoint(1, 0));
     }
 
@@ -213,15 +215,15 @@ wxRect GridData::drawColumnLabelBorder(wxDC& dc, const wxRect& rect) //returns r
 void GridData::drawColumnLabelBackground(wxDC& dc, const wxRect& rect, bool highlighted)
 {
     if (highlighted)
-        dc.GradientFillLinear(rect, COLOR_LABEL_GRADIENT_FROM_FOCUS, COLOR_LABEL_GRADIENT_TO_FOCUS, wxSOUTH);
+        dc.GradientFillLinear(rect, getColorLabelGradientFocusFrom(), getColorLabelGradientFocusTo(), wxSOUTH);
     else //regular background gradient
-        dc.GradientFillLinear(rect, COLOR_LABEL_GRADIENT_FROM, COLOR_LABEL_GRADIENT_TO, wxSOUTH); //clear overlapping cells
+        dc.GradientFillLinear(rect, getColorLabelGradientFrom(), getColorLabelGradientTo(), wxSOUTH); //clear overlapping cells
 }
 
 
 void GridData::drawColumnLabelText(wxDC& dc, const wxRect& rect, const wxString& text)
 {
-    wxDCTextColourChanger dummy(dc, *wxBLACK); //accessibility: always set both foreground AND background colors!
+    wxDCTextColourChanger dummy(dc, getColorLabelText()); //accessibility: always set both foreground AND background colors!
     drawTextLabelFitting(dc, text, rect, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
 }
 
@@ -384,17 +386,17 @@ private:
     {
         const wxRect& clientRect = GetClientRect();
 
-        dc.GradientFillLinear(clientRect, COLOR_LABEL_GRADIENT_FROM, COLOR_LABEL_GRADIENT_TO, wxSOUTH);
+        dc.GradientFillLinear(clientRect, getColorLabelGradientFrom(), getColorLabelGradientTo(), wxSOUTH);
 
         dc.SetPen(wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW), 1, wxSOLID));
 
         {
-            wxDCPenChanger dummy(dc, COLOR_LABEL_GRADIENT_FROM);
+            wxDCPenChanger dummy(dc, getColorLabelGradientFrom());
             dc.DrawLine(clientRect.GetTopLeft(), clientRect.GetTopRight());
         }
 
-        dc.GradientFillLinear(wxRect(clientRect.GetBottomLeft (), clientRect.GetTopLeft ()), COLOR_LABEL_GRADIENT_FROM, dc.GetPen().GetColour(), wxSOUTH);
-        dc.GradientFillLinear(wxRect(clientRect.GetBottomRight(), clientRect.GetTopRight()), COLOR_LABEL_GRADIENT_FROM, dc.GetPen().GetColour(), wxSOUTH);
+        dc.GradientFillLinear(wxRect(clientRect.GetBottomLeft (), clientRect.GetTopLeft ()), getColorLabelGradientFrom(), dc.GetPen().GetColour(), wxSOUTH);
+        dc.GradientFillLinear(wxRect(clientRect.GetBottomRight(), clientRect.GetTopRight()), getColorLabelGradientFrom(), dc.GetPen().GetColour(), wxSOUTH);
 
         dc.DrawLine(clientRect.GetBottomLeft(), clientRect.GetBottomRight());
 
@@ -470,12 +472,11 @@ private:
 
     void render(wxDC& dc, const wxRect& rect) override
     {
-
         /*
         IsEnabled() vs IsThisEnabled() since wxWidgets 2.9.5:
 
-        void wxWindowBase::NotifyWindowOnEnableChange(), called from bool wxWindowBase::Enable(), has this buggy exception of NOT
-        refreshing child elements when disabling a IsTopLevel() dialog, e.g. when showing a modal dialog.
+        void wxWindowBase::NotifyWindowOnEnableChange(), called from bool wxWindowBase::Enable(), fails to refresh
+        child elements when disabling a IsTopLevel() dialog, e.g. when showing a modal dialog.
         The unfortunate effect on XP for using IsEnabled() when rendering the grid is that the user can move the modal dialog
         and *draw* with it on the background while the grid refreshes as disabled incrementally!
 
@@ -513,8 +514,8 @@ private:
     void drawRowLabel(wxDC& dc, const wxRect& rect, size_t row)
     {
         //clearArea(dc, rect, getColorRowLabel());
-        dc.GradientFillLinear(rect, COLOR_LABEL_GRADIENT_FROM, COLOR_LABEL_GRADIENT_TO, wxEAST); //clear overlapping cells
-        wxDCTextColourChanger dummy3(dc, *wxBLACK); //accessibility: always set both foreground AND background colors!
+        dc.GradientFillLinear(rect, getColorLabelGradientFrom(), getColorLabelGradientTo(), wxEAST); //clear overlapping cells
+        wxDCTextColourChanger dummy3(dc, getColorLabelText()); //accessibility: always set both foreground AND background colors!
 
         //label text
         wxRect textRect = rect;
@@ -580,8 +581,7 @@ public:
         wnd_(wnd),
         colFrom_(colFrom),
         colTo_(colFrom),
-        clientPosX_(clientPosX),
-        singleClick_(true) { wnd_.CaptureMouse(); }
+        clientPosX_(clientPosX) { wnd_.CaptureMouse(); }
     ~ColumnMove() { if (wnd_.HasCapture()) wnd_.ReleaseMouse(); }
 
     size_t  getColumnFrom() const { return colFrom_; }
@@ -596,7 +596,7 @@ private:
     const size_t colFrom_;
     size_t colTo_;
     const int clientPosX_;
-    bool singleClick_;
+    bool singleClick_ = true;
 };
 }
 
@@ -673,9 +673,9 @@ private:
                 if (activeMove && activeMove->isRealMove())
                 {
                     if (col + 1 == activeMove->refColumnTo()) //handle pos 1, 2, .. up to "at end" position
-                        dc.GradientFillLinear(wxRect(rect.GetTopRight(), rect.GetBottomRight() + wxPoint(-2, 0)), COLOR_LABEL_GRADIENT_FROM, *wxBLUE, wxSOUTH);
+                        dc.GradientFillLinear(wxRect(rect.GetTopRight(), rect.GetBottomRight() + wxPoint(-2, 0)), getColorLabelGradientFrom(), *wxBLUE, wxSOUTH);
                     else if (col == activeMove->refColumnTo() && col == 0) //pos 0
-                        dc.GradientFillLinear(wxRect(rect.GetTopLeft(), rect.GetBottomLeft() + wxPoint(2, 0)), COLOR_LABEL_GRADIENT_FROM, *wxBLUE, wxSOUTH);
+                        dc.GradientFillLinear(wxRect(rect.GetTopLeft(), rect.GetBottomLeft() + wxPoint(2, 0)), getColorLabelGradientFrom(), *wxBLUE, wxSOUTH);
                 }
         }
     }
@@ -694,10 +694,10 @@ private:
             {
                 if (!event.LeftDClick()) //double-clicks never seem to arrive here; why is this checked at all???
                     if (Opt<int> colWidth = refParent().getColWidth(action->col))
-                        activeResizing = make_unique<ColumnResizing>(*this, action->col, *colWidth, event.GetPosition().x);
+                        activeResizing = std::make_unique<ColumnResizing>(*this, action->col, *colWidth, event.GetPosition().x);
             }
             else //a move or single click
-                activeMove = make_unique<ColumnMove>(*this, action->col, event.GetPosition().x);
+                activeMove = std::make_unique<ColumnMove>(*this, action->col, event.GetPosition().x);
         }
         event.Skip();
     }
@@ -791,7 +791,7 @@ private:
         {
             if (const Opt<ColAction> action = refParent().clientPosToColumnAction(event.GetPosition()))
             {
-                highlightCol = make_unique<size_t>(action->col);
+                highlightCol = std::make_unique<size_t>(action->col);
 
                 if (action->wantResize)
                     SetCursor(wxCURSOR_SIZEWE); //set window-local only! :)
@@ -862,11 +862,8 @@ public:
             RowLabelWin& rowLabelWin,
             ColLabelWin& colLabelWin) : SubWindow(parent),
         rowLabelWin_(rowLabelWin),
-        colLabelWin_(colLabelWin),
-        cursorRow(0),
-        selectionAnchor(0),
-        gridUpdatePending(false)
-    {
+        colLabelWin_(colLabelWin)
+	{
         Connect(EVENT_GRID_HAS_SCROLLED, wxEventHandler(MainWin::onRequestWindowUpdate), nullptr, this);
     }
 
@@ -993,15 +990,15 @@ private:
             if (!event.RightDown() || !refParent().isSelected(row)) //do NOT start a new selection if user right-clicks on a selected area!
             {
                 if (event.ControlDown())
-                    activeSelection = make_unique<MouseSelection>(*this, row, !refParent().isSelected(row));
+                    activeSelection = std::make_unique<MouseSelection>(*this, row, !refParent().isSelected(row));
                 else if (event.ShiftDown())
                 {
-                    activeSelection = make_unique<MouseSelection>(*this, selectionAnchor, true);
+                    activeSelection = std::make_unique<MouseSelection>(*this, selectionAnchor, true);
                     refParent().clearSelection(ALLOW_GRID_EVENT);
                 }
                 else
                 {
-                    activeSelection = make_unique<MouseSelection>(*this, row, true);
+                    activeSelection = std::make_unique<MouseSelection>(*this, row, true);
                     refParent().clearSelection(ALLOW_GRID_EVENT);
                 }
             }
@@ -1095,9 +1092,7 @@ private:
     {
     public:
         MouseSelection(MainWin& wnd, size_t rowStart, bool positiveSelect) :
-            wnd_(wnd), rowStart_(rowStart), rowCurrent_(rowStart), positiveSelect_(positiveSelect), toScrollX(0), toScrollY(0),
-            tickCountLast(getTicks()),
-            ticksPerSec_(ticksPerSec())
+            wnd_(wnd), rowStart_(rowStart), rowCurrent_(rowStart), positiveSelect_(positiveSelect)
         {
             wnd_.CaptureMouse();
             timer.Connect(wxEVT_TIMER, wxEventHandler(MouseSelection::onTimer), nullptr, this);
@@ -1120,8 +1115,7 @@ private:
                 tickCountLast = now;
             }
 
-            wxMouseState mouseState = wxGetMouseState();
-            const wxPoint clientPos = wnd_.ScreenToClient(wxPoint(mouseState.GetX(), mouseState.GetY()));
+            const wxPoint clientPos = wnd_.ScreenToClient(wxGetMousePosition());
             const wxSize clientSize = wnd_.GetClientSize();
             assert(wnd_.GetClientAreaOrigin() == wxPoint());
 
@@ -1182,10 +1176,10 @@ private:
         ptrdiff_t rowCurrent_;
         const bool positiveSelect_;
         wxTimer timer;
-        double toScrollX; //count outstanding scroll units to scroll while dragging mouse
-        double toScrollY; //
-        TickVal tickCountLast;
-        const std::int64_t ticksPerSec_;
+        double toScrollX = 0; //count outstanding scroll units to scroll while dragging mouse
+        double toScrollY = 0; //
+        TickVal tickCountLast = getTicks();
+        const std::int64_t ticksPerSec_ = ticksPerSec();
     };
 
     void ScrollWindow(int dx, int dy, const wxRect* rect) override
@@ -1223,9 +1217,9 @@ private:
 
     std::unique_ptr<MouseSelection> activeSelection; //bound while user is selecting with mouse
 
-    ptrdiff_t cursorRow;
-    size_t selectionAnchor;
-    bool gridUpdatePending;
+    ptrdiff_t cursorRow = 0;
+    size_t selectionAnchor = 0;
+    bool gridUpdatePending = false;
 };
 
 //----------------------------------------------------------------------------------------------------------------
@@ -1236,14 +1230,7 @@ Grid::Grid(wxWindow* parent,
            const wxPoint& pos,
            const wxSize& size,
            long style,
-           const wxString& name) : wxScrolledWindow(parent, id, pos, size, style | wxWANTS_CHARS, name),
-    showScrollbarX(SB_SHOW_AUTOMATIC),
-    showScrollbarY(SB_SHOW_AUTOMATIC),
-    colLabelHeight(0), //dummy init
-    drawRowLabel(true),
-    allowColumnMove(true),
-    allowColumnResize(true),
-    rowCountOld(0)
+           const wxString& name) : wxScrolledWindow(parent, id, pos, size, style | wxWANTS_CHARS, name)
 {
     cornerWin_   = new CornerWin  (*this); //
     rowLabelWin_ = new RowLabelWin(*this); //owership handled by "this"
@@ -1277,24 +1264,24 @@ void Grid::updateWindowSizes(bool updateScrollbar)
 {
     /* We have to deal with TWO nasty circular dependencies:
     1.
-    	rowLabelWidth
-    	    /|\
-    	mainWin::client width
-    	    /|\
-    	SetScrollbars -> show/hide horizontal scrollbar depending on client width
-    	    /|\
-    	mainWin::client height -> possibly trimmed by horizontal scrollbars
-    	    /|\
-    	rowLabelWidth
+        rowLabelWidth
+            /|\
+        mainWin::client width
+            /|\
+        SetScrollbars -> show/hide horizontal scrollbar depending on client width
+            /|\
+        mainWin::client height -> possibly trimmed by horizontal scrollbars
+            /|\
+        rowLabelWidth
 
     2.
-    	mainWin_->GetClientSize()
-    	    /|\
-    	SetScrollbars -> show/hide scrollbars depending on whether client size is big enough
-    	    /|\
-    	GetClientSize(); -> possibly trimmed by scrollbars
-    	    /|\
-    	mainWin_->GetClientSize()  -> also trimmed, since it's a sub-window!
+        mainWin_->GetClientSize()
+            /|\
+        SetScrollbars -> show/hide scrollbars depending on whether client size is big enough
+            /|\
+        GetClientSize(); -> possibly trimmed by scrollbars
+            /|\
+        mainWin_->GetClientSize()  -> also trimmed, since it's a sub-window!
     */
 
     //break this vicious circle:
@@ -1323,10 +1310,10 @@ void Grid::updateWindowSizes(bool updateScrollbar)
 
     auto setScrollbars2 = [&](int logWidth, int logHeight) //replace SetScrollbars, which loses precision of pixelsPerUnitX for some brain-dead reason
     {
-        mainWin_->SetVirtualSize(logWidth, logHeight); //set before calling SetScrollRate(): 
-		//else SetScrollRate() would fail to preserve scroll position when "new virtual pixel-pos > old virtual height"
+        mainWin_->SetVirtualSize(logWidth, logHeight); //set before calling SetScrollRate():
+        //else SetScrollRate() would fail to preserve scroll position when "new virtual pixel-pos > old virtual height"
 
-		int ppsuX = 0; //pixel per scroll unit
+        int ppsuX = 0; //pixel per scroll unit
         int ppsuY = 0;
         GetScrollPixelsPerUnit(&ppsuX, &ppsuY);
 
@@ -1378,27 +1365,27 @@ void Grid::updateWindowSizes(bool updateScrollbar)
             ------------------------  \|/    |
             |                   |  |         |
             ------------------------        \|/
-            	gw := gross width
-            	nw := net width := gross width - sb size
-            	gh := gross height
-            	nh := net height := gross height - sb size
+                gw := gross width
+                nw := net width := gross width - sb size
+                gh := gross height
+                nh := net height := gross height - sb size
 
             There are 6 cases that can occur:
             ---------------------------------
-            	lw := logical width
-            	lh := logical height
+                lw := logical width
+                lh := logical height
 
             1. lw <= gw && lh <= gh  => no scrollbars needed
 
             2. lw > gw  && lh > gh   => need both scrollbars
 
             3. lh > gh
-            	4.1 lw <= nw         => need vertical scrollbar only
-            	4.2 nw < lw <= gw    => need both scrollbars
+                4.1 lw <= nw         => need vertical scrollbar only
+                4.2 nw < lw <= gw    => need both scrollbars
 
             4. lw > gw
-            	3.1 lh <= nh         => need horizontal scrollbar only
-            	3.2 nh < lh <= gh    => need both scrollbars
+                3.1 lh <= nh         => need horizontal scrollbar only
+                3.2 nh < lh <= gh    => need both scrollbars
             */
         }
     }
@@ -1521,8 +1508,8 @@ void Grid::onKeyDown(wxKeyEvent& event)
         case WXK_NUMPAD_HOME:
             if (event.ShiftDown())
                 selectWithCursorTo(0);
-            else if (event.ControlDown())
-                moveCursorTo(0);
+            //else if (event.ControlDown())
+            //    ;
             else
                 moveCursorTo(0);
             return;
@@ -1531,8 +1518,8 @@ void Grid::onKeyDown(wxKeyEvent& event)
         case WXK_NUMPAD_END:
             if (event.ShiftDown())
                 selectWithCursorTo(rowCount - 1);
-            else if (event.ControlDown())
-                moveCursorTo(rowCount - 1);
+            //else if (event.ControlDown())
+            //    ;
             else
                 moveCursorTo(rowCount - 1);
             return;
@@ -1541,8 +1528,8 @@ void Grid::onKeyDown(wxKeyEvent& event)
         case WXK_NUMPAD_PAGEUP:
             if (event.ShiftDown())
                 selectWithCursorTo(cursorRow - GetClientSize().GetHeight() / rowLabelWin_->getRowHeight());
-            else if (event.ControlDown())
-                ;
+            //else if (event.ControlDown())
+            //    ;
             else
                 moveCursorTo(cursorRow - GetClientSize().GetHeight() / rowLabelWin_->getRowHeight());
             return;
@@ -1551,8 +1538,8 @@ void Grid::onKeyDown(wxKeyEvent& event)
         case WXK_NUMPAD_PAGEDOWN:
             if (event.ShiftDown())
                 selectWithCursorTo(cursorRow + GetClientSize().GetHeight() / rowLabelWin_->getRowHeight());
-            else if (event.ControlDown())
-                ;
+            //else if (event.ControlDown())
+            //    ;
             else
                 moveCursorTo(cursorRow + GetClientSize().GetHeight() / rowLabelWin_->getRowHeight());
             return;
@@ -2047,6 +2034,13 @@ void Grid::scrollTo(size_t row)
             }
         }
     }
+}
+
+
+bool Grid::Enable(bool enable)
+{
+    Refresh();
+    return wxScrolledWindow::Enable(enable);
 }
 
 

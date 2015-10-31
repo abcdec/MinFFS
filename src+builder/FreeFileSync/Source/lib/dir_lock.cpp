@@ -4,11 +4,11 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 #include "dir_lock.h"
-#include <utility>
+#include <map>
 #include <wx/log.h>
 #include <memory>
 #include <zen/sys_error.h>
-#include <zen/thread.h> //includes <boost/thread.hpp>
+#include <zen/thread.h>
 #include <zen/scope_guard.h>
 #include <zen/guid.h>
 #include <zen/tick_count.h>
@@ -18,9 +18,10 @@
 #include <zen/optional.h>
 
 #ifdef ZEN_WIN
-    #include <tlhelp32.h>
     #include <zen/win.h> //includes "windows.h"
     #include <zen/long_path_prefix.h>
+    #include <zen/privilege.h>
+    #include <tlhelp32.h>
     #include <Sddl.h> //login sid
     #include <Lmcons.h> //UNLEN
 
@@ -44,22 +45,24 @@ const int DETECT_ABANDONED_INTERVAL = 30; //assume abandoned lock; unit: [s]
 
 const char LOCK_FORMAT_DESCR[] = "FreeFileSync";
 const int LOCK_FORMAT_VER = 2; //lock file format version
-}
+
+using MemStreamOut = MemoryStreamOut<ByteArray>;
+using MemStreamIn  = MemoryStreamIn <ByteArray>;
+
 
 //worker thread
 class LifeSigns
 {
 public:
-    LifeSigns(const Zstring& lockfilepath) : //throw()!!! siehe SharedDirLock()
-        lockfilepath_(lockfilepath) {} //thread safety: make deep copy!
+    LifeSigns(const Zstring& lockfilepath) : lockfilepath_(lockfilepath) {}
 
-    void operator()() const //thread entry
+    void operator()() const //throw ThreadInterruption
     {
         try
         {
-            while (true)
+            for (;;)
             {
-                boost::this_thread::sleep(boost::posix_time::seconds(EMIT_LIFE_SIGN_INTERVAL)); //interruption point!
+                interruptibleSleep(std::chrono::seconds(EMIT_LIFE_SIGN_INTERVAL)); //throw ThreadInterruption
 
                 //actual work
                 emitLifeSign(); //throw ()
@@ -73,10 +76,11 @@ public:
 
     void emitLifeSign() const //try to append one byte...; throw()
     {
-        const char buffer[1] = {' '};
 #ifdef ZEN_WIN
-        //ATTENTION: setting file pointer IS required! => use CreateFile/GENERIC_WRITE + SetFilePointerEx!
-        //although CreateFile/FILE_APPEND_DATA without SetFilePointerEx works locally, it MAY NOT work on some network shares creating a 4 gig file!!!
+        try { activatePrivilege(SE_BACKUP_NAME); }
+        catch (const FileError&) {}
+        try { activatePrivilege(SE_RESTORE_NAME); }
+        catch (const FileError&) {}
 
         const HANDLE fileHandle = ::CreateFile(applyLongPathPrefix(lockfilepath_).c_str(), //_In_      LPCTSTR lpFileName,
                                                //use both when writing over network, see comment in file_io.cpp
@@ -84,12 +88,14 @@ public:
                                                FILE_SHARE_READ,               //_In_      DWORD dwShareMode,
                                                nullptr,                       //_In_opt_  LPSECURITY_ATTRIBUTES lpSecurityAttributes,
                                                OPEN_EXISTING,                 //_In_      DWORD dwCreationDisposition,
-                                               FILE_ATTRIBUTE_NORMAL,         //_In_      DWORD dwFlagsAndAttributes,
+                                               FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, //_In_      DWORD dwFlagsAndAttributes,
                                                nullptr);                      //_In_opt_  HANDLE hTemplateFile
         if (fileHandle == INVALID_HANDLE_VALUE)
             return;
         ZEN_ON_SCOPE_EXIT(::CloseHandle(fileHandle));
 
+        //ATTENTION: setting file pointer IS required! => use CreateFile/GENERIC_WRITE + SetFilePointerEx!
+        //although CreateFile/FILE_APPEND_DATA without SetFilePointerEx works locally, it MAY NOT work on some network shares creating a 4 gig file!!!
         const LARGE_INTEGER moveDist = {};
         if (!::SetFilePointerEx(fileHandle, //__in       HANDLE hFile,
                                 moveDist,   //__in       LARGE_INTEGER liDistanceToMove,
@@ -99,7 +105,7 @@ public:
 
         DWORD bytesWritten = 0; //this parameter is NOT optional: http://blogs.msdn.com/b/oldnewthing/archive/2013/04/04/10407417.aspx
         if (!::WriteFile(fileHandle,    //_In_         HANDLE hFile,
-                         buffer,        //_In_         LPCVOID lpBuffer,
+                         " ",           //_In_         LPCVOID lpBuffer,
                          1,             //_In_         DWORD nNumberOfBytesToWrite,
                          &bytesWritten, //_Out_opt_    LPDWORD lpNumberOfBytesWritten,
                          nullptr))      //_Inout_opt_  LPOVERLAPPED lpOverlapped
@@ -111,7 +117,7 @@ public:
             return;
         ZEN_ON_SCOPE_EXIT(::close(fileHandle));
 
-        const ssize_t bytesWritten = ::write(fileHandle, buffer, 1);
+        const ssize_t bytesWritten = ::write(fileHandle, " ", 1);
         (void)bytesWritten;
 #endif
     }
@@ -121,15 +127,13 @@ private:
 };
 
 
-namespace
-{
 std::uint64_t getLockFileSize(const Zstring& filepath) //throw FileError
 {
 #ifdef ZEN_WIN
     WIN32_FIND_DATA fileInfo = {};
     const HANDLE searchHandle = ::FindFirstFile(applyLongPathPrefix(filepath).c_str(), &fileInfo);
     if (searchHandle == INVALID_HANDLE_VALUE)
-        throwFileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtFileName(filepath)), L"FindFirstFile", getLastError());
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filepath)), L"FindFirstFile");
     ::FindClose(searchHandle);
 
     return get64BitUInt(fileInfo.nFileSizeLow, fileInfo.nFileSizeHigh);
@@ -137,20 +141,20 @@ std::uint64_t getLockFileSize(const Zstring& filepath) //throw FileError
 #elif defined ZEN_LINUX || defined ZEN_MAC
     struct ::stat fileInfo = {};
     if (::stat(filepath.c_str(), &fileInfo) != 0) //follow symbolic links
-        throwFileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtFileName(filepath)), L"stat", getLastError());
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filepath)), L"stat");
 
     return fileInfo.st_size;
 #endif
 }
 
 
-Zstring deleteAbandonedLockName(const Zstring& lockfilepath) //make sure to NOT change file ending!
+Zstring abandonedLockDeletionName(const Zstring& lockfilepath) //make sure to NOT change file ending!
 {
     const size_t pos = lockfilepath.rfind(FILE_NAME_SEPARATOR); //search from end
     return pos == Zstring::npos ? Zstr("Del.") + lockfilepath :
            Zstring(lockfilepath.c_str(), pos + 1) + //include path separator
            Zstr("Del.") +
-           afterLast(lockfilepath, FILE_NAME_SEPARATOR); //returns the whole string if ch not found
+           afterLast(lockfilepath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL);
 }
 
 
@@ -161,7 +165,7 @@ Zstring getLoginSid() //throw FileError
     if (!::OpenProcessToken(::GetCurrentProcess(), //__in   HANDLE ProcessHandle,
                             TOKEN_ALL_ACCESS,      //__in   DWORD DesiredAccess,
                             &hToken))              //__out  PHANDLE TokenHandle
-        throwFileError(_("Cannot get process information."), L"OpenProcessToken", getLastError());
+        THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"OpenProcessToken");
     ZEN_ON_SCOPE_EXIT(::CloseHandle(hToken));
 
     DWORD bufferSize = [&]
@@ -170,7 +174,7 @@ Zstring getLoginSid() //throw FileError
         if (!::GetTokenInformation(hToken, TokenGroups, nullptr, 0, &sz))
         {
             if (::GetLastError() != ERROR_INSUFFICIENT_BUFFER)
-                throwFileError(_("Cannot get process information."), L"GetTokenInformation", getLastError());
+                THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"GetTokenInformation");
 
             if (sz > 0)
                 return sz;
@@ -185,7 +189,7 @@ Zstring getLoginSid() //throw FileError
                                &buffer[0],   //__out_opt  LPVOID TokenInformation,
                                bufferSize,   //__in       DWORD TokenInformationLength,
                                &bufferSize)) //__out      PDWORD ReturnLength
-        throwFileError(_("Cannot get process information."), L"GetTokenInformation", getLastError());
+        THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"GetTokenInformation");
 
     auto groups = reinterpret_cast<const TOKEN_GROUPS*>(&buffer[0]);
 
@@ -195,7 +199,7 @@ Zstring getLoginSid() //throw FileError
             LPTSTR sidStr = nullptr;
             if (!::ConvertSidToStringSid(groups->Groups[i].Sid, //__in   PSID Sid,
                                          &sidStr))              //__out  LPTSTR *StringSid
-                throwFileError(_("Cannot get process information."), L"ConvertSidToStringSid", getLastError());
+                THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"ConvertSidToStringSid");
             ZEN_ON_SCOPE_EXIT(::LocalFree(sidStr));
             return sidStr;
         }
@@ -220,7 +224,7 @@ Opt<SessionId> getSessionId(ProcessId processId) //throw FileError
     HANDLE snapshot = ::CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, //__in  DWORD dwFlags,
                                                  0);                 //__in  DWORD th32ProcessID
     if (snapshot == INVALID_HANDLE_VALUE)
-        throwFileError(_("Cannot get process information."), L"CreateToolhelp32Snapshot", getLastError());
+        THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"CreateToolhelp32Snapshot");
     ZEN_ON_SCOPE_EXIT(::CloseHandle(snapshot));
 
     PROCESSENTRY32 processEntry = {};
@@ -228,7 +232,7 @@ Opt<SessionId> getSessionId(ProcessId processId) //throw FileError
 
     if (!::Process32First(snapshot,       //__in     HANDLE hSnapshot,
                           &processEntry)) //__inout  LPPROCESSENTRY32 lppe
-        throwFileError(_("Cannot get process information."), L"Process32First", getLastError()); //ERROR_NO_MORE_FILES not possible
+        THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"Process32First"); //ERROR_NO_MORE_FILES not possible
     do
     {
         if (processEntry.th32ProcessID == processId) //yes, MSDN says this is the way: http://msdn.microsoft.com/en-us/library/windows/desktop/ms684868(v=vs.85).aspx
@@ -236,9 +240,9 @@ Opt<SessionId> getSessionId(ProcessId processId) //throw FileError
     }
     while (::Process32Next(snapshot, &processEntry));
 
-    const DWORD lastError = ::GetLastError(); //caveat: eval before "throw" which can overwrite error code after memory allocation! (MinGW + Win XP)
-    if (lastError != ERROR_NO_MORE_FILES) //yes, they call it "files"
-        throwFileError(_("Cannot get process information."), L"Process32Next", lastError);
+    const DWORD ec = ::GetLastError(); //copy before directly/indirectly making other system calls!
+    if (ec != ERROR_NO_MORE_FILES) //yes, they call it "files"
+        throw FileError(_("Cannot get process information."), formatSystemError(L"Process32Next", ec));
 
     return NoValue();
 
@@ -248,7 +252,7 @@ Opt<SessionId> getSessionId(ProcessId processId) //throw FileError
 
     pid_t procSid = ::getsid(processId); //NOT to be confused with "login session", e.g. not stable on OS X!!!
     if (procSid == -1)
-        throwFileError(_("Cannot get process information."), L"getsid", getLastError());
+        THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"getsid");
 
     return procSid;
 #endif
@@ -272,7 +276,7 @@ struct LockInformation //throw FileError
         if (!::GetComputerNameEx(ComputerNameDnsFullyQualified,         //__in     COMPUTER_NAME_FORMAT NameType,
                                  bufferSize > 0 ? &buffer[0] : nullptr, //__out    LPTSTR lpBuffer,
                                  &bufferSize))                          //__inout  LPDWORD lpnSize
-            throwFileError(_("Cannot get process information."), L"GetComputerNameEx", getLastError());
+            THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"GetComputerNameEx");
 
         computerName = "Windows." + utfCvrtTo<std::string>(&buffer[0]);
 
@@ -280,7 +284,7 @@ struct LockInformation //throw FileError
         buffer.resize(bufferSize);
         if (!::GetUserName(&buffer[0],   //__out    LPTSTR lpBuffer,
                            &bufferSize)) //__inout  LPDWORD lpnSize
-            throwFileError(_("Cannot get process information."), L"GetUserName", getLastError());
+            THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"GetUserName");
         userId = utfCvrtTo<std::string>(&buffer[0]);
 
 #elif defined ZEN_LINUX || defined ZEN_MAC
@@ -289,12 +293,12 @@ struct LockInformation //throw FileError
         std::vector<char> buffer(10000);
 
         if (::gethostname(&buffer[0], buffer.size()) != 0)
-            throwFileError(_("Cannot get process information."), L"gethostname", getLastError());
+            THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"gethostname");
         computerName += "Linux."; //distinguish linux/windows lock files
         computerName += &buffer[0];
 
         if (::getdomainname(&buffer[0], buffer.size()) != 0)
-            throwFileError(_("Cannot get process information."), L"getdomainname", getLastError());
+            THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"getdomainname");
         computerName += ".";
         computerName += &buffer[0];
 
@@ -306,7 +310,7 @@ struct LockInformation //throw FileError
         struct passwd buffer2 = {};
         struct passwd* pwsEntry = nullptr;
         if (::getpwuid_r(userIdNo, &buffer2, &buffer[0], buffer.size(), &pwsEntry) != 0) //getlogin() is deprecated and not working on Ubuntu at all!!!
-            throwFileError(_("Cannot get process information."), L"getpwuid_r", getLastError());
+            THROW_LAST_FILE_ERROR(_("Cannot get process information."), L"getpwuid_r");
         if (!pwsEntry)
             throw FileError(_("Cannot get process information."), L"no login found"); //should not happen?
         userId += '(' + std::string(pwsEntry->pw_name) + ')'; //follow Linux naming convention "1000(zenju)"
@@ -318,11 +322,11 @@ struct LockInformation //throw FileError
         sessionId = *sessionIdTmp;
     }
 
-    explicit LockInformation(BinStreamIn& stream) //throw UnexpectedEndOfStreamError
+    explicit LockInformation(MemStreamIn& stream) //throw UnexpectedEndOfStreamError
     {
         char tmp[sizeof(LOCK_FORMAT_DESCR)] = {};
         readArray(stream, &tmp, sizeof(tmp));                           //file format header
-        const int lockFileVersion = readNumber<boost::int32_t>(stream); //
+        const int lockFileVersion = readNumber<std::int32_t>(stream); //
 
         if (!std::equal(std::begin(tmp), std::end(tmp), std::begin(LOCK_FORMAT_DESCR)) ||
             lockFileVersion != LOCK_FORMAT_VER)
@@ -335,10 +339,10 @@ struct LockInformation //throw FileError
         processId    = static_cast<ProcessId>(readNumber<std::uint64_t>(stream)); //[!] conversion
     }
 
-    void toStream(BinStreamOut& stream) const //throw ()
+    void toStream(MemStreamOut& stream) const //throw ()
     {
         writeArray(stream, LOCK_FORMAT_DESCR, sizeof(LOCK_FORMAT_DESCR));
-        writeNumber<boost::int32_t>(stream, LOCK_FORMAT_VER);
+        writeNumber<std::int32_t>(stream, LOCK_FORMAT_VER);
 
         static_assert(sizeof(processId) <= sizeof(std::uint64_t), ""); //ensure cross-platform compatibility!
         static_assert(sizeof(sessionId) <= sizeof(std::uint64_t), ""); //
@@ -362,19 +366,19 @@ struct LockInformation //throw FileError
 };
 
 
-//wxGetFullHostName() is a performance killer for some users, so don't touch!
+//wxGetFullHostName() is a performance killer and can hang for some users, so don't touch!
 
 
 LockInformation retrieveLockInfo(const Zstring& lockfilepath) //throw FileError
 {
-    BinStreamIn streamIn = loadBinStream<BinaryStream>(lockfilepath,  nullptr); //throw FileError
+    MemStreamIn streamIn = loadBinStream<ByteArray>(lockfilepath,  nullptr); //throw FileError
     try
     {
         return LockInformation(streamIn); //throw UnexpectedEndOfStreamError
     }
     catch (UnexpectedEndOfStreamError&)
     {
-        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtFileName(lockfilepath)), L"unexpected end of stream");
+        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(lockfilepath)), L"unexpected end of stream");
     }
 }
 
@@ -417,7 +421,7 @@ const std::int64_t TICKS_PER_SEC = ticksPerSec(); //= 0 on error
 
 void waitOnDirLock(const Zstring& lockfilepath, DirLockCallback* callback) //throw FileError
 {
-    std::wstring infoMsg = _("Waiting while directory is locked:") + L' ' + fmtFileName(lockfilepath);
+    std::wstring infoMsg = _("Waiting while directory is locked:") + L' ' + fmtPath(lockfilepath);
 
     if (callback)
         callback->reportStatus(infoMsg);
@@ -450,10 +454,10 @@ void waitOnDirLock(const Zstring& lockfilepath, DirLockCallback* callback) //thr
         std::uint64_t fileSizeOld = 0;
         TickVal lastLifeSign = getTicks();
 
-        while (true)
+        for (;;)
         {
             const TickVal now = getTicks();
-            const std::uint64_t fileSizeNew = ::getLockFileSize(lockfilepath); //throw FileError
+            const std::uint64_t fileSizeNew = getLockFileSize(lockfilepath); //throw FileError
 
             if (TICKS_PER_SEC <= 0 || !lastLifeSign.isValid() || !now.isValid())
                 throw FileError(L"System timer failed."); //no i18n: "should" never throw ;)
@@ -467,7 +471,7 @@ void waitOnDirLock(const Zstring& lockfilepath, DirLockCallback* callback) //thr
             if (lockOwnderDead || //no need to wait any longer...
                 dist(lastLifeSign, now) / TICKS_PER_SEC > DETECT_ABANDONED_INTERVAL)
             {
-                DirLock dummy(deleteAbandonedLockName(lockfilepath), callback); //throw FileError
+                DirLock dummy(abandonedLockDeletionName(lockfilepath), callback); //throw FileError
 
                 //now that the lock is in place check existence again: meanwhile another process may have deleted and created a new lock!
 
@@ -475,7 +479,7 @@ void waitOnDirLock(const Zstring& lockfilepath, DirLockCallback* callback) //thr
                     if (retrieveLockId(lockfilepath) != originalLockId) //throw FileError -> since originalLockId is filled, we are not expecting errors!
                         return; //another process has placed a new lock, leave scope: the wait for the old lock is technically over...
 
-                if (::getLockFileSize(lockfilepath) != fileSizeOld) //throw FileError
+                if (getLockFileSize(lockfilepath) != fileSizeOld) //throw FileError
                     continue; //late life sign
 
                 removeFile(lockfilepath); //throw FileError
@@ -487,7 +491,7 @@ void waitOnDirLock(const Zstring& lockfilepath, DirLockCallback* callback) //thr
             for (size_t i = 0; i < 1000 * POLL_LIFE_SIGN_INTERVAL / GUI_CALLBACK_INTERVAL; ++i)
             {
                 if (callback) callback->requestUiRefresh();
-                boost::this_thread::sleep(boost::posix_time::milliseconds(GUI_CALLBACK_INTERVAL));
+                std::this_thread::sleep_for(std::chrono::milliseconds(GUI_CALLBACK_INTERVAL));
 
                 if (callback)
                 {
@@ -526,22 +530,27 @@ void releaseLock(const Zstring& lockfilepath) //throw ()
 bool tryLock(const Zstring& lockfilepath) //throw FileError
 {
 #ifdef ZEN_WIN
+    try { activatePrivilege(SE_BACKUP_NAME); }
+    catch (const FileError&) {}
+    try { activatePrivilege(SE_RESTORE_NAME); }
+    catch (const FileError&) {}
+
     const HANDLE fileHandle = ::CreateFile(applyLongPathPrefix(lockfilepath).c_str(),              //_In_      LPCTSTR lpFileName,
                                            //use both when writing over network, see comment in file_io.cpp
                                            GENERIC_READ | GENERIC_WRITE,                           //_In_      DWORD dwDesiredAccess,
                                            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, //_In_      DWORD dwShareMode,
                                            nullptr,               //_In_opt_  LPSECURITY_ATTRIBUTES lpSecurityAttributes,
                                            CREATE_NEW,            //_In_      DWORD dwCreationDisposition,
-                                           FILE_ATTRIBUTE_NORMAL, //_In_      DWORD dwFlagsAndAttributes,
+                                           FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, //_In_      DWORD dwFlagsAndAttributes,
                                            nullptr);              //_In_opt_  HANDLE hTemplateFile
     if (fileHandle == INVALID_HANDLE_VALUE)
     {
-        const DWORD lastError = ::GetLastError();
-        if (lastError == ERROR_FILE_EXISTS || //confirmed to be used
-            lastError == ERROR_ALREADY_EXISTS) //comment on msdn claims, this one is used on Windows Mobile 6
+        const DWORD ec = ::GetLastError(); //copy before directly/indirectly making other system calls!
+        if (ec == ERROR_FILE_EXISTS || //confirmed to be used
+            ec == ERROR_ALREADY_EXISTS) //comment on msdn claims, this one is used on Windows Mobile 6
             return false;
-        else
-            throwFileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtFileName(lockfilepath)), L"CreateFile", lastError);
+
+        throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(lockfilepath)), formatSystemError(L"CreateFile", ec));
     }
     ScopeGuard guardLockFile = zen::makeGuard([&] { removeFile(lockfilepath); });
     FileOutput fileOut(fileHandle, lockfilepath); //pass handle ownership
@@ -561,18 +570,18 @@ bool tryLock(const Zstring& lockfilepath) //throw FileError
         if (errno == EEXIST)
             return false;
         else
-            throwFileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtFileName(lockfilepath)), L"open", getLastError());
+            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(lockfilepath)), L"open");
     }
     ScopeGuard guardLockFile = zen::makeGuard([&] { removeFile(lockfilepath); });
     FileOutput fileOut(fileHandle, lockfilepath); //pass handle ownership
 #endif
 
     //write housekeeping info: user, process info, lock GUID
-    BinaryStream binStream = [&]
+    ByteArray binStream = [&]
     {
-        BinStreamOut streamOut;
+        MemStreamOut streamOut;
         LockInformation(FromCurrentProcess()).toStream(streamOut);
-        return streamOut.get();
+        return streamOut.ref();
     }();
 
     if (!binStream.empty())
@@ -593,13 +602,13 @@ public:
         while (!::tryLock(lockfilepath))             //throw FileError
             ::waitOnDirLock(lockfilepath, callback); //
 
-        threadObj = boost::thread(LifeSigns(lockfilepath));
+        lifeSignthread = InterruptibleThread(LifeSigns(lockfilepath));
     }
 
     ~SharedDirLock()
     {
-        threadObj.interrupt(); //thread lifetime is subset of this instances's life
-        threadObj.join(); //we assert precondition "threadObj.joinable()"!!!
+        lifeSignthread.interrupt(); //thread lifetime is subset of this instances's life
+        lifeSignthread.join();
 
         ::releaseLock(lockfilepath_); //throw ()
     }
@@ -609,7 +618,7 @@ private:
     SharedDirLock& operator=(const DirLock&) = delete;
 
     const Zstring lockfilepath_;
-    boost::thread threadObj;
+    InterruptibleThread lifeSignthread;
 };
 
 
@@ -661,7 +670,7 @@ private:
     LockAdmin& operator=(const LockAdmin&) = delete;
 
     typedef std::string UniqueId;
-    typedef std::map<Zstring, UniqueId, LessFilename>        FileToGuidMap; //n:1 handle uppper/lower case correctly
+    typedef std::map<Zstring, UniqueId, LessFilePath>        FileToGuidMap; //n:1 handle uppper/lower case correctly
     typedef std::map<UniqueId, std::weak_ptr<SharedDirLock>> GuidToLockMap; //1:1
 
     std::shared_ptr<SharedDirLock> getActiveLock(const UniqueId& lockId) //returns null if none found
@@ -670,10 +679,10 @@ private:
         return iterLock != guidToLock.end() ? iterLock->second.lock() : nullptr; //try to get shared_ptr; throw()
     }
 
-    void tidyUp() //remove obsolete lock entries
+    void tidyUp() //remove obsolete entries
     {
-        map_remove_if(guidToLock, [ ](const GuidToLockMap::value_type& v) { return !v.second.lock(); });
-        map_remove_if(fileToGuid, [&](const FileToGuidMap::value_type& v) { return guidToLock.find(v.second) == guidToLock.end(); });
+        erase_if(guidToLock, [ ](const GuidToLockMap::value_type& v) { return !v.second.lock(); });
+        erase_if(fileToGuid, [&](const FileToGuidMap::value_type& v) { return guidToLock.find(v.second) == guidToLock.end(); });
     }
 
     FileToGuidMap fileToGuid; //lockname |-> GUID; locks can be referenced by a lockfilepath or alternatively a GUID
@@ -684,7 +693,7 @@ private:
 DirLock::DirLock(const Zstring& lockfilepath, DirLockCallback* callback) //throw FileError
 {
     if (callback)
-        callback->reportStatus(replaceCpy(_("Creating file %x"), L"%x", fmtFileName(lockfilepath)));
+        callback->reportStatus(replaceCpy(_("Creating file %x"), L"%x", fmtPath(lockfilepath)));
 
 #ifdef ZEN_WIN
     const DWORD bufferSize = 10000;

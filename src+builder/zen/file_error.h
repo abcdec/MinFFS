@@ -36,33 +36,34 @@ DEFINE_NEW_FILE_ERROR(ErrorFileLocked);
 DEFINE_NEW_FILE_ERROR(ErrorDifferentVolume);
 
 
-//CAVEAT: evalulate global error code *before* "throw" statement which may overwrite error code
-//due to a memory allocation before it creates the thrown instance! (e.g. affects MinGW + Win XP!!!)
-template <class FE = FileError> inline
-void throwFileError(const std::wstring& msg, const std::wstring& functionName, const ErrorCode ec) //throw FileError
-{
-    throw FE(msg, formatSystemError(functionName, ec));
-}
+//CAVEAT: thread-local Win32 error code is easily overwritten => evaluate *before* making any (indirect) system calls:
+//-> MinGW + Win XP: "throw" statement allocates memory to hold the exception object => error code is cleared
+//-> VC 2015, Debug: std::wstring allocator internally calls ::FlsGetValue()         => error code is cleared
+#ifdef _MSC_VER
+#define THROW_LAST_FILE_ERROR(msg, functionName)                           \
+    do                                                                     \
+    {                                                                      \
+        const ErrorCode ecInternal = getLastError();                       \
+        throw FileError(msg, formatSystemError(functionName, ecInternal)); \
+        \
+        __pragma(warning(suppress: 4127)) /*"conditional expression is constant"*/ \
+    } while (false)
 
+#else //variant witout "__pragma":
+#define THROW_LAST_FILE_ERROR(msg, functionName)                           \
+    do { const ErrorCode ecInternal = getLastError(); throw FileError(msg, formatSystemError(functionName, ecInternal)); } while (false)
+#endif
 
 //----------- facilitate usage of std::wstring for error messages --------------------
 
-//allow implicit UTF8 conversion: since std::wstring models a GUI string, convenience is more important than performance
 inline
-std::wstring operator+(const std::wstring& lhs, const Zstring& rhs) { return std::wstring(lhs) += utfCvrtTo<std::wstring>(rhs); }
-
-//we musn't put our overloads in namespace std, but namespace zen (+ using directive) is sufficient
-
-
-inline
-std::wstring fmtFileName(const Zstring& filepath)
+std::wstring fmtPath(const std::wstring& displayPath)
 {
-    std::wstring output;
-    output += L'\"';
-    output += utfCvrtTo<std::wstring>(filepath);
-    output += L'\"';
-    return output;
+    return L'\"' + displayPath + L'\"';
 }
+
+inline std::wstring fmtPath(const Zstring& displayPath) { return fmtPath(utfCvrtTo<std::wstring>(displayPath)); }
+inline std::wstring fmtPath(const wchar_t* displayPath) { return fmtPath(std::wstring(displayPath)); }
 }
 
 #endif //FILEERROR_H_INCLUDED_839567308565656789

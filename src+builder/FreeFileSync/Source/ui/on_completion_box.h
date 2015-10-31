@@ -34,7 +34,8 @@ public:
                     const wxValidator& validator = wxDefaultValidator,
                     const wxString& name = wxComboBoxNameStr);
 
-    void initHistory(std::vector<Zstring>& history, size_t historyMax) { history_ = &history; historyMax_ = historyMax; }
+    void setHistory(const std::vector<Zstring>& history, size_t historyMax) { history_ = history; historyMax_ = historyMax; }
+    std::vector<Zstring> getHistory() const { return history_; }
     void addItemHistory(); //adds current item to history
 
     // use these two accessors instead of GetValue()/SetValue():
@@ -51,8 +52,8 @@ private:
 
     void setValueAndUpdateList(const std::wstring& value);
 
-    std::vector<Zstring>* history_;
-    size_t historyMax_;
+    std::vector<Zstring> history_;
+    size_t historyMax_ = 0;
 
     const std::vector<std::pair<std::wstring, Zstring>> defaultCommands;
 };

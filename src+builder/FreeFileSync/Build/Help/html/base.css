@@ -1,49 +1,80 @@
-* 
+*
 {
 }
 
 body
 {
-    font-family: Tahoma, Verdana, sans-serif;
+	font-family: Segoe UI, Verdana, Tahoma, sans-serif;
+	text-align:justify;
 }
 
-h2 
+h1
 {
-	font-size: 20px;
+	font-size: 22px;
 }
 
-h3 
+h2
 {
 	font-size: 17px;
 }
 
-.bluebox
+ul
 {
-	margin-left: 1.3cm; 
-	float: left; 
-	width: 80%; 
-	border: 1px solid #000080; 
-	color:black; 
-	background: #ccccff;	
-	padding: 0.2cm;
+	list-style: disc;
 }
 
-.bluebox_inner
+table td 
 {
-	padding-left: 0.6cm;
+	padding: 0 20px 0 0;
+}
+
+table th
+{
+	text-align: left;
+	padding: 0 20px 0 0;
+	border-bottom: 1px solid black;
+}
+
+.bluebox
+{
+	width: 100%;
+	border: 1px solid #000080;
+	color:black;
+	background: #ccccff;
 }
 
 .greybox
 {
-	margin-left: 1.3cm; 
-	float: left; 
-	width: 80%; 
-	color:black; 
+	width: 100%;
+	color:black;
 	background: #e6e6e6;
-	padding: 0.2cm;
 }
 
-.greybox_inner
+.box-inner
 {
-	padding-left: 0.6cm;
+	padding: 6px 6px 6px 21px;
+}
+
+.box-outer
+{
+	margin: 0 15px;
+}
+
+.command-line
+{
+    font-family: Courier New, Courier, monospace;
+	text-align: left;
+}
+
+.command-line-comment
+{
+	color: #808080;
+	font-weight: bold;
+	font-style: italic;
+}
+
+.file-path
+{
+    font-family: Consolas, Courier New, Courier, monospace;
+	text-align: left;
 }

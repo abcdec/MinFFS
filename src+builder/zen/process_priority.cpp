@@ -5,7 +5,6 @@
 // **************************************************************************
 
 #include "process_priority.h"
-//#include "sys_error.h"
 #include "i18n.h"
 
 #ifdef ZEN_WIN
@@ -42,7 +41,7 @@ struct ScheduleForBackgroundProcessing::Pimpl {};
 ScheduleForBackgroundProcessing::ScheduleForBackgroundProcessing()
 {
     if (!::SetPriorityClass(::GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN)) //this call lowers CPU priority, too!!
-        throwFileError(_("Cannot change process I/O priorities."), L"SetPriorityClass", getLastError());
+        THROW_LAST_FILE_ERROR(_("Cannot change process I/O priorities."), L"SetPriorityClass");
 }
 
 
@@ -65,32 +64,32 @@ ScheduleForBackgroundProcessing::~ScheduleForBackgroundProcessing() {};
 /*
 struct ScheduleForBackgroundProcessing
 {
-	- required functions ioprio_get/ioprio_set are not part of glibc: http://linux.die.net/man/2/ioprio_set
-	- and probably never will: http://sourceware.org/bugzilla/show_bug.cgi?id=4464
-	- /usr/include/linux/ioprio.h not available on Ubuntu, so we can't use it instead
+    - required functions ioprio_get/ioprio_set are not part of glibc: http://linux.die.net/man/2/ioprio_set
+    - and probably never will: http://sourceware.org/bugzilla/show_bug.cgi?id=4464
+    - /usr/include/linux/ioprio.h not available on Ubuntu, so we can't use it instead
 
-	ScheduleForBackgroundProcessing() : oldIoPrio(getIoPriority(IOPRIO_WHO_PROCESS, ::getpid()))
-	{
-		if (oldIoPrio != -1)
-			setIoPriority(::getpid(), IOPRIO_PRIO_VALUE(IOPRIO_CLASS_IDLE, 0));
-	}
-	~ScheduleForBackgroundProcessing()
-	{
-		if (oldIoPrio != -1)
-			setIoPriority(::getpid(), oldIoPrio);
-	}
+    ScheduleForBackgroundProcessing() : oldIoPrio(getIoPriority(IOPRIO_WHO_PROCESS, ::getpid()))
+    {
+        if (oldIoPrio != -1)
+            setIoPriority(::getpid(), IOPRIO_PRIO_VALUE(IOPRIO_CLASS_IDLE, 0));
+    }
+    ~ScheduleForBackgroundProcessing()
+    {
+        if (oldIoPrio != -1)
+            setIoPriority(::getpid(), oldIoPrio);
+    }
 
 private:
-	static int getIoPriority(pid_t pid)
-	{
-		return ::syscall(SYS_ioprio_get, IOPRIO_WHO_PROCESS, pid);
-	}
-	static int setIoPriority(pid_t pid, int ioprio)
-	{
-		return ::syscall(SYS_ioprio_set, IOPRIO_WHO_PROCESS, pid, ioprio);
-	}
+    static int getIoPriority(pid_t pid)
+    {
+        return ::syscall(SYS_ioprio_get, IOPRIO_WHO_PROCESS, pid);
+    }
+    static int setIoPriority(pid_t pid, int ioprio)
+    {
+        return ::syscall(SYS_ioprio_set, IOPRIO_WHO_PROCESS, pid, ioprio);
+    }
 
-	const int oldIoPrio;
+    const int oldIoPrio;
 };
 */
 #endif

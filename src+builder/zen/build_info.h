@@ -4,17 +4,35 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef BUILDINFO_H_INCLUDED
-#define BUILDINFO_H_INCLUDED
+#ifndef BUILDINFO_H_5928539285603428657
+#define BUILDINFO_H_5928539285603428657
 
 namespace zen
 {
-//determine build info
-//safer than checking for _WIN64 (defined on windows for 64-bit compilations only) while _WIN32 is always defined (even for x64 compiler!)
-static const bool is32BitBuild = sizeof(void*) == 4;
-static const bool is64BitBuild = sizeof(void*) == 8;
+//determine build info: defines ZEN_BUILD_32BIT or ZEN_BUILD_64BIT
 
-static_assert(is32BitBuild || is64BitBuild, "");
+#ifdef ZEN_WIN
+    #ifdef _WIN64
+        #define ZEN_BUILD_64BIT
+    #else
+        #define ZEN_BUILD_32BIT
+    #endif
+
+#else
+    #ifdef __LP64__
+        #define ZEN_BUILD_64BIT
+    #else
+        #define ZEN_BUILD_32BIT
+    #endif
+#endif
+
+#ifdef ZEN_BUILD_32BIT
+    static_assert(sizeof(void*) == 4, "");
+#endif
+
+#ifdef ZEN_BUILD_64BIT
+    static_assert(sizeof(void*) == 8, "");
+#endif
 }
 
-#endif //BUILDINFO_H_INCLUDED
+#endif //BUILDINFO_H_5928539285603428657

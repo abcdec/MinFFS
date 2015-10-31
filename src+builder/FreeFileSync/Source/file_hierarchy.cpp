@@ -383,8 +383,8 @@ std::wstring zen::getSyncOpDescription(const FileSystemObject& fsObj)
 
             if (shortNameOld != shortNameNew) //detected change in case
                 return getSyncOpDescription(op) + L"\n" +
-                       fmtFileName(shortNameOld) + L" ->\n" + //show short name only
-                       fmtFileName(shortNameNew);
+                       fmtPath(shortNameOld) + L" ->\n" + //show short name only
+                       fmtPath(shortNameNew);
         }
             //fallback:
         return getSyncOpDescription(op);
@@ -408,13 +408,14 @@ std::wstring zen::getSyncOpDescription(const FileSystemObject& fsObj)
                     const Zstring relTarget = getRelName(*targetFile, !onLeft);
 
                     return getSyncOpDescription(op) + L"\n" +
-                           (EqualFilename()(beforeLast(relSource, FILE_NAME_SEPARATOR), beforeLast(relTarget, FILE_NAME_SEPARATOR)) ? //returns empty string if ch not found
+                           (EqualFilePath()(beforeLast(relSource, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE),
+                                            beforeLast(relTarget, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)) ?
                             //detected pure "rename"
-                            fmtFileName(afterLast(relSource, FILE_NAME_SEPARATOR)) + L" ->\n" + //show short name only
-                            fmtFileName(afterLast(relTarget, FILE_NAME_SEPARATOR)) :
+                            fmtPath(afterLast(relSource, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) + L" ->\n" + //show short name only
+                            fmtPath(afterLast(relTarget, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) :
                             //"move" or "move + rename"
-                            fmtFileName(relSource) + L" ->\n" +
-                            fmtFileName(relTarget));
+                            fmtPath(relSource) + L" ->\n" +
+                            fmtPath(relTarget));
                     //attention: ::SetWindowText() doesn't handle tab characters correctly in combination with certain file names, so don't use them
                 }
             break;

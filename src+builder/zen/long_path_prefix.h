@@ -10,6 +10,7 @@
 #include "win.h"
 #include "zstring.h"
 
+
 namespace zen
 {
 //handle filepaths longer-equal 260 (== MAX_PATH) characters by applying \\?\-prefix; see: http://msdn.microsoft.com/en-us/library/aa365247(VS.85).aspx#maxpath
@@ -29,9 +30,9 @@ Zstring ntPathToWin32Path(const Zstring& path); //noexcept
 http://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx#NT_Namespaces
 
 As used by GetModuleFileNameEx() and symlinks (FSCTL_GET_REPARSE_POINT):
-	E.g.:
-	\??\C:\folder -> C:\folder
-	\SystemRoot   -> C:\Windows
+    E.g.:
+    \??\C:\folder -> C:\folder
+    \SystemRoot   -> C:\Windows
 */
 }
 
@@ -70,7 +71,7 @@ Zstring applyLongPathPrefixImpl(const Zstring& path)
         if (!startsWith(path, LONG_PATH_PREFIX))
         {
             if (startsWith(path, L"\\\\")) //UNC-name, e.g. \\zenju-pc\Users
-                return LONG_PATH_PREFIX_UNC + afterFirst(path, L'\\'); //convert to \\?\UNC\zenju-pc\Users
+                return LONG_PATH_PREFIX_UNC + afterFirst(path, L'\\', zen::IF_MISSING_RETURN_NONE); //convert to \\?\UNC\zenju-pc\Users
             else
                 return LONG_PATH_PREFIX + path; //prepend \\?\ prefix
         }
@@ -120,9 +121,8 @@ Zstring zen::ntPathToWin32Path(const Zstring& path) //noexcept
         {
             std::vector<wchar_t> buf(bufSize);
             const DWORD charsWritten = ::GetEnvironmentVariable(L"SystemRoot", //_In_opt_   LPCTSTR lpName,
-                                                          &buf[0],       //_Out_opt_  LPTSTR lpBuffer,
-                                                          bufSize);      //_In_       DWORD nSize
-
+                                                                &buf[0],       //_Out_opt_  LPTSTR lpBuffer,
+                                                                bufSize);      //_In_       DWORD nSize
             if (0 < charsWritten && charsWritten < bufSize)
                 return replaceCpy(path, L"\\SystemRoot\\", appendSeparator(Zstring(&buf[0], charsWritten)), false);
         }

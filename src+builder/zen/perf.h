@@ -9,6 +9,7 @@
 
 #include "deprecate.h"
 #include "tick_count.h"
+#include "scope_guard.h"
 
 #ifdef ZEN_WIN
     #include <sstream>
@@ -30,41 +31,82 @@ public:
 
     ZEN_DEPRECATE
     PerfTimer() : //throw TimerError
-        ticksPerSec_(ticksPerSec()), startTime(getTicks()), resultShown(false)
+        ticksPerSec_(ticksPerSec()),
+        resultShown(false),
+        startTime(getTicksNow()),
+        paused(false),
+        elapsedUntilPause(0)
     {
         //std::clock() - "counts CPU time in Linux GCC and wall time in VC++" - WTF!???
-
-        if (ticksPerSec_ == 0 || !startTime.isValid())
+        if (ticksPerSec_ == 0)
             throw TimerError();
     }
 
-    ~PerfTimer() { if (!resultShown) showResult(); }
+    ~PerfTimer() { if (!resultShown) try { showResult(); } catch (TimerError&) {} }
+
+    void pause()
+    {
+        if (!paused)
+        {
+            paused = true;
+            elapsedUntilPause += dist(startTime, getTicksNow());
+        }
+    }
+
+    void resume()
+    {
+        if (paused)
+        {
+            paused = false;
+            startTime = getTicksNow();
+        }
+    }
+
+    void restart()
+    {
+        startTime = getTicksNow();
+        paused = false;
+        elapsedUntilPause = 0;
+    }
+
+    int64_t timeMs() const
+    {
+        int64_t ticksTotal = elapsedUntilPause;
+        if (!paused)
+            ticksTotal += dist(startTime, getTicksNow());
+        return 1000 * ticksTotal / ticksPerSec_;
+    }
 
     void showResult()
+    {
+        const bool wasRunning = !paused;
+        if (wasRunning) pause(); //don't include call to MessageBox()!
+        ZEN_ON_SCOPE_EXIT(if (wasRunning) resume());
+
+#ifdef ZEN_WIN
+        std::wostringstream ss;
+        ss << timeMs() << L" ms";
+        ::MessageBox(nullptr, ss.str().c_str(), L"Timer", MB_OK);
+#else
+        std::clog << "Perf: duration: " << timeMs() << " ms\n";
+#endif
+        resultShown = true;
+    }
+
+private:
+    TickVal getTicksNow() const
     {
         const TickVal now = getTicks();
         if (!now.isValid())
             throw TimerError();
-
-        const std::int64_t delta = 1000 * dist(startTime, now) / ticksPerSec_;
-#ifdef ZEN_WIN
-        std::wostringstream ss;
-        ss << delta << L" ms";
-        ::MessageBox(nullptr, ss.str().c_str(), L"Timer", MB_OK);
-#else
-        std::clog << "Perf: duration: " << delta << " ms\n";
-#endif
-        resultShown = true;
-
-        startTime = getTicks(); //don't include call to MessageBox()!
-        if (!startTime.isValid())
-            throw TimerError();
+        return now;
     }
 
-private:
     const std::int64_t ticksPerSec_;
-    TickVal startTime;
     bool resultShown;
+    TickVal startTime;
+    bool paused;
+    int64_t elapsedUntilPause;
 };
 }
 

@@ -27,10 +27,10 @@ Set enum value:
     setEnumVal(enumDescrMap, *m_choiceHandleError, value);
 
 Get enum value:
-	value = getEnumVal(enumDescrMap, *m_choiceHandleError)
+    value = getEnumVal(enumDescrMap, *m_choiceHandleError)
 
 Update enum tooltips (after user changed selection):
-	updateTooltipEnumVal(enumDescrMap, *m_choiceHandleError);
+    updateTooltipEnumVal(enumDescrMap, *m_choiceHandleError);
 */
 
 

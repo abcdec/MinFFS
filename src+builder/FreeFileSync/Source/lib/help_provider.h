@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef HELPPROVIDER_H_INCLUDED
-#define HELPPROVIDER_H_INCLUDED
+#ifndef HELPPROVIDER_H_85930427583421563126
+#define HELPPROVIDER_H_85930427583421563126
 
 #ifdef ZEN_WIN
     #include <zen/zstring.h>
@@ -17,14 +17,14 @@
 
 #include "ffs_paths.h"
 
+
 namespace zen
 {
 //use '/' as path separator!
 void displayHelpEntry(wxWindow* parent);
 void displayHelpEntry(const wxString& section, wxWindow* parent);
 
-
-
+void uninitializeHelp(); //clean up gracefully during app shutdown: leaving this up to static destruction crashes on Win 8.1!
 
 
 
@@ -34,31 +34,63 @@ void displayHelpEntry(const wxString& section, wxWindow* parent);
 //######################## implementation ########################
 namespace impl
 {
-//finish wxWidgets' job
+//finish wxWidgets' job:
 #ifdef ZEN_WIN
 class FfsHelpController
 {
 public:
-    FfsHelpController()
+    static FfsHelpController& getInstance()
     {
-        chmHlp.Initialize(utfCvrtTo<wxString>(zen::getResourceDir()) + L"FreeFileSync.chm");
+        static FfsHelpController inst; //external linkage, despite inline definition!
+        return inst;
     }
 
     void openSection(const wxString& section, wxWindow* parent)
     {
+        init();
         if (section.empty())
-            chmHlp.DisplayContents();
+            chmHlp->DisplayContents();
         else
-            chmHlp.DisplaySection(replaceCpy(section, L'/', utfCvrtTo<wxString>(FILE_NAME_SEPARATOR)));
+            chmHlp->DisplaySection(replaceCpy(section, L'/', utfCvrtTo<wxString>(FILE_NAME_SEPARATOR)));
     }
+
+    void uninitialize()
+    {
+        if (chmHlp)
+        {
+            chmHlp->Quit(); //don't let help windows open while app is shut down! => crash on Win 8.1!
+            chmHlp.reset();
+        }
+    }
+
 private:
-    wxCHMHelpController chmHlp;
+    FfsHelpController() {}
+    ~FfsHelpController() { assert(!chmHlp); }
+
+    void init() //don't put in constructor: not needed if only uninitialize() is ever called!
+    {
+        if (!chmHlp)
+        {
+            chmHlp = std::make_unique<wxCHMHelpController>();
+            chmHlp->Initialize(utfCvrtTo<wxString>(zen::getResourceDir()) + L"FreeFileSync.chm");
+        }
+    }
+
+    std::unique_ptr<wxCHMHelpController> chmHlp;
 };
 
 #elif defined ZEN_LINUX || defined ZEN_MAC
 class FfsHelpController
 {
 public:
+    static FfsHelpController& getInstance()
+    {
+        static FfsHelpController inst;
+        return inst;
+    }
+
+    void uninitialize() {}
+
     void openSection(const wxString& section, wxWindow* parent)
     {
         wxHtmlModalHelp dlg(parent, utfCvrtTo<wxString>(zen::getResourceDir()) + L"Help/FreeFileSync.hhp", section,
@@ -70,29 +102,28 @@ public:
     }
 };
 #endif
-
-
-inline
-FfsHelpController& getHelpCtrl()
-{
-    static FfsHelpController ctrl; //external linkage, despite inline definition!
-    return ctrl;
-}
 }
 
 
 inline
 void displayHelpEntry(const wxString& section, wxWindow* parent)
 {
-    impl::getHelpCtrl().openSection(section, parent);
+    impl::FfsHelpController::getInstance().openSection(section, parent);
 }
 
 
 inline
 void displayHelpEntry(wxWindow* parent)
 {
-    impl::getHelpCtrl().openSection(wxString(), parent);
+    impl::FfsHelpController::getInstance().openSection(wxString(), parent);
+}
+
+inline
+void uninitializeHelp()
+{
+    impl::FfsHelpController::getInstance().uninitialize();
+
 }
 }
 
-#endif //HELPPROVIDER_H_INCLUDED
+#endif //HELPPROVIDER_H_85930427583421563126

@@ -5,10 +5,10 @@ SHAREDIR    = $(DESTDIR)$(prefix)/share
 APPSHAREDIR = $(SHAREDIR)/$(APPNAME)
 DOCSHAREDIR = $(SHAREDIR)/doc/$(APPNAME)
 
-CXXFLAGS  = -std=c++11 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" -Wall \
+CXXFLAGS  = -std=c++14 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" -Wall \
 -O3 -DNDEBUG `wx-config --cxxflags --debug=no` -DZEN_LINUX -pthread
 
-LINKFLAGS = -s `wx-config --libs std, aui --debug=no` -lboost_thread -lboost_system -lz -pthread
+LINKFLAGS = -s `wx-config --libs std, aui --debug=no` -lboost_thread -lboost_chrono -lboost_system -lz -pthread
 
 #Gtk - support recycler/icon loading/no button border/grid scrolling
 CXXFLAGS  += `pkg-config --cflags gtk+-2.0`
@@ -34,14 +34,17 @@ CPP_LIST+=application.cpp
 CPP_LIST+=comparison.cpp
 CPP_LIST+=structures.cpp
 CPP_LIST+=synchronization.cpp
+CPP_LIST+=fs/abstract.cpp
+CPP_LIST+=fs/concrete.cpp
+CPP_LIST+=fs/native.cpp
 CPP_LIST+=file_hierarchy.cpp
 CPP_LIST+=ui/custom_grid.cpp
 CPP_LIST+=ui/folder_history_box.cpp
 CPP_LIST+=ui/on_completion_box.cpp
-CPP_LIST+=ui/dir_name.cpp
+CPP_LIST+=ui/folder_selector.cpp
 CPP_LIST+=ui/batch_config.cpp
 CPP_LIST+=ui/batch_status_handler.cpp
-CPP_LIST+=ui/check_version.cpp
+CPP_LIST+=ui/version_check.cpp
 CPP_LIST+=ui/grid_view.cpp
 CPP_LIST+=ui/tree_view.cpp
 CPP_LIST+=ui/gui_generated.cpp
@@ -54,12 +57,12 @@ CPP_LIST+=ui/sync_cfg.cpp
 CPP_LIST+=ui/taskbar.cpp
 CPP_LIST+=ui/triple_splitter.cpp
 CPP_LIST+=ui/tray_icon.cpp
-CPP_LIST+=lib/deep_file_traverser.cpp
 CPP_LIST+=lib/binary.cpp
 CPP_LIST+=lib/db_file.cpp
 CPP_LIST+=lib/dir_lock.cpp
 CPP_LIST+=lib/hard_filter.cpp
 CPP_LIST+=lib/icon_buffer.cpp
+CPP_LIST+=lib/icon_loader.cpp
 CPP_LIST+=lib/localization.cpp
 CPP_LIST+=lib/parallel_scan.cpp
 CPP_LIST+=lib/process_xml.cpp

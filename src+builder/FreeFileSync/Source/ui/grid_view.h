@@ -7,7 +7,7 @@
 #ifndef GRIDVIEW_H_INCLUDED
 #define GRIDVIEW_H_INCLUDED
 
-#include <set>
+#include <vector>
 #include <unordered_map>
 #include "column_attr.h"
 #include "../file_hierarchy.h"
@@ -22,14 +22,14 @@ public:
     GridView() : folderPairCount(0) {}
 
     //direct data access via row number
-    const FileSystemObject* getObject(size_t row) const;  //returns nullptr if object is not found; complexity: constant!
+    const FileSystemObject* getObject(size_t row) const; //returns nullptr if object is not found; complexity: constant!
     /**/
     FileSystemObject* getObject(size_t row);        //
     size_t rowsOnView() const { return viewRef  .size(); } //only visible elements
     size_t rowsTotal () const { return sortedRef.size(); } //total rows available
 
     //get references to FileSystemObject: no nullptr-check needed! Everything's bound.
-    std::vector<FileSystemObject*> getAllFileRef(const std::set<size_t>& rows);
+    std::vector<FileSystemObject*> getAllFileRef(const std::vector<size_t>& rows);
 
     struct StatusCmpResult
     {
@@ -141,7 +141,7 @@ private:
     std::unordered_map<const void*, size_t> rowPositionsFirstChild; //find first child on sortedRef of a hierarchy object
     //void* instead of HierarchyObject*: these are weak pointers and should *never be dereferenced*!
 
-    std::vector<FileSystemObject::ObjectId> viewRef;  //partial view on sortedRef
+    std::vector<FileSystemObject::ObjectId> viewRef; //partial view on sortedRef
     /*             /|\
                     | (update...)
                     |                         */

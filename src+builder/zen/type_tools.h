@@ -9,6 +9,7 @@
 
 #include "type_traits.h"
 
+
 namespace zen
 {
 //########## Strawman Classes ##########################
@@ -46,6 +47,9 @@ struct RemoveRef : ResultType<T> {};
 
 template <class T>
 struct RemoveRef<T&> : ResultType<T> {};
+
+template <class T>
+struct RemoveRef<T&&> : ResultType<T> {};
 //------------------------------------------------------
 template <class T>
 struct RemoveConst : ResultType<T> {};

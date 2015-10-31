@@ -246,7 +246,7 @@ private:
 rts::AbortReason rts::startDirectoryMonitor(const xmlAccess::XmlRealConfig& config, const wxString& jobname)
 {
     std::vector<Zstring> dirNamesNonFmt = config.directories;
-    vector_remove_if(dirNamesNonFmt, [](Zstring str) -> bool { trim(str); return str.empty(); }); //remove empty entries WITHOUT formatting paths yet!
+    erase_if(dirNamesNonFmt, [](const Zstring& str) -> bool { return trimCpy(str).empty(); }); //remove empty entries WITHOUT formatting paths yet!
 
     if (dirNamesNonFmt.empty())
     {
@@ -254,8 +254,7 @@ rts::AbortReason rts::startDirectoryMonitor(const xmlAccess::XmlRealConfig& conf
         return SHOW_GUI;
     }
 
-    Zstring cmdLine = config.commandline;
-    trim(cmdLine);
+    const Zstring cmdLine = trimCpy(config.commandline);
 
     if (cmdLine.empty())
     {
@@ -320,7 +319,7 @@ rts::AbortReason rts::startDirectoryMonitor(const xmlAccess::XmlRealConfig& conf
                         case ConfirmationButton::CANCEL:
                             throw AbortMonitoring(SHOW_GUI);
                     }
-                boost::this_thread::sleep(boost::posix_time::milliseconds(UI_UPDATE_INTERVAL));
+                std::this_thread::sleep_for(std::chrono::milliseconds(UI_UPDATE_INTERVAL));
             }
         }
 

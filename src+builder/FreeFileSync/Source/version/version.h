@@ -3,7 +3,8 @@
 
 namespace zen
 {
-const wchar_t currentVersion[] = L"6.15"; //internal linkage!
+const wchar_t ffsVersion[] = L"7.5"; //internal linkage!
+const wchar_t FFS_VERSION_SEPARATOR = L'.';
 }
 
 #endif

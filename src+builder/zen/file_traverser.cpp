@@ -13,12 +13,12 @@
     #include "file_access.h"
     #include "symlink_target.h"
 #elif defined ZEN_MAC
-        #include "osx_string.h"
+    #include "osx_string.h"
 #endif
 
 #if defined ZEN_LINUX || defined ZEN_MAC
     #include <cstddef> //offsetof
-	#include <unistd.h> //::pathconf()
+    #include <unistd.h> //::pathconf()
     #include <sys/stat.h>
     #include <dirent.h>
 #endif
@@ -27,9 +27,9 @@ using namespace zen;
 
 
 void zen::traverseFolder(const Zstring& dirPath,
-                         const std::function<void (const FileInfo&    fi)>& onFile,         
-                         const std::function<void (const DirInfo&     di)>& onDir,          
-                         const std::function<void (const SymlinkInfo& si)>& onLink,         
+                         const std::function<void (const FileInfo&    fi)>& onFile,
+                         const std::function<void (const DirInfo&     di)>& onDir,
+                         const std::function<void (const SymlinkInfo& si)>& onLink,
                          const std::function<void (const std::wstring& errorMsg)>& onError)
 {
     try
@@ -39,105 +39,103 @@ void zen::traverseFolder(const Zstring& dirPath,
         HANDLE hDir = ::FindFirstFile(applyLongPathPrefix(appendSeparator(dirPath) + L'*').c_str(), &findData);
         if (hDir == INVALID_HANDLE_VALUE)
         {
-            const DWORD lastError = ::GetLastError(); //copy before making other system calls!
-            if (lastError == ERROR_FILE_NOT_FOUND)
+            const DWORD ec = ::GetLastError(); //copy before directly/indirectly making other system calls!
+            if (ec == ERROR_FILE_NOT_FOUND)
             {
                 //1. directory may not exist *or* 2. it is completely empty: not all directories contain "., .." entries, e.g. a drive's root directory; NetDrive
                 // -> FindFirstFile() is a nice example of violation of API design principle of single responsibility
                 if (dirExists(dirPath)) //yes, a race-condition, still the best we can do
                     return;
             }
-            throwFileError(replaceCpy(_("Cannot open directory %x."), L"%x", fmtFileName(dirPath)), L"FindFirstFile", lastError);
+            throw FileError(replaceCpy(_("Cannot open directory %x."), L"%x", fmtPath(dirPath)), formatSystemError(L"FindFirstFile", ec));
         }
         ZEN_ON_SCOPE_EXIT(::FindClose(hDir));
 
-		bool firstIteration = true;
+        bool firstIteration = true;
         for (;;)
-        {			
-			if (firstIteration) //keep ::FindNextFile at the start of the for-loop to support "continue"!
-				firstIteration = false;
-			else
-            if (!::FindNextFile(hDir, &findData))
+        {
+            if (firstIteration) //keep ::FindNextFile at the start of the for-loop to support "continue"!
+                firstIteration = false;
+            else if (!::FindNextFile(hDir, &findData))
             {
-                const DWORD lastError = ::GetLastError();
-                if (lastError == ERROR_NO_MORE_FILES) //not an error situation
+                const DWORD ec = ::GetLastError(); //copy before directly/indirectly making other system calls!
+                if (ec == ERROR_NO_MORE_FILES) //not an error situation
                     return;
                 //else we have a problem... report it:
-                throwFileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtFileName(dirPath)), L"FindNextFile", lastError);
+                throw FileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtPath(dirPath)), formatSystemError(L"FindNextFile", ec));
             }
 
             //skip "." and ".."
-            const Zchar* const shortName = findData.cFileName;
+            const wchar_t* const itemNameRaw = findData.cFileName;
 
-			if (shortName[0] == 0) throw FileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtFileName(dirPath)), L"Data corruption: Found item without name.");
-            if (shortName[0] == L'.' &&
-                (shortName[1] == 0 || (shortName[1] == L'.' && shortName[2] == 0)))
+            if (itemNameRaw[0] == 0) 
+				throw FileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtPath(dirPath)), L"FindNextFile: Data corruption; item with empty name.");
+
+            if (itemNameRaw[0] == L'.' &&
+                (itemNameRaw[1] == 0 || (itemNameRaw[1] == L'.' && itemNameRaw[2] == 0)))
                 continue;
 
-            const Zstring& itempath = appendSeparator(dirPath) + shortName;
+            const Zstring& itemPath = appendSeparator(dirPath) + itemNameRaw;
 
             if (zen::isSymlink(findData)) //check first!
             {
                 if (onLink)
-                    onLink({ shortName, itempath, filetimeToTimeT(findData.ftLastWriteTime) });
+                    onLink({ itemPath, filetimeToTimeT(findData.ftLastWriteTime) });
             }
             else if ((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
             {
                 if (onDir)
-                    onDir({ shortName, itempath });
+                    onDir({ itemPath });
             }
             else //a file
             {
                 if (onFile)
-                    onFile({ shortName, itempath, get64BitUInt(findData.nFileSizeLow, findData.nFileSizeHigh), filetimeToTimeT(findData.ftLastWriteTime) });
+                    onFile({ itemPath, get64BitUInt(findData.nFileSizeLow, findData.nFileSizeHigh), filetimeToTimeT(findData.ftLastWriteTime) });
             }
         }
 
 #elif defined ZEN_LINUX || defined ZEN_MAC
-        const Zstring dirPathFmt = //remove trailing slash
-            dirPath.size() > 1 && endsWith(dirPath, FILE_NAME_SEPARATOR) ?  //exception: allow '/'
-            beforeLast(dirPath, FILE_NAME_SEPARATOR) :
-            dirPath;
-
         /* quote: "Since POSIX.1 does not specify the size of the d_name field, and other nonstandard fields may precede
                    that field within the dirent structure, portable applications that use readdir_r() should allocate
                    the buffer whose address is passed in entry as follows:
                        len = offsetof(struct dirent, d_name) + pathconf(dirPath, _PC_NAME_MAX) + 1
                        entryp = malloc(len); */
-        const size_t nameMax = std::max<long>(::pathconf(dirPathFmt.c_str(), _PC_NAME_MAX), 10000); //::pathconf may return long(-1)
-		std::vector<char> buffer(offsetof(struct ::dirent, d_name) + nameMax + 1);
+        const size_t nameMax = std::max<long>(::pathconf(dirPath.c_str(), _PC_NAME_MAX), 10000); //::pathconf may return long(-1)
+        std::vector<char> buffer(offsetof(struct ::dirent, d_name) + nameMax + 1);
 #ifdef ZEN_MAC
-		std::vector<char> bufferUtfDecomposed;
+        std::vector<char> bufferUtfDecomposed;
 #endif
 
-        DIR* dirObj = ::opendir(dirPathFmt.c_str()); //directory must NOT end with path separator, except "/"
+        DIR* dirObj = ::opendir(dirPath.c_str()); //directory must NOT end with path separator, except "/"
         if (!dirObj)
-            throwFileError(replaceCpy(_("Cannot open directory %x."), L"%x", fmtFileName(dirPathFmt)), L"opendir", getLastError());
+            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open directory %x."), L"%x", fmtPath(dirPath)), L"opendir");
         ZEN_ON_SCOPE_EXIT(::closedir(dirObj)); //never close nullptr handles! -> crash
 
         for (;;)
         {
             struct ::dirent* dirEntry = nullptr;
             if (::readdir_r(dirObj, reinterpret_cast< ::dirent*>(&buffer[0]), &dirEntry) != 0)
-                throwFileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtFileName(dirPathFmt)), L"readdir_r", getLastError());
+                THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtPath(dirPath)), L"readdir_r");
             //don't retry but restart dir traversal on error! http://blogs.msdn.com/b/oldnewthing/archive/2014/06/12/10533529.aspx
 
             if (!dirEntry) //no more items
                 return;
 
             //don't return "." and ".."
-            const char* shortName = dirEntry->d_name;
+            const char* itemNameRaw = dirEntry->d_name;
 
-			if (shortName[0] == 0) throw FileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtFileName(dirPath)), L"Data corruption: Found item without name.");
-            if (shortName[0] == '.' &&
-                (shortName[1] == 0 || (shortName[1] == '.' && shortName[2] == 0)))
+            if (itemNameRaw[0] == 0)
+				throw FileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtPath(dirPath)), L"readdir_r: Data corruption; item with empty name.");
+
+            if (itemNameRaw[0] == '.' &&
+                (itemNameRaw[1] == 0 || (itemNameRaw[1] == '.' && itemNameRaw[2] == 0)))
                 continue;
 #ifdef ZEN_MAC
             //some file system abstraction layers fail to properly return decomposed UTF8: http://developer.apple.com/library/mac/#qa/qa1173/_index.html
             //so we need to do it ourselves; perf: ~600 ns per conversion
             //note: it's not sufficient to apply this in z_impl::compareFilenamesNoCase: if UTF8 forms differ, FFS assumes a rename in case sensitivity and
             //   will try to propagate the rename => this won't work if target drive reports a particular UTF8 form only!
-            if (CFStringRef cfStr = osx::createCFString(shortName))
+            if (CFStringRef cfStr = osx::createCFString(itemNameRaw))
             {
                 ZEN_ON_SCOPE_EXIT(::CFRelease(cfStr));
 
@@ -146,41 +144,41 @@ void zen::traverseFolder(const Zstring& dirPath,
                 {
                     bufferUtfDecomposed.resize(lenMax);
                     if (::CFStringGetFileSystemRepresentation(cfStr, &bufferUtfDecomposed[0], lenMax)) //get decomposed UTF form (verified!) despite ambiguous documentation
-                        shortName = &bufferUtfDecomposed[0];
+                        itemNameRaw = &bufferUtfDecomposed[0];
                 }
             }
             //const char* sampleDecomposed  = "\x6f\xcc\x81.txt";
             //const char* samplePrecomposed = "\xc3\xb3.txt";
 #endif
-            const Zstring& itempath = appendSeparator(dirPathFmt) + shortName;
+            const Zstring& itemPath = appendSeparator(dirPath) + itemNameRaw;
 
             struct ::stat statData = {};
-			try
-			{
-					if (::lstat(itempath.c_str(), &statData) != 0) //lstat() does not resolve symlinks
-							throwFileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtFileName(itempath)), L"lstat", getLastError());
-			}
-		    catch (const FileError& e)
-			{
-				if (onError)
-					onError(e.toString());
-				continue; //ignore error: skip file
-			}           
+            try
+            {
+                if (::lstat(itemPath.c_str(), &statData) != 0) //lstat() does not resolve symlinks
+                    THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), L"lstat");
+            }
+            catch (const FileError& e)
+            {
+                if (onError)
+                    onError(e.toString());
+                continue; //ignore error: skip file
+            }
 
             if (S_ISLNK(statData.st_mode)) //on Linux there is no distinction between file and directory symlinks!
             {
                 if (onLink)
-                    onLink({ shortName, itempath, statData.st_mtime});
+                    onLink({ itemPath, statData.st_mtime});
             }
             else if (S_ISDIR(statData.st_mode)) //a directory
             {
                 if (onDir)
-                    onDir({ shortName, itempath });
+                    onDir({ itemPath });
             }
             else //a file or named pipe, ect.
             {
                 if (onFile)
-                    onFile({ shortName, itempath, makeUnsigned(statData.st_size), statData.st_mtime });
+                    onFile({ itemPath, makeUnsigned(statData.st_size), statData.st_mtime });
             }
             /*
             It may be a good idea to not check "S_ISREG(statData.st_mode)" explicitly and to not issue an error message on other types to support these scenarios:

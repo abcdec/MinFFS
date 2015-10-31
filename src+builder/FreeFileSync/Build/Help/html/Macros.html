@@ -1,147 +1,240 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML>
-<HEAD>
-	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
-	<TITLE></TITLE>
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
 	<link rel="stylesheet" type="text/css" href="base.css" >
-</HEAD>
-<BODY LANG="de-DE" DIR="LTR">
+	<title>Macros</title>
+</head>
 
-<H2>Macros</H2>
+<body>
+	<h1>Macros</h1>
 
-<P>All directory names may contain macros that are expanded during
-synchronization. Begin and end of each macro is marked by a <B>%</B> character. Besides special macros
-handling time and date, the <B>operating system's environment variables</B> can also be used.
-</P>
+	<p>
+		All directory paths may contain macros that are expanded during
+		synchronization. Begin and end of each macro is marked by a <b>%</b> character. Besides special macros
+		handling time and date, the <b>operating system's environment variables</b> can also be used.
+	</p>
+	<br>
 
-<BR>
+	<h2>Internal macros</h2>
 
-<h3>Internal macros</h3>
+	<div class="box-outer"><div class="greybox"><div class="box-inner">
+		<table style="border-spacing:0;">
+			<tr>
+				<th><b>Macro</b></th>
+				<th><b>Sample value</b></th>
+			</tr>
+			<tr>
+				<td><span class="command-line">%date%</span></td>
+				<td><span class="file-path">2012-12-31&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>format: [YYYY-MM-DD]</td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%time%</span></td>
+				<td><span class="file-path">123044&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>format: [hhmmss]</td>
+			</tr>			
+			<tr>
+				<td><span class="command-line">%timestamp%</span></td>
+				<td><span class="file-path">2012-12-31 123044&nbsp;</span>format: [YYYY-MM-DD hhmmss]</td>
+			</tr>
+			<tr><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr>
+				<td><span class="command-line">%year%</span></td>
+				<td><span class="file-path">2012</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%month%</span></td>
+				<td><span class="file-path">12</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%day%</span></td>
+				<td><span class="file-path">31</span></td>
+			</tr>
+			<tr><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr>
+				<td><span class="command-line">%hour%</span></td>
+				<td><span class="file-path">12</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%min%</span></td>
+				<td><span class="file-path">30</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%sec%</span></td>
+				<td><span class="file-path">44</span></td>
+			</tr>
+			<tr><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr>
+				<td><span class="command-line">%weekday%</span></td>
+				<td><span class="file-path">Monday&nbsp;</span>(day of the week)</td>
+			</tr>
 
-<div class="greybox">
-	<div class="greybox_inner">
-			<FONT FACE="Courier New, monospace">%date%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-			</FONT>e. g. <FONT FACE="Courier New, monospace">2012-12-22&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>format: [YYYY-MM-DD] <BR>
-			
-			<FONT FACE="Courier New, monospace">%time%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-			</FONT>e. g. <FONT FACE="Courier New, monospace">123044&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>format: [hhmmss] <BR>
-			
-			<FONT FACE="Courier New, monospace">%timestamp%&nbsp;
-			</FONT>e. g. <FONT FACE="Courier New, monospace">2012-12-22 123044&nbsp;</FONT>format: [YYYY-MM-DD hhmmss]<BR><BR>
-			
-			<FONT FACE="Courier New, monospace">%year%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-			</FONT>e. g. <FONT FACE="Courier New, monospace">2012</FONT><BR>
-			
-			<FONT FACE="Courier New, monospace">%month%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-			</FONT>e. g. <FONT FACE="Courier New, monospace">12</FONT><BR>
-			
-			<FONT FACE="Courier New, monospace">%day%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-			</FONT>e. g. <FONT FACE="Courier New, monospace">22</FONT><BR><BR>
-			
-			<FONT FACE="Courier New, monospace">%hour%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-			</FONT>e. g. <FONT FACE="Courier New, monospace">12</FONT><BR>
-			
-			<FONT FACE="Courier New, monospace">%min%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-			</FONT>e. g. <FONT FACE="Courier New, monospace">30</FONT><BR>
-			
-			<FONT FACE="Courier New, monospace">%sec%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-			</FONT>e. g. <FONT FACE="Courier New, monospace">44</FONT><BR><BR>
-			
-			<FONT FACE="Courier New, monospace">%weekday%&nbsp;&nbsp;&nbsp;
-			</FONT>e. g. <FONT FACE="Courier New, monospace">Monday&nbsp;</FONT>(day of the week)<BR>
-			
-			<FONT FACE="Courier New, monospace">%week%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-			</FONT>e. g. <FONT FACE="Courier New, monospace">28&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>(calendar week)
-	</div>
-</div>
-<BR CLEAR=LEFT>
+			<tr>
+				<td><span class="command-line">%week%</span></td>
+				<td><span class="file-path">52&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>(calendar week)</td>
+			</tr>
+		</table>
+	</div></div></div>	
+	<br>
+	<br>
 
-<BR>
+	<h2>Environment variables<span style="font-weight: normal"> (Windows)</span></h2>
 
-<h3>Environment variables<SPAN STYLE="font-weight: normal"> (Windows)</SPAN></h3>
+	<div class="box-outer"><div class="greybox"><div class="box-inner">
+		<table style="border-spacing:0;">
+			<tr>
+				<th><b>Macro</b></th>
+				<th><b>Sample value</b></th>
+			</tr>
+			<tr>
+				<td><span class="command-line">%AllUsersProfile%</span></td>
+				<td><span class="file-path">C:\ProgramData</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%AppData%</span></td>
+				<td><span class="file-path">C:\Users\&lt;username&gt;\AppData\Roaming</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%ComputerName%</span></td>
+				<td><span class="file-path">Zenju-PC</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%LocalAppData%</span></td>
+				<td><span class="file-path">C:\Users\&lt;username&gt;\AppData\Local</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%ProgramData%</span></td>
+				<td><span class="file-path">C:\ProgramData</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%ProgramFiles%</span></td>
+				<td><span class="file-path">C:\Program Files</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%ProgramFiles(x86)%</span></td>
+				<td><span class="file-path">C:\Program Files (x86)</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%Public%</span></td>
+				<td><span class="file-path">C:\Users\Public</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%Temp%</span></td>
+				<td><span class="file-path">C:\Windows\Temp</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%UserName%</span></td>
+				<td><span class="file-path">Zenju</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%UserProfile%</span></td>
+				<td><span class="file-path">C:\Users\&lt;username&gt;</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%WinDir%</span></td>
+				<td><span class="file-path">C:\Windows</span></td>
+			</tr>
+		</table>
+	</div></div></div>	
+	<br>
+	<br>
 
-<div class="greybox">
-	<div class="greybox_inner">
-			<FONT FACE="Courier New, monospace">%AllUsersProfile%&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\ProgramData<BR>			
-			%AppData%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Users\&lt;username&gt;\AppData\Roaming<BR>			
-			%ComputerName%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">Zenju-PC<BR>			
-			%LocalAppData%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Users\&lt;username&gt;\AppData\Local<BR>			
-			%ProgramData%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\ProgramData<BR>			
-			%ProgramFiles%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Program Files<BR>			
-			%ProgramFiles(x86)%&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Program Files (x86)<BR>			
-			%Public%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Users\Public<BR>			
-			%Temp%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Windows\Temp<BR>			
-			%UserName%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">Zenju<BR>			
-			%UserProfile%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Users\&lt;username&gt;<BR>			
-			%WinDir%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Windows</FONT>
-	</div>
-</div>
-<BR CLEAR=LEFT>
+	<h2>Special folder locations<span style="font-weight: normal"> (Windows)</span></h2>
 
-<BR>
-
-<h3>Special folder locations<SPAN STYLE="font-weight: normal"> (Windows)</SPAN></h3>
-
-<div class="greybox">
-	<div class="greybox_inner">
-			<FONT FACE="Courier New, monospace">%csidl_Desktop%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Users\&lt;username&gt;\Desktop<BR>
-			%csidl_Downloads%&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Users\&lt;username&gt;\Downloads<BR>
-			%csidl_Favorites%&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Users\&lt;username&gt;\Favorites<BR>
-			%csidl_MyDocuments%&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Users\&lt;username&gt;\Documents<BR>
-			%csidl_MyMusic%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Users\&lt;username&gt;\Music<BR>
-			%csidl_MyPictures%&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Users\&lt;username&gt;\Pictures<BR>
-			%csidl_MyVideos%&nbsp;&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Users\&lt;username&gt;\Videos<BR>
-			%csidl_Nethood%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Users\&lt;username&gt;\AppData\Roaming\Microsoft\Windows\Network Shortcuts<BR>
-			%csidl_Programs%&nbsp;&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Users\&lt;username&gt;\AppData\Roaming\Microsoft\Windows\Start Menu\Programs<BR>
-			%csidl_Quicklaunch%&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Users\&lt;username&gt;\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch<BR>
-			%csidl_Resources%&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Windows\Resources<BR>
-			%csidl_StartMenu%&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Users\&lt;username&gt;\AppData\Roaming\Microsoft\Windows\Start Menu<BR>
-			%csidl_Startup%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Users\&lt;username&gt;\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\StartUp<BR>
-			%csidl_Templates%&nbsp;&nbsp;&nbsp;</FONT>e. g. <FONT FACE="Courier New, monospace">C:\Users\&lt;username&gt;\AppData\Roaming\Microsoft\Windows\Templates</FONT>
+	<div class="box-outer"><div class="greybox"><div class="box-inner">
+		<table style="border-spacing:0;">
+			<tr>
+				<th><b>Macro</b></th>
+				<th><b>Sample value</b></th>
+			</tr>		
+			<tr>
+				<td><span class="command-line">%csidl_Desktop%</span></td>
+				<td><span class="file-path">C:\Users\&lt;username&gt;\Desktop</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%csidl_Downloads%</span></td>
+				<td><span class="file-path">C:\Users\&lt;username&gt;\Downloads</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%csidl_Favorites%</span></td>
+				<td><span class="file-path">C:\Users\&lt;username&gt;\Favorites</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%csidl_MyDocuments%</span></td>
+				<td><span class="file-path">C:\Users\&lt;username&gt;\Documents</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%csidl_MyMusic%</span></td>
+				<td><span class="file-path">C:\Users\&lt;username&gt;\Music</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%csidl_MyPictures%</span></td>
+				<td><span class="file-path">C:\Users\&lt;username&gt;\Pictures</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%csidl_MyVideos%</span></td>
+				<td><span class="file-path">C:\Users\&lt;username&gt;\Videos</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%csidl_Nethood%</span></td>
+				<td><span class="file-path">C:\Users\&lt;username&gt;\AppData\Roaming\Microsoft\Windows\Network Shortcuts</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%csidl_Programs%</span></td>
+				<td><span class="file-path">C:\Users\&lt;username&gt;\AppData\Roaming\Microsoft\Windows\Start Menu\Programs</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%csidl_Quicklaunch%</span></td>
+				<td><span class="file-path">C:\Users\&lt;username&gt;\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%csidl_Resources%</span></td>
+				<td><span class="file-path">C:\Windows\Resources</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%csidl_StartMenu%</span></td>
+				<td><span class="file-path">C:\Users\&lt;username&gt;\AppData\Roaming\Microsoft\Windows\Start Menu</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%csidl_Startup%</span></td>
+				<td><span class="file-path">C:\Users\&lt;username&gt;\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\StartUp</span></td>
+			</tr>
+			<tr>
+				<td><span class="command-line">%csidl_Templates%</span></td>
+				<td><span class="file-path">C:\Users\&lt;username&gt;\AppData\Roaming\Microsoft\Windows\Templates</span></td>
+			</tr>
+		</table>
 		
-			<p>
-				Note: Most macros listed here also have a variant for public folders. 
-				 E.g. <FONT FACE="Courier New, monospace">csidl_MyMusic</FONT> &rarr; <FONT FACE="Courier New, monospace">csidl_PublicMusic</FONT> 
-			</p>
-	</div>
-</div>
-<BR CLEAR=LEFT>
+		<p>
+			<b>Note:</b> Most macros listed here also have a variant for public folders, e.g.
+			<span class="command-line">%csidl_MyMusic%</span> has <span class="command-line">%csidl_PublicMusic%</span>.
+		</p>
+	</div></div></div>	
+	<br>
 
-<br>
-<br>
+	<p>
+		<b>Hint:</b> You can add a great amount of flexibility to a ffs_batch configuration file
+		 by creating new temporary environment variables in a bat or cmd file that are evaluated by FreeFileSync at runtime:
+	</p>
+	<br>
 
-<P>
-<B>Hint:</B> You can add a great amount of flexibility to a ffs_batch configuration file
- by creating new temporary environment variables in a bat or cmd file that are evaluated by FreeFileSync at runtime:
-</P>
+	<h2>Example:</h2>
+	<p>
+		The FreeFileSync batch file <span class="file-path">C:\SyncJob.ffs_batch</span> contains 
+		macro <span class="command-line">%MyVar%</span> instead of an absolute target folder and is invoked by a cmd file:
+	</p>
 
-<BR>
+	<div class="box-outer"><div class="greybox"><div class="box-inner">
+		<div class="command-line">set MyVar=C:\Target<br>
+			&quot;C:\Program files\FreeFileSync\FreeFileSync.exe&quot; C:\SyncJob.ffs_batch<br>
+			<div class="command-line-comment">::%MyVar% is resolved as C:\Target during synchronization</div>
+		</div>
+	</div></div></div>	
+	<br>
 
-<P><B>Example:</B>
-The FreeFileSync batch file <FONT FACE="Courier New, monospace">C:\SyncJob.ffs_batch</FONT> contains 
-macro <FONT FACE="Courier New, monospace">%MyVar%</FONT> instead of an absolute target folder and is invoked by a cmd file:
-</P>
-
-<div class="greybox">
-	<div class="greybox_inner">
-			<FONT FACE="Courier New, monospace">set MyVar=C:\Target<BR>
-			&quot;C:\Program files\FreeFileSync\FreeFileSync.exe&quot; C:\SyncJob.ffs_batch<BR>
-			<FONT COLOR="#808080"><I><B>::%MyVar% is resolved as C:\Target during synchronization</B></I></FONT>
-			</FONT>
-	</div>
-</div>
-<BR CLEAR=LEFT>
-
-<BR>
-
-<div class="bluebox">
-	<div class="bluebox_inner">
-			<B>Note</B><br>
-			Temporary environment variables created with the <FONT FACE="Courier New, monospace">set</FONT> command are only valid if the synchronization is started by calling the
-			FreeFileSync executable directly. Using <FONT FACE="Courier New, monospace">start /wait</FONT> creates a new program context without these temporal variables.
-	</div>
-</div>
-<BR CLEAR=LEFT>
-
-</BODY>
-</HTML>
+	<div class="box-outer"><div class="bluebox"><div class="box-inner">
+		<b>Note</b><br>
+		Temporary environment variables created with the <span class="command-line">set</span> command are only valid if the synchronization is started by calling the
+		FreeFileSync executable directly. Using <span class="command-line">start /wait</span> would create a new program context without these temporary variables.
+	</div></div></div>
+</body>
+</html>

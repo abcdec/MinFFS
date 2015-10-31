@@ -10,6 +10,7 @@
 #include <wx/bmpbuttn.h>
 #include "image_tools.h"
 
+
 namespace zen
 {
 //zen::BitmapTextButton is identical to wxBitmapButton, but preserves the label via SetLabel(), which wxFormbuilder would ditch!

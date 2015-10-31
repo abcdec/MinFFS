@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Jun  5 2014)
+// C++ code generated with wxFormBuilder (version Jun 17 2015)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO "NOT" EDIT THIS FILE!
@@ -63,7 +63,7 @@ protected:
     wxBitmapButton* m_bpButtonAddFolder;
     wxBitmapButton* m_bpButtonRemoveTopFolder;
     wxTextCtrl* m_txtCtrlDirectoryMain;
-    wxButton* m_buttonSelectDirMain;
+    wxButton* m_buttonSelectFolderMain;
     wxScrolledWindow* m_scrolledWinFolders;
     wxBoxSizer* bSizerFolders;
     wxStaticLine* m_staticline212;
@@ -103,7 +103,7 @@ class FolderGenerated : public wxPanel
 private:
 
 protected:
-    wxButton* m_buttonSelectDir;
+    wxButton* m_buttonSelectFolder;
 
 public:
     wxBitmapButton* m_bpButtonRemoveFolder;

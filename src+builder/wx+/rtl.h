@@ -55,7 +55,7 @@ void drawRtlImpl(wxDC& dc, const wxRect& rect, std::unique_ptr<wxBitmap>& buffer
     if (dc.GetLayoutDirection() == wxLayout_RightToLeft)
     {
         if (!buffer || buffer->GetWidth() != rect.width || buffer->GetHeight() < rect.height) //[!] since we do a mirror, width needs to match exactly!
-            buffer = zen::make_unique<wxBitmap>(rect.width, rect.height);
+            buffer = std::make_unique<wxBitmap>(rect.width, rect.height);
 
         wxMemoryDC memDc(*buffer);
         memDc.Blit(wxPoint(0, 0), rect.GetSize(), &dc, rect.GetTopLeft()); //blit in: background is mirrored due to memDc, dc having different layout direction!

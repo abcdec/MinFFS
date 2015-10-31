@@ -10,18 +10,19 @@
 #include <zen/file_error.h>
 #include "../file_hierarchy.h"
 
+
 namespace zen
 {
 const Zchar SYNC_DB_FILE_ENDING[] = Zstr(".ffs_db"); //don't use Zstring as global constant: avoid static initialization order problem in global namespace!
 
 struct InSyncDescrFile //subset of FileDescriptor
 {
-    InSyncDescrFile(std::int64_t lastWriteTimeRawIn, const FileId& idIn) :
+    InSyncDescrFile(std::int64_t lastWriteTimeRawIn, const ABF::FileId& idIn) :
         lastWriteTimeRaw(lastWriteTimeRawIn),
         fileId(idIn) {}
 
     std::int64_t lastWriteTimeRaw;
-    FileId fileId; // == file id: optional! (however, always set on Linux, and *generally* available on Windows)
+    ABF::FileId fileId; // == file id: optional! (however, always set on Linux, and *generally* available on Windows)
 };
 
 struct InSyncDescrLink
@@ -64,9 +65,9 @@ struct InSyncDir
     InSyncStatus status;
 
     //------------------------------------------------------------------
-    typedef std::map<Zstring, InSyncDir,     LessFilename> DirList;  //
-    typedef std::map<Zstring, InSyncFile,    LessFilename> FileList; // key: shortName
-    typedef std::map<Zstring, InSyncSymlink, LessFilename> LinkList; //
+    typedef std::map<Zstring, InSyncDir,     LessFilePath> DirList;  //
+    typedef std::map<Zstring, InSyncFile,    LessFilePath> FileList; // key: file name
+    typedef std::map<Zstring, InSyncSymlink, LessFilePath> LinkList; //
     //------------------------------------------------------------------
 
     DirList  dirs;
@@ -93,9 +94,11 @@ struct InSyncDir
 
 DEFINE_NEW_FILE_ERROR(FileErrorDatabaseNotExisting);
 
-std::shared_ptr<InSyncDir> loadLastSynchronousState(const BaseDirPair& baseDirObj); //throw FileError, FileErrorDatabaseNotExisting -> return value always bound!
+std::shared_ptr<InSyncDir> loadLastSynchronousState(const BaseDirPair& baseDirObj, //throw FileError, FileErrorDatabaseNotExisting -> return value always bound!
+                                                    const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus);
 
-void saveLastSynchronousState(const BaseDirPair& baseDirObj); //throw FileError
+void saveLastSynchronousState(const BaseDirPair& baseDirObj, //throw FileError
+                              const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus);
 }
 
 #endif //DBFILE_H_834275398588021574

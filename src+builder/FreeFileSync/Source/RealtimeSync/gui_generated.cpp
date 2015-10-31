@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Jun  5 2014)
+// C++ code generated with wxFormBuilder (version Jun 17 2015)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO "NOT" EDIT THIS FILE!
@@ -147,10 +147,10 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     m_txtCtrlDirectoryMain->SetMaxLength( 0 );
     bSizer19->Add( m_txtCtrlDirectoryMain, 1, wxALIGN_CENTER_VERTICAL, 5 );
 
-    m_buttonSelectDirMain = new wxButton( m_panelMainFolder, wxID_ANY, _("Browse"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_buttonSelectDirMain->SetToolTip( _("Select a folder") );
+    m_buttonSelectFolderMain = new wxButton( m_panelMainFolder, wxID_ANY, _("Browse"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_buttonSelectFolderMain->SetToolTip( _("Select a folder") );
 
-    bSizer19->Add( m_buttonSelectDirMain, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer19->Add( m_buttonSelectFolderMain, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
 
     fgSizer1->Add( bSizer19, 0, wxEXPAND|wxALIGN_CENTER_VERTICAL, 5 );
@@ -222,7 +222,7 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     m_staticline5 = new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
     bSizerMain->Add( m_staticline5, 0, wxEXPAND, 5 );
 
-    m_buttonStart = new zen::BitmapTextButton( this, wxID_OK, _("&Start"), wxDefaultPosition, wxSize( -1,-1 ), 0 );
+    m_buttonStart = new zen::BitmapTextButton( this, wxID_OK, _("Start"), wxDefaultPosition, wxSize( -1,-1 ), 0 );
     m_buttonStart->SetDefault();
     m_buttonStart->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), 70, 90, 92, false, wxEmptyString ) );
 
@@ -267,10 +267,10 @@ FolderGenerated::FolderGenerated( wxWindow* parent, wxWindowID id, const wxPoint
     m_txtCtrlDirectory->SetMaxLength( 0 );
     bSizer114->Add( m_txtCtrlDirectory, 1, wxALIGN_CENTER_VERTICAL, 5 );
 
-    m_buttonSelectDir = new wxButton( this, wxID_ANY, _("Browse"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_buttonSelectDir->SetToolTip( _("Select a folder") );
+    m_buttonSelectFolder = new wxButton( this, wxID_ANY, _("Browse"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_buttonSelectFolder->SetToolTip( _("Select a folder") );
 
-    bSizer114->Add( m_buttonSelectDir, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer114->Add( m_buttonSelectFolder, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
 
     this->SetSizer( bSizer114 );

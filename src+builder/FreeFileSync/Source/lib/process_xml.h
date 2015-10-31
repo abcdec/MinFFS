@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef PROCESSXML_H_INCLUDED
-#define PROCESSXML_H_INCLUDED
+#ifndef PROCESSXML_H_INCLUDED_28345825704254262435
+#define PROCESSXML_H_INCLUDED_28345825704254262435
 
 #include <zen/xml_io.h>
 #include <wx/gdicmn.h>
@@ -47,14 +47,10 @@ typedef std::vector<std::pair<Description, Commandline>> ExternalApps;
 //---------------------------------------------------------------------
 struct XmlGuiConfig
 {
-    XmlGuiConfig() :
-        handleError(ON_GUIERROR_POPUP),
-        highlightSyncAction(true) {} //initialize values
-
     zen::MainConfiguration mainCfg;
 
-    OnGuiError handleError; //reaction on error situation during synchronization
-    bool highlightSyncAction;
+    OnGuiError handleError = ON_GUIERROR_POPUP; //reaction on error situation during synchronization
+    bool highlightSyncAction = true;
 };
 
 
@@ -69,38 +65,29 @@ bool operator==(const XmlGuiConfig& lhs, const XmlGuiConfig& rhs)
 
 struct XmlBatchConfig
 {
-    XmlBatchConfig() :
-        runMinimized(false),
-        logfilesCountLimit(-1),
-        handleError(ON_ERROR_POPUP) {}
-
     zen::MainConfiguration mainCfg;
 
-    bool runMinimized;
-    Zstring logFileDirectory;
-    int logfilesCountLimit; //max logfiles; 0 := don't save logfiles; < 0 := no limit
-    OnError handleError;    //reaction on error situation during synchronization
+    bool runMinimized = false;
+    Zstring logFolderPathPhrase;
+    int logfilesCountLimit = -1; //max logfiles; 0 := don't save logfiles; < 0 := no limit
+    OnError handleError = ON_ERROR_POPUP; //reaction on error situation during synchronization
 };
 
 
 struct OptionalDialogs
 {
-    OptionalDialogs() { resetDialogs();}
-
-    void resetDialogs();
-
-    bool warningDependentFolders;
-    bool warningFolderPairRaceCondition;
-    bool warningSignificantDifference;
-    bool warningNotEnoughDiskSpace;
-    bool warningUnresolvedConflicts;
-    bool warningDatabaseError;
-    bool warningRecyclerMissing;
-    bool warningInputFieldEmpty;
-    bool warningDirectoryLockFailed;
-    bool popupOnConfigChange;
-    bool confirmSyncStart;
-    bool confirmExternalCommandMassInvoke;
+    bool warningDependentFolders        = true;
+    bool warningFolderPairRaceCondition = true;
+    bool warningSignificantDifference   = true;
+    bool warningNotEnoughDiskSpace      = true;
+    bool warningUnresolvedConflicts     = true;
+    bool warningDatabaseError           = true;
+    bool warningRecyclerMissing         = true;
+    bool warningInputFieldEmpty         = true;
+    bool warningDirectoryLockFailed     = true;
+    bool popupOnConfigChange            = true;
+    bool confirmSyncStart               = true;
+    bool confirmExternalCommandMassInvoke = true;
 };
 
 
@@ -114,100 +101,56 @@ enum FileIconSize
 
 struct ViewFilterDefault
 {
-    ViewFilterDefault() : equal(false), conflict(true), excluded(true)
-    {
-        leftOnly = rightOnly = leftNewer = rightNewer = different = true;
-        createLeft = createRight = updateLeft = updateRight = deleteLeft = deleteRight = doNothing = true;
-    }
-    bool equal;    //
-    bool conflict; //shared
-    bool excluded; //
-    bool leftOnly, rightOnly, leftNewer, rightNewer, different; //category view
-    bool createLeft, createRight, updateLeft, updateRight, deleteLeft, deleteRight, doNothing; //action view
+    //shared
+    bool equal    = false;
+    bool conflict = true;
+    bool excluded = false;
+    //category view
+    bool leftOnly   = true;
+    bool rightOnly  = true;
+    bool leftNewer  = true;
+    bool rightNewer = true;
+    bool different  = true;
+    //action view
+    bool createLeft  = true;
+    bool createRight = true;
+    bool updateLeft  = true;
+    bool updateRight = true;
+    bool deleteLeft  = true;
+    bool deleteRight = true;
+    bool doNothing   = true;
 };
 
 Zstring getGlobalConfigFile();
 
 struct XmlGlobalSettings
 {
+    XmlGlobalSettings() {} //clang needs this
+
     //---------------------------------------------------------------------
     //Shared (GUI/BATCH) settings
-    XmlGlobalSettings() :
-        programLanguage(zen::retrieveSystemLanguage()),
-        failsafeFileCopy(true),
-        copyLockedFiles(false), //safer default: avoid copies of partially written files
-        copyFilePermissions(false),
-        automaticRetryCount(0),
-        automaticRetryDelay(5),
-        fileTimeTolerance(2),  //default 2s: FAT vs NTFS
-        runWithBackgroundPriority(false),
-        createLockFile(true),
-        verifyFileCopy(false),
-        lastSyncsLogFileSizeMax(100000) //maximum size for LastSyncs.log: use a human-readable number
-    {}
+    int programLanguage = zen::retrieveSystemLanguage();
+    bool failsafeFileCopy = true;
+    bool copyLockedFiles  = false; //safer default: avoid copies of partially written files
+    bool copyFilePermissions = false;
+    size_t automaticRetryCount = 0;
+    size_t automaticRetryDelay = 5; //unit: [sec]
 
-    int programLanguage;
-    bool failsafeFileCopy;
-    bool copyLockedFiles;
-    bool copyFilePermissions;
-    size_t automaticRetryCount;
-    size_t automaticRetryDelay; //unit: [sec]
-
-    int fileTimeTolerance; //max. allowed file time deviation; < 0 means unlimited tolerance
-    bool runWithBackgroundPriority;
-    bool createLockFile;
-    bool verifyFileCopy;   //verify copied files
-    size_t lastSyncsLogFileSizeMax;
+    int fileTimeTolerance = 2; //max. allowed file time deviation; < 0 means unlimited tolerance; default 2s: FAT vs NTFS
+    bool runWithBackgroundPriority = false;
+    bool createLockFile = true;
+    bool verifyFileCopy = false;
+    size_t lastSyncsLogFileSizeMax = 100000; //maximum size for LastSyncs.log: use a human-readable number
 
     OptionalDialogs optDialogs;
 
     //---------------------------------------------------------------------
     struct Gui
     {
-        Gui() :
-            dlgPos(wxDefaultCoord, wxDefaultCoord),
-            dlgSize(wxDefaultCoord, wxDefaultCoord),
-            isMaximized(false),
-            sashOffset(0),
-            maxFolderPairsVisible(6),
-            columnAttribNavi (zen::getDefaultColumnAttributesNavi()),
-            columnAttribLeft (zen::getDefaultColumnAttributesLeft()),
-            columnAttribRight(zen::getDefaultColumnAttributesRight()),
-            naviLastSortColumn(zen::defaultValueLastSortColumn),
-            naviLastSortAscending(zen::defaultValueLastSortAscending),
-            showPercentBar(zen::defaultValueShowPercentage),
-            cfgFileHistMax(30),
-            folderHistMax(15),
-            onCompletionHistoryMax(8),
-#ifdef ZEN_WIN
-            defaultExclusionFilter(Zstr("\\System Volume Information\\") Zstr("\n")
-                                   Zstr("\\$Recycle.Bin\\")              Zstr("\n")
-                                   Zstr("\\RECYCLER\\")                  Zstr("\n")
-                                   Zstr("\\RECYCLED\\")                  Zstr("\n")
-                                   Zstr("*\\desktop.ini")                Zstr("\n")
-                                   Zstr("*\\thumbs.db")),
-#elif defined ZEN_LINUX
-            defaultExclusionFilter(Zstr("/.Trash-*/") Zstr("\n")
-                                   Zstr("/.recycle/")),
-#elif defined ZEN_MAC
-            defaultExclusionFilter(Zstr("/.fseventsd/")      Zstr("\n")
-                                   Zstr("/.Spotlight-V100/") Zstr("\n")
-                                   Zstr("/.Trashes/")        Zstr("\n")
-                                   Zstr("*/.DS_Store")       Zstr("\n")
-                                   Zstr("*/._.*")),
-#endif
-            //deleteOnBothSides(false),
-            useRecyclerForManualDeletion(true), //enable if OS supports it; else user will have to activate first and then get an error message
-#if defined ZEN_WIN || defined ZEN_MAC
-            textSearchRespectCase(false),
-#elif defined ZEN_LINUX
-            textSearchRespectCase(true),
-#endif
-            showIcons(true),
-            iconSize(ICON_SIZE_SMALL),
-            lastUpdateCheck(0)
+        Gui()
         {
-            //default external apps will be translated "on the fly"!!! First entry will be used for [Enter] or mouse double-click!
+            //default external apps will be translated "on the fly"!!!
+            //CONTRACT: first entry will be used for [Enter] or mouse double-click, second for open with default app!
 #ifdef ZEN_WIN
             externelApplications.emplace_back(L"Show in Explorer",              L"explorer /select, \"%item_path%\"");
             externelApplications.emplace_back(L"Open with default application", L"\"%item_path%\"");
@@ -223,47 +166,74 @@ struct XmlGlobalSettings
 #endif
         }
 
-        wxPoint dlgPos;
-        wxSize dlgSize;
-        bool isMaximized;
-        int sashOffset;
+        wxPoint dlgPos { wxDefaultCoord, wxDefaultCoord };
+        wxSize dlgSize { wxDefaultCoord, wxDefaultCoord };
+        bool isMaximized = false;
+        int sashOffset = 0;
 
-        int maxFolderPairsVisible;
+        int maxFolderPairsVisible = 6;
 
-        std::vector<zen::ColumnAttributeNavi> columnAttribNavi; //compressed view/navigation
-        std::vector<zen::ColumnAttributeRim>  columnAttribLeft;
-        std::vector<zen::ColumnAttributeRim>  columnAttribRight;
+        std::vector<zen::ColumnAttributeNavi> columnAttribNavi  = zen::getDefaultColumnAttributesNavi(); //compressed view/navigation
+        std::vector<zen::ColumnAttributeRim>  columnAttribLeft  = zen::getDefaultColumnAttributesLeft();
+        std::vector<zen::ColumnAttributeRim>  columnAttribRight = zen::getDefaultColumnAttributesRight();
 
-        zen::ColumnTypeNavi naviLastSortColumn; //remember sort on navigation panel
-        bool naviLastSortAscending; //
+        zen::ColumnTypeNavi naviLastSortColumn = zen::defaultValueLastSortColumn; //remember sort on navigation panel
+        bool naviLastSortAscending             = zen::defaultValueLastSortAscending; //
 
-        bool showPercentBar; //in navigation panel
+        bool showPercentBar = zen::defaultValueShowPercentage; //in navigation panel
 
         ExternalApps externelApplications;
 
         std::vector<zen::ConfigHistoryItem> cfgFileHistory;
-        size_t cfgFileHistMax;
+        size_t cfgFileHistMax = 30;
 
         std::vector<Zstring> lastUsedConfigFiles;
 
         std::vector<Zstring> folderHistoryLeft;
         std::vector<Zstring> folderHistoryRight;
-        size_t folderHistMax;
+        size_t folderHistMax = 15;
 
         std::vector<Zstring> onCompletionHistory;
-        size_t onCompletionHistoryMax;
+        size_t onCompletionHistoryMax = 8;
 
-        Zstring defaultExclusionFilter;
+#ifdef ZEN_WIN
+        Zstring defaultExclusionFilter = Zstr("\\System Volume Information\\") Zstr("\n")
+                                         Zstr("\\$Recycle.Bin\\")              Zstr("\n")
+                                         Zstr("\\RECYCLER\\")                  Zstr("\n")
+                                         Zstr("\\RECYCLED\\")                  Zstr("\n")
+                                         Zstr("*\\desktop.ini")                Zstr("\n")
+                                         Zstr("*\\thumbs.db");
+#elif defined ZEN_LINUX
+        Zstring defaultExclusionFilter = Zstr("/.Trash-*/") Zstr("\n")
+                                         Zstr("/.recycle/");
+#elif defined ZEN_MAC
+        Zstring defaultExclusionFilter = Zstr("/.fseventsd/")      Zstr("\n")
+                                         Zstr("/.Spotlight-V100/") Zstr("\n")
+                                         Zstr("/.Trashes/")        Zstr("\n")
+                                         Zstr("*/.DS_Store")       Zstr("\n")
+                                         Zstr("*/._.*");
+#endif
+        struct
+        {
+            bool    keepRelPaths      = true;
+            bool    overwriteIfExists = false;
+            Zstring lastUsedPath;
+            std::vector<Zstring> folderHistory;
+            size_t  historySizeMax = 15;
+        } copyToCfg;
 
-        //bool deleteOnBothSides;
-        bool useRecyclerForManualDeletion;
-        bool textSearchRespectCase;
+        bool manualDeletionUseRecycler = true;
 
-        bool showIcons;
-        FileIconSize iconSize;
+#if defined ZEN_WIN || defined ZEN_MAC
+        bool textSearchRespectCase = false;
+#elif defined ZEN_LINUX
+        bool textSearchRespectCase = true;
+#endif
+        bool showIcons = true;
+        FileIconSize iconSize = ICON_SIZE_SMALL;
 
-        long lastUpdateCheck; //time of last update check
-		wxString lastOnlineVersion;
+        time_t lastUpdateCheck = 0; //number of seconds since 00:00 hours, Jan 1, 1970 UTC
+        std::wstring lastOnlineVersion;
 
         ViewFilterDefault viewFilterDefault;
         wxString guiPerspectiveLast; //used by wxAuiManager
@@ -292,4 +262,4 @@ XmlBatchConfig convertGuiToBatch(const XmlGuiConfig&   guiCfg, const XmlBatchCon
 std::wstring extractJobName(const Zstring& configFilename);
 }
 
-#endif // PROCESSXML_H_INCLUDED
+#endif //PROCESSXML_H_INCLUDED_28345825704254262435

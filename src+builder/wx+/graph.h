@@ -27,18 +27,19 @@ Example:
                                 setLabelY(Graph2D::Y_LABEL_RIGHT,  60, std::make_shared<LabelFormatterBytes>()));
     //set graph data
     std::shared_ptr<CurveData> curveDataBytes = ...
-	m_panelGraph->setCurve(curveDataBytes, Graph2D::CurveAttributes().setLineWidth(2).setColor(wxColor(0, 192, 0)));
+    m_panelGraph->setCurve(curveDataBytes, Graph2D::CurveAttributes().setLineWidth(2).setColor(wxColor(0, 192, 0)));
 */
 
 struct CurvePoint
 {
-    CurvePoint() : x(0), y(0) {}
+    CurvePoint() {}
     CurvePoint(double xVal, double yVal) : x(xVal), y(yVal) {}
-    double x;
-    double y;
+    double x = 0;
+    double y = 0;
 };
 inline bool operator==(const CurvePoint& lhs, const CurvePoint& rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
 inline bool operator!=(const CurvePoint& lhs, const CurvePoint& rhs) { return !(lhs == rhs); }
+
 
 struct CurveData
 {
@@ -67,8 +68,9 @@ struct SparseCurveData : public CurveData
 
 private:
     void getPoints(double minX, double maxX, int pixelWidth, std::vector<CurvePoint>& points) const override;
-    bool addSteps_;
+    const bool addSteps_;
 };
+
 
 struct ArrayCurveData : public SparseCurveData
 {
@@ -96,12 +98,14 @@ private:
     }
 };
 
+
 struct VectorCurveData : public ArrayCurveData
 {
     std::vector<double>& refData() { return data; }
 private:
     double getValue(size_t pos) const override { return pos < data.size() ? data[pos] : 0; }
     size_t getSize()            const override { return data.size(); }
+
     std::vector<double> data;
 };
 
@@ -117,6 +121,7 @@ struct LabelFormatter
     //create human-readable text for x or y-axis position
     virtual wxString formatText(double value, double optimalBlockSize) const = 0;
 };
+
 
 double nextNiceNumber(double blockSize); //round to next number which is convenient to read, e.g. 2.13 -> 2; 2.7 -> 2.5
 
@@ -172,8 +177,7 @@ public:
     class CurveAttributes
     {
     public:
-        CurveAttributes() : autoColor(true), drawCurveArea(false), lineWidth(2) {}
-
+		CurveAttributes() {} //required by GCC
         CurveAttributes& setColor     (const wxColour& col) { color = col; autoColor = false; return *this; }
         CurveAttributes& fillCurveArea(const wxColour& col) { fillColor = col; drawCurveArea = true; return *this; }
         CurveAttributes& setLineWidth(size_t width) { lineWidth = static_cast<int>(width); return *this; }
@@ -181,13 +185,13 @@ public:
     private:
         friend class Graph2D;
 
-        bool autoColor;
+        bool autoColor = true;
         wxColour color;
 
-        bool drawCurveArea;
+        bool drawCurveArea = false;
         wxColour fillColor;
 
-        int lineWidth;
+        int lineWidth = 2;
     };
 
     void setCurve(const std::shared_ptr<CurveData>& data, const CurveAttributes& ca = CurveAttributes());
@@ -226,24 +230,6 @@ public:
     class MainAttributes
     {
     public:
-        MainAttributes() :
-            minXauto(true),
-            maxXauto(true),
-            minX(0),
-            maxX(0),
-            minYauto(true),
-            maxYauto(true),
-            minY(0),
-            maxY(0),
-            labelposX(X_LABEL_BOTTOM),
-            xLabelHeight(25),
-            labelFmtX(std::make_shared<DecimalNumberFormatter>()),
-            labelposY(Y_LABEL_LEFT),
-            yLabelWidth(60),
-            labelFmtY(std::make_shared<DecimalNumberFormatter>()),
-            backgroundColor(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW)),
-            mouseSelMode(SELECT_RECTANGLE) {}
-
         MainAttributes& setMinX(double newMinX) { minX = newMinX; minXauto = false; return *this; }
         MainAttributes& setMaxX(double newMaxX) { maxX = newMaxX; maxXauto = false; return *this; }
 
@@ -278,28 +264,28 @@ public:
     private:
         friend class Graph2D;
 
-        bool minXauto; //autodetect range for X value
-        bool maxXauto;
-        double minX; //x-range to visualize
-        double maxX;
+        bool minXauto = true; //autodetect range for X value
+        bool maxXauto = true;
+        double minX = 0; //x-range to visualize
+        double maxX = 0; //
 
-        bool minYauto; //autodetect range for Y value
-        bool maxYauto;
-        double minY; //y-range to visualize
-        double maxY;
+        bool minYauto = true; //autodetect range for Y value
+        bool maxYauto = true;
+        double minY = 0; //y-range to visualize
+        double maxY = 0; //
 
-        PosLabelX labelposX;
-        int xLabelHeight;
-        std::shared_ptr<LabelFormatter> labelFmtX;
+        PosLabelX labelposX = X_LABEL_BOTTOM;
+        int xLabelHeight = 25;
+		std::shared_ptr<LabelFormatter> labelFmtX = std::make_shared<DecimalNumberFormatter>();
 
-        PosLabelY labelposY;
-        int yLabelWidth;
-        std::shared_ptr<LabelFormatter> labelFmtY;
+        PosLabelY labelposY = Y_LABEL_LEFT;
+        int yLabelWidth = 60;
+        std::shared_ptr<LabelFormatter> labelFmtY = std::make_shared<DecimalNumberFormatter>();
 
         std::map<PosCorner, wxString> cornerTexts;
 
-        wxColour backgroundColor;
-        SelMode mouseSelMode;
+        wxColour backgroundColor = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
+        SelMode mouseSelMode = SELECT_RECTANGLE;
     };
     void setAttributes(const MainAttributes& newAttr) { attr = newAttr; Refresh(); }
     MainAttributes getAttributes() const { return attr; }

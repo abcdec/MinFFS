@@ -173,7 +173,7 @@ private:
 
     //void OnLeftDownClick(wxEvent& event)
     //{
-    //	//copied from wxTaskBarIconBase::OnRightButtonDown()
+    //  //copied from wxTaskBarIconBase::OnRightButtonDown()
     //   if (wxMenu* menu = CreatePopupMenu())
     //   {
     //       PopupMenu(menu);

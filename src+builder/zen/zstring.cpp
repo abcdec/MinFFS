@@ -16,103 +16,13 @@
     #include <ctype.h> //toupper()
 #endif
 
-#ifndef NDEBUG
-    #include <mutex>
-    #include <iostream>
-#endif
-
 using namespace zen;
-
-
-#ifndef NDEBUG
-namespace
-{
-class LeakChecker //small test for memory leaks
-{
-public:
-    static LeakChecker& get()
-    {
-        //meyers singleton: avoid static initialization order problem in global namespace!
-        static LeakChecker inst;
-        return inst;
-    }
-
-    void insert(const void* ptr, size_t size)
-    {
-        std::lock_guard<std::mutex> dummy(lockActStrings);
-        if (!activeStrings.emplace(ptr, size).second)
-            reportProblem("Serious Error: New memory points into occupied space: " + rawMemToString(ptr, size));
-    }
-
-    void remove(const void* ptr)
-    {
-        std::lock_guard<std::mutex> dummy(lockActStrings);
-        if (activeStrings.erase(ptr) != 1)
-            reportProblem("Serious Error: No memory available for deallocation at this location!");
-    }
-
-private:
-    LeakChecker() {}
-
-    ~LeakChecker()
-    {
-        if (!activeStrings.empty())
-        {
-            std::string leakingStrings;
-
-            int items = 0;
-            for (auto it = activeStrings.begin(); it != activeStrings.end() && items < 20; ++it, ++items)
-                leakingStrings += "\"" + rawMemToString(it->first, it->second) + "\"\n";
-
-            const std::string message = std::string("Memory leak detected!") + "\n\n"
-                                        + "Candidates:\n" + leakingStrings;
-#ifdef ZEN_WIN
-            MessageBoxA(nullptr, message.c_str(), "Error", MB_SERVICE_NOTIFICATION | MB_ICONERROR);
-#else
-            std::cerr << message;
-            std::abort();
-#endif
-        }
-    }
-
-    LeakChecker           (const LeakChecker&) = delete;
-    LeakChecker& operator=(const LeakChecker&) = delete;
-
-    static std::string rawMemToString(const void* ptr, size_t size)
-    {
-        std::string output(reinterpret_cast<const char*>(ptr), std::min<size_t>(size, 100));
-        replace(output, '\0', ' '); //don't stop at 0-termination
-        return output;
-    }
-
-    void reportProblem(const std::string& message) //throw std::logic_error
-    {
-#ifdef ZEN_WIN
-        ::MessageBoxA(nullptr, message.c_str(), "Error", MB_SERVICE_NOTIFICATION | MB_ICONERROR);
-#else
-        std::cerr << message;
-#endif
-		throw std::logic_error("Memory leak! " + message + "\n" + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
-    }
-
-    std::mutex lockActStrings;
-    std::unordered_map<const void*, size_t> activeStrings;
-};
-
-//caveat: function scope static initialization is not thread-safe in VS 2010!
-auto& dummy = LeakChecker::get();
-}
-
-void z_impl::leakCheckerInsert(const void* ptr, size_t size) { LeakChecker::get().insert(ptr, size); }
-void z_impl::leakCheckerRemove(const void* ptr             ) { LeakChecker::get().remove(ptr); }
-#endif //NDEBUG
-
 
 /*
 Perf test: compare strings 10 mio times; 64 bit build
 -----------------------------------------------------
-	string a = "Fjk84$%kgfj$%T\\\\Gffg\\gsdgf\\fgsx----------d-"
-	string b = "fjK84$%kgfj$%T\\\\gfFg\\gsdgf\\fgSy----------dfdf"
+    string a = "Fjk84$%kgfj$%T\\\\Gffg\\gsdgf\\fgsx----------d-"
+    string b = "fjK84$%kgfj$%T\\\\gfFg\\gsdgf\\fgSy----------dfdf"
 
 Windows (UTF16 wchar_t)
   4 ns | wcscmp
@@ -133,32 +43,29 @@ time per call | function
 #ifdef ZEN_WIN
 namespace
 {
-//warning: LOCALE_INVARIANT is NOT available with Windows 2000, so we have to make yet another distinction...
-const LCID ZSTRING_INVARIANT_LOCALE = zen::winXpOrLater() ?
-                                      LOCALE_INVARIANT :
-                                      MAKELCID(MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), SORT_DEFAULT); //see: http://msdn.microsoft.com/en-us/goglobal/bb688122.aspx
-
 //try to call "CompareStringOrdinal" for low-level string comparison: unfortunately available not before Windows Vista!
 //by a factor ~3 faster than old string comparison using "LCMapString"
 typedef int (WINAPI* CompareStringOrdinalFunc)(LPCWSTR lpString1, int cchCount1,
                                                LPCWSTR lpString2, int cchCount2, BOOL bIgnoreCase);
 const SysDllFun<CompareStringOrdinalFunc> compareStringOrdinal = SysDllFun<CompareStringOrdinalFunc>(L"kernel32.dll", "CompareStringOrdinal");
-//caveat: function scope static initialization is not thread-safe in VS 2010!
-//No global dependencies => no static initialization order problem in global namespace!
+//watch for dependencies in global namespace!!!
 }
 
 
-int cmpFileName(const Zstring& lhs, const Zstring& rhs)
+int cmpFilePath(const Zchar* lhs, size_t lhsLen, const Zchar* rhs, size_t rhsLen)
 {
+    assert(std::find(lhs, lhs + lhsLen, 0) == lhs + lhsLen); //don't expect embedded nulls!
+    assert(std::find(rhs, rhs + rhsLen, 0) == rhs + rhsLen); //
+
     if (compareStringOrdinal) //this additional test has no noticeable performance impact
     {
-        const int rv = compareStringOrdinal(lhs.c_str(),                  //__in  LPCWSTR lpString1,
-                                            static_cast<int>(lhs.size()), //__in  int cchCount1,
-                                            rhs.c_str(),                  //__in  LPCWSTR lpString2,
-                                            static_cast<int>(rhs.size()), //__in  int cchCount2,
-                                            true);                        //__in  BOOL bIgnoreCase
+        const int rv = compareStringOrdinal(lhs,                      //__in  LPCWSTR lpString1,
+                                            static_cast<int>(lhsLen), //__in  int cchCount1,
+                                            rhs,                      //__in  LPCWSTR lpString2,
+                                            static_cast<int>(rhsLen), //__in  int cchCount2,
+                                            true);                    //__in  BOOL bIgnoreCase
         if (rv <= 0)
-			throw std::runtime_error("Error comparing strings (CompareStringOrdinal). " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+            throw std::runtime_error("Error comparing strings (CompareStringOrdinal). " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
         else
             return rv - 2; //convert to C-style string compare result
     }
@@ -167,36 +74,33 @@ int cmpFileName(const Zstring& lhs, const Zstring& rhs)
         //do NOT use "CompareString"; this function is NOT accurate (even with LOCALE_INVARIANT and SORT_STRINGSORT): for example "weiﬂ" == "weiss"!!!
         //the only reliable way to compare filepaths (with XP) is to call "CharUpper" or "LCMapString":
 
-        const size_t sizeLhs = lhs.size();
-        const size_t sizeRhs = rhs.size();
-
-        const auto minSize = std::min(sizeLhs, sizeRhs);
+        const auto minSize = std::min(lhsLen, rhsLen);
 
         if (minSize == 0) //LCMapString does not allow input sizes of 0!
-            return static_cast<int>(sizeLhs) - static_cast<int>(sizeRhs);
+            return static_cast<int>(lhsLen) - static_cast<int>(rhsLen);
 
         auto copyToUpperCase = [&](const wchar_t* strIn, wchar_t* strOut)
         {
             //faster than CharUpperBuff + wmemcpy or CharUpper + wmemcpy and same speed like ::CompareString()
-            if (::LCMapString(ZSTRING_INVARIANT_LOCALE,  //__in   LCID Locale,
+            if (::LCMapString(LOCALE_INVARIANT,          //__in   LCID Locale,
                               LCMAP_UPPERCASE,           //__in   DWORD dwMapFlags,
                               strIn,                     //__in   LPCTSTR lpSrcStr,
                               static_cast<int>(minSize), //__in   int cchSrc,
                               strOut,                    //__out  LPTSTR lpDestStr,
                               static_cast<int>(minSize)) == 0) //__in   int cchDest
-			throw std::runtime_error("Error comparing strings (LCMapString). " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+                throw std::runtime_error("Error comparing strings (LCMapString). " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
         };
 
         auto eval = [&](wchar_t* bufL, wchar_t* bufR)
         {
-            copyToUpperCase(lhs.c_str(), bufL);
-            copyToUpperCase(rhs.c_str(), bufR);
+            copyToUpperCase(lhs, bufL);
+            copyToUpperCase(rhs, bufR);
 
-            const int rv = ::wmemcmp(bufL, bufR, minSize);
+            const int rv = ::wcsncmp(bufL, bufR, minSize);
             if (rv != 0)
                 return rv;
 
-            return static_cast<int>(sizeLhs) - static_cast<int>(sizeRhs);
+            return static_cast<int>(lhsLen) - static_cast<int>(rhsLen);
         };
 
         if (minSize <= MAX_PATH) //performance optimization: stack
@@ -221,29 +125,24 @@ Zstring makeUpperCopy(const Zstring& str)
     if (len == 0) //LCMapString does not allow input sizes of 0!
         return str;
 
-    Zstring output;
-    output.resize(len);
+    Zstring output = str;
+
+    //LOCALE_INVARIANT is NOT available with Windows 2000 -> ok
 
     //use Windows' upper case conversion: faster than ::CharUpper()
-    if (::LCMapString(ZSTRING_INVARIANT_LOCALE, //__in   LCID Locale,
-                      LCMAP_UPPERCASE,          //__in   DWORD dwMapFlags,
-                      str.c_str(),              //__in   LPCTSTR lpSrcStr,
-                      len,                      //__in   int cchSrc,
-                      &*output.begin(),         //__out  LPTSTR lpDestStr,
-                      len) == 0)                //__in   int cchDest
-				throw std::runtime_error("Error comparing strings (LCMapString). " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
+    if (::LCMapString(LOCALE_INVARIANT, //__in   LCID Locale,
+                      LCMAP_UPPERCASE,  //__in   DWORD dwMapFlags,
+                      str.c_str(),      //__in   LPCTSTR lpSrcStr,
+                      len,              //__in   int cchSrc,
+                      &*output.begin(), //__out  LPTSTR lpDestStr,
+                      len) == 0)        //__in   int cchDest
+        throw std::runtime_error("Error comparing strings (LCMapString). " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
 
     return output;
 }
 
 
 #elif defined ZEN_MAC
-int cmpFileName(const Zstring& lhs, const Zstring& rhs)
-{
-    return ::strcasecmp(lhs.c_str(), rhs.c_str()); //locale-dependent!
-}
-
-
 Zstring makeUpperCopy(const Zstring& str)
 {
     const size_t len = str.size();

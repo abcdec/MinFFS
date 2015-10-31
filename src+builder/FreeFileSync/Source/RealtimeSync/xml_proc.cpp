@@ -43,7 +43,7 @@ void xmlAccess::readConfig(const Zstring& filepath, XmlRealConfig& config, std::
     XmlDoc doc = loadXmlDocument(filepath); //throw FileError
 
     if (!isXmlTypeRTS(doc))
-        throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtFileName(filepath)));
+        throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filepath)));
 
     XmlIn in(doc);
     ::readConfig(in, config);
@@ -84,26 +84,26 @@ void xmlAccess::writeConfig(const XmlRealConfig& config, const Zstring& filepath
 
 namespace
 {
-xmlAccess::XmlRealConfig convertBatchToReal(const xmlAccess::XmlBatchConfig& batchCfg, const Zstring& filepath)
+xmlAccess::XmlRealConfig convertBatchToReal(const xmlAccess::XmlBatchConfig& batchCfg, const Zstring& batchFilePath)
 {
-    std::set<Zstring, LessFilename> uniqueFolders;
+    std::set<Zstring, LessFilePath> uniqueFolders;
 
     //add main folders
-    uniqueFolders.insert(batchCfg.mainCfg.firstPair.dirpathPhraseLeft);
-    uniqueFolders.insert(batchCfg.mainCfg.firstPair.dirpathPhraseRight);
+    uniqueFolders.insert(batchCfg.mainCfg.firstPair.folderPathPhraseLeft_);
+    uniqueFolders.insert(batchCfg.mainCfg.firstPair.folderPathPhraseRight_);
 
     //additional folders
     for (const FolderPairEnh& fp : batchCfg.mainCfg.additionalPairs)
     {
-        uniqueFolders.insert(fp.dirpathPhraseLeft);
-        uniqueFolders.insert(fp.dirpathPhraseRight);
+        uniqueFolders.insert(fp.folderPathPhraseLeft_);
+        uniqueFolders.insert(fp.folderPathPhraseRight_);
     }
 
     uniqueFolders.erase(Zstring());
 
     xmlAccess::XmlRealConfig output;
     output.directories.assign(uniqueFolders.begin(), uniqueFolders.end());
-    output.commandline = Zstr("\"") + zen::getFreeFileSyncLauncher() + Zstr("\" \"") + filepath + Zstr("\"");
+    output.commandline = Zstr("\"") + zen::getFreeFileSyncLauncher() + Zstr("\" \"") + batchFilePath + Zstr("\"");
     return output;
 }
 }

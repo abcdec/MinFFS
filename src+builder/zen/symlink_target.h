@@ -25,12 +25,12 @@
 namespace zen
 {
 #ifdef ZEN_WIN
-    bool isSymlink(const WIN32_FIND_DATA& data); //*not* a simple FILE_ATTRIBUTE_REPARSE_POINT check!
+    bool isSymlink(const WIN32_FIND_DATA& data); //checking FILE_ATTRIBUTE_REPARSE_POINT is insufficient!
     bool isSymlink(DWORD fileAttributes, DWORD reparseTag);
 #endif
 
-Zstring getResolvedFilePath(const Zstring& linkPath); //throw FileError; Win: requires Vista or later!
-Zstring getSymlinkTargetRaw(const Zstring& linkPath); //throw FileError
+Zstring getResolvedSymlinkPath(const Zstring& linkPath); //throw FileError; Win: requires Vista or later!
+Zstring getSymlinkTargetRaw   (const Zstring& linkPath); //throw FileError
 }
 
 
@@ -100,7 +100,7 @@ Zstring getSymlinkRawTargetString_impl(const Zstring& linkPath) //throw FileErro
                                       FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, //_In_      DWORD dwFlagsAndAttributes,
                                       nullptr);          //_In_opt_  HANDLE hTemplateFile
     if (hLink == INVALID_HANDLE_VALUE)
-        throwFileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtFileName(linkPath)), L"CreateFile", getLastError());
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), L"CreateFile");
     ZEN_ON_SCOPE_EXIT(::CloseHandle(hLink));
 
     //respect alignment issues...
@@ -116,7 +116,7 @@ Zstring getSymlinkRawTargetString_impl(const Zstring& linkPath) //throw FileErro
                            bufferSize,              //__in         DWORD nOutBufferSize,
                            &bytesReturned,          //__out_opt    LPDWORD lpBytesReturned,
                            nullptr))                //__inout_opt  LPOVERLAPPED lpOverlapped
-        throwFileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtFileName(linkPath)), L"DeviceIoControl, FSCTL_GET_REPARSE_POINT", getLastError());
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), L"DeviceIoControl, FSCTL_GET_REPARSE_POINT");
 
     REPARSE_DATA_BUFFER& reparseData = *reinterpret_cast<REPARSE_DATA_BUFFER*>(&buffer[0]); //REPARSE_DATA_BUFFER needs to be artificially enlarged!
 
@@ -132,7 +132,7 @@ Zstring getSymlinkRawTargetString_impl(const Zstring& linkPath) //throw FileErro
                          reparseData.MountPointReparseBuffer.SubstituteNameLength / sizeof(WCHAR));
     }
     else
-        throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtFileName(linkPath)), L"Not a symbolic link or junction.");
+        throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), L"Not a symbolic link or junction.");
 
     //absolute symlinks and junctions use NT namespace naming convention while relative ones do not:
     //http://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx#NT_Namespaces
@@ -144,16 +144,16 @@ Zstring getSymlinkRawTargetString_impl(const Zstring& linkPath) //throw FileErro
 
     const ssize_t bytesWritten = ::readlink(linkPath.c_str(), &buffer[0], BUFFER_SIZE);
     if (bytesWritten < 0)
-        throwFileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtFileName(linkPath)), L"readlink", getLastError());
-    if (bytesWritten >= static_cast<ssize_t>(BUFFER_SIZE)) //detect truncation!
-        throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtFileName(linkPath)));
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), L"readlink");
+    if (bytesWritten >= static_cast<ssize_t>(BUFFER_SIZE)) //detect truncation, not an error for readlink!
+        throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), L"readlink: buffer truncated.");
 
     return Zstring(&buffer[0], bytesWritten); //readlink does not append 0-termination!
 #endif
 }
 
 
-Zstring getResolvedFilePath_impl(const Zstring& linkPath) //throw FileError
+Zstring getResolvedSymlinkPath_impl(const Zstring& linkPath) //throw FileError
 {
     using namespace zen;
 #ifdef ZEN_WIN
@@ -161,24 +161,23 @@ Zstring getResolvedFilePath_impl(const Zstring& linkPath) //throw FileError
     typedef DWORD (WINAPI* GetFinalPathNameByHandleWFunc)(HANDLE hFile, LPTSTR lpszFilePath, DWORD cchFilePath, DWORD dwFlags);
     const SysDllFun<GetFinalPathNameByHandleWFunc> getFinalPathNameByHandle(L"kernel32.dll", "GetFinalPathNameByHandleW");
     if (!getFinalPathNameByHandle)
-        throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtFileName(linkPath)), replaceCpy(_("Cannot find system function %x."), L"%x", L"\"GetFinalPathNameByHandleW\""));
-
+        throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(linkPath)), replaceCpy(_("Cannot find system function %x."), L"%x", L"\"GetFinalPathNameByHandleW\""));
 
     const HANDLE hFile = ::CreateFile(applyLongPathPrefix(linkPath).c_str(),                  //_In_      LPCTSTR lpFileName,
-                                     0,                                                      //_In_      DWORD dwDesiredAccess,
-                                     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, //_In_      DWORD dwShareMode,
-                                     nullptr,                    //_In_opt_  LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-                                     OPEN_EXISTING,              //_In_      DWORD dwCreationDisposition,
-                                     //needed to open a directory:
-                                     FILE_FLAG_BACKUP_SEMANTICS, //_In_      DWORD dwFlagsAndAttributes,
-                                     nullptr);                   //_In_opt_  HANDLE hTemplateFile
+                                      0,                                                      //_In_      DWORD dwDesiredAccess,
+                                      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, //_In_      DWORD dwShareMode,
+                                      nullptr,                    //_In_opt_  LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+                                      OPEN_EXISTING,              //_In_      DWORD dwCreationDisposition,
+                                      //needed to open a directory:
+                                      FILE_FLAG_BACKUP_SEMANTICS, //_In_      DWORD dwFlagsAndAttributes,
+                                      nullptr);                   //_In_opt_  HANDLE hTemplateFile
     if (hFile == INVALID_HANDLE_VALUE)
-        throwFileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtFileName(linkPath)), L"CreateFile", getLastError());
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(linkPath)), L"CreateFile");
     ZEN_ON_SCOPE_EXIT(::CloseHandle(hFile));
 
     const DWORD bufferSize = getFinalPathNameByHandle(hFile, nullptr, 0, 0);
     if (bufferSize == 0)
-        throwFileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtFileName(linkPath)), L"GetFinalPathNameByHandle", getLastError());
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(linkPath)), L"GetFinalPathNameByHandle");
 
     std::vector<wchar_t> targetPath(bufferSize);
     const DWORD charsWritten = getFinalPathNameByHandle(hFile,          //__in   HANDLE hFile,
@@ -187,9 +186,9 @@ Zstring getResolvedFilePath_impl(const Zstring& linkPath) //throw FileError
                                                         0);             //__in   DWORD dwFlags
     if (charsWritten == 0 || charsWritten >= bufferSize)
     {
-        const std::wstring errorMsg = replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtFileName(linkPath));
+        const std::wstring errorMsg = replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(linkPath));
         if (charsWritten == 0)
-            throwFileError(errorMsg, L"GetFinalPathNameByHandle", getLastError());
+            THROW_LAST_FILE_ERROR(errorMsg, L"GetFinalPathNameByHandle");
         throw FileError(errorMsg);
     }
 
@@ -198,7 +197,7 @@ Zstring getResolvedFilePath_impl(const Zstring& linkPath) //throw FileError
 #elif defined ZEN_LINUX || defined ZEN_MAC
     char* targetPath = ::realpath(linkPath.c_str(), nullptr);
     if (!targetPath)
-        throwFileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtFileName(linkPath)), L"realpath", getLastError());
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(linkPath)), L"realpath");
     ZEN_ON_SCOPE_EXIT(::free(targetPath));
     return targetPath;
 #endif
@@ -212,18 +211,18 @@ inline
 Zstring getSymlinkTargetRaw(const Zstring& linkPath) { return getSymlinkRawTargetString_impl(linkPath); }
 
 inline
-Zstring getResolvedFilePath(const Zstring& linkPath) { return getResolvedFilePath_impl(linkPath); }
+Zstring getResolvedSymlinkPath(const Zstring& linkPath) { return getResolvedSymlinkPath_impl(linkPath); }
 
 #ifdef ZEN_WIN
 /*
  Reparse Point Tags
-	http://msdn.microsoft.com/en-us/library/windows/desktop/aa365511(v=vs.85).aspx
+    http://msdn.microsoft.com/en-us/library/windows/desktop/aa365511(v=vs.85).aspx
  WIN32_FIND_DATA structure
-	http://msdn.microsoft.com/en-us/library/windows/desktop/aa365740(v=vs.85).aspx
+    http://msdn.microsoft.com/en-us/library/windows/desktop/aa365740(v=vs.85).aspx
 
  The only surrogate reparse points are;
-	IO_REPARSE_TAG_MOUNT_POINT
-	IO_REPARSE_TAG_SYMLINK
+    IO_REPARSE_TAG_MOUNT_POINT
+    IO_REPARSE_TAG_SYMLINK
 */
 
 inline
