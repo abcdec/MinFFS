@@ -78,10 +78,9 @@ NOTE: After initial installation, if MinGW toolset version is updated for any re
 
 Using MinGW, build Boost libraries.  The following is the step by step instruction.
 
-NOTE: There is an issue of compiling MinFFS using boost 1.59.  Use of different version is recommended for MinFFS.
-
   - Download Boost source zip https://www.boost.org/.  Pre-built binaries are not for MinGW, you will need to download source and build for MinGW.
     - The download package is like boost_1_58_0.zip found at http://sourceforge.net/projects/boost/files/boost/1.58.0. Note that the size of distribution package is relatively large (for example, boost-1_58_0.zip is 123.1 MB) so download might take some time.
+    - NOTE: MinFFS compile error occurs with boost_1.59.0 due to boost bug: https://svn.boost.org/trac/boost/ticket/11693. Use known working version (1.58.0) or try a later boost release that contains a fix for this issue.
   - Create a tempoary build directory and unpack ZIP.  This README assumes the temporary build directory as D:\Builds and unpacked sources are under D:\Builds\boost_1_58_0.  Intallation target directory will be C:\Boost by default. (If changed, please substitue all "C:\Boost" in this README with absolute path of your actual installation directory.    It is strongly suggested to install Boost in a directory without white space in the path name string. e.g. avoid installing under "C:\Program Files".)
     - Expanding zip package also takes quite long time.  Please be patient.
   - If not done yet, set up environment variable PATH to include MinGW binary path (C:\MinGW\bin)
