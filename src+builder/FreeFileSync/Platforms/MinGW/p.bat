@@ -34,6 +34,7 @@
 @REM xcopy ..\MswCommon\DLLs\* bin-release\Bin\ /Y/Q > NUL
 @xcopy %MINGW%\bin\libstdc++-6.dll bin-release\Bin\ /Y/Q > NUL
 @xcopy %MINGW%\bin\libgcc_s_dw2-1.dll bin-release\Bin\ /Y/Q > NUL
+@xcopy %MINGW%\bin\libwinpthread-1.dll bin-release\Bin\ /Y/Q > NUL
 @xcopy ..\MswCommon\Help\FreeFileSync.chm bin-release\ /Y/Q > NUL
 @xcopy ..\..\Build\Languages bin-release\Languages\ /Y/Q/S  > NUL
 @xcopy ..\..\Build\Resources.zip bin-release\ /Y/Q > NUL

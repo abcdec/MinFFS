@@ -33,7 +33,7 @@ A FreeFileSync modified for MinGW Build
 
 The following toolsets are used to build MinFFS.  Down below you can find brief explanations and tips for installing these toolsets.
 
-  - MinGW (required)
+  - MinGW-w64 (required)
   - wxWidgets (required)
   - Boost (required)
   - Unicode NSIS (Optional for creating a binary installer package)
@@ -41,14 +41,13 @@ The following toolsets are used to build MinFFS.  Down below you can find brief 
 
 ### Installation Step 1. Install MinGW
 
-MinGW must be installed first because it will be used to build wxWidgets and Boost libraries.
+MinGW-w64 must be installed first because it will be used to build wxWidgets and Boost libraries.
 
-  - Download MinGW installer mingw-get-setup.exe from http://www.mingw.org/
-    - Latest mingw-get-setup.exe should be found at http://sourceforge.net/projects/mingw/files/Installer/
-  - Run mingw-get-setup.exe and follow instructions to download and install actual MinGW Software packages. This README assumes MinGW is installed in C:\MinGW directory. (If not, please substitue all "C:\MinGW" in this README with absolute path of your actual installation directory.  It is strongly suggested to install MinGW in a directory without white space in the path name string. e.g. avoid installing under "C:\Program Files".)
-    - MinFFS build requies only the MinGW base and binutil packages.  (Base includes compiler and linkers, binutils includes tools like windres.exe.)   For example, it does not require MSYS. No need to download and install MSYS and optional packages other than base binaries and binutils.
+  - Download MinGW-w64 installer (mingw-w64-install.exe) from SourceForge http://sourceforge.net/projects/mingw-w64/
+  - Run mingw-w64-install.exe and follow instructions to download and install actual MinGW Software packages. This README assumes MinGW is installed in C:\MinGW-w64 directory. (If not, please substitue all "C:\MinGW-w64" in this README with absolute path of your actual installation directory.  It is strongly suggested to install MinGW in a directory without white space in the path name string. e.g. avoid installing under "C:\Program Files (x86)".)
+    - When installing, Settings dialogue box shows up.  Please select latest version (as of this writing version 5.2.0) and posix for thread.
 
-NOTE: If MinGW has been installed already on your PC, please check the MinGW version.  The original FreeFileSync uses C++11 features thus MinFFS follow the same. Your version of MinGW g++.exe needs to support C++11 option to build MinFFS successfully.  See Toolset Versions section for versions used for successful builds.
+NOTE: If MinGW-w64 has been installed already on your PC, please check the MinGW-w64 version.  The original FreeFileSync uses C++14 features and posix thread thus MinFFS follow the same. Your version of MinGW g++.exe needs to support C++14 option and posix thread to build MinFFS successfully.  See Toolset Versions section for versions that was used for successful builds.
 
 
 ### Installation Step 2. Install wxWidgets
@@ -57,16 +56,17 @@ Using MinGW, build wxWidgets libraries.  The following is the step by step instr
 
   - Download wxWidget installer https://www.wxwidgets.org/
   - Run installer.  It will place distribution to specified directory.  This README assumes wxWidgets is installed in C:\wxWidgets dirctory. (If not, please substitue all "C:\wxWidget" in this README with absolute path of your actual installation directory.    It is strongly suggested to install wxWidgets in a directory without white space in the path name string. e.g. avoid installing under "C:\Program Files".)
-  - Set up environment variable WXWIN to wxWidget installation directory, and PATH to include MinGW binary path (C:\MinGW\bin)
+  - Set up environment variable WXWIN to wxWidget installation directory, and PATH to include MinGW binary path (C:\MinGW-w64\mingw32\bin)
 ```
-    C:\> set WXWIN=C:\wxWidget
-    C:\> set PATH=C:\MinGW\bin;%PATH%
+    C:\> set WXWIN=C:\wxWidget-w64
+    C:\> set PATH=C:\MinGW-w64\mingw32\bin;%PATH%
 ```
-  - Change current directory to wxWidgets build directory and run make.
+
+  - Change current directory to wxWidgets build directory and run make. (With MinGW-w64 5.2.0, need to somehow use -std=gnu++11 per http://stackoverflow.com/questions/27285706/trouble-using-wxwidgets-3-0-2-library-under-mingw-64 here we use gnu+14)
 ```
     D:\> C:
-    C:\> cd C:\wxWidgets\build\msw
-    C:\wxWidgets\build\msw> C:\MinGW\bin\mingw32-make.exe -f makefile.gcc
+    C:\> cd C:\wxWidgets-w64\build\msw
+    C:\wxWidgets-w64\build\msw> C:\MinGW-w64\mingw32\bin\mingw32-make.exe -f makefile.gcc CXXFLAGS="-std=gnu++14"
 ```
 
 NOTE: It is strongly recommended to set WXWIN environment variable when building wxWidgets libraries although some wxWidgets documents say to set up the variable is "not necessary".  Some strange run-time exceptions ("Application stopped unexpectedly" due to Segmentation Fault) were observed and fix was to rebuild wxWidget with WXWIN defiend.
@@ -79,24 +79,23 @@ NOTE: After initial installation, if MinGW toolset version is updated for any re
 Using MinGW, build Boost libraries.  The following is the step by step instruction.
 
   - Download Boost source zip https://www.boost.org/.  Pre-built binaries are not for MinGW, you will need to download source and build for MinGW.
-    - The download package is like boost_1_58_0.zip found at http://sourceforge.net/projects/boost/files/boost/1.58.0. Note that the size of distribution package is relatively large (for example, boost-1_58_0.zip is 123.1 MB) so download might take some time.
-    - NOTE: MinFFS compile error occurs with boost_1.59.0 due to boost bug: https://svn.boost.org/trac/boost/ticket/11693. Use known working version (1.58.0) or try a later boost release that contains a fix for this issue.
+    - The download package is like boost_1_58_0.zip found at http://sourceforge.net/projects/boost/files/boost/1.58.0. Note that the size of distribution package is relatively large (for example, boost-1_58_0.zip is 110.5MB) so download might take some time.
   - Create a tempoary build directory and unpack ZIP.  This README assumes the temporary build directory as D:\Builds and unpacked sources are under D:\Builds\boost_1_58_0.  Intallation target directory will be C:\Boost by default. (If changed, please substitue all "C:\Boost" in this README with absolute path of your actual installation directory.    It is strongly suggested to install Boost in a directory without white space in the path name string. e.g. avoid installing under "C:\Program Files".)
     - Expanding zip package also takes quite long time.  Please be patient.
-  - If not done yet, set up environment variable PATH to include MinGW binary path (C:\MinGW\bin)
+  - If not done yet, set up environment variable PATH to include MinGW binary path (C:\MinGW-w64\mingw32\bin)
 ```
-    C:\> set PATH=C:\MinGW\bin;%PATH%
+    C:\> set PATH=C:\MinGW-w64\mingw32\bin;%PATH%
 ```
   - Change current directory to boost build directory and run bootstrap.bat.
 ```
     C:\> D:
-    D:\> cd D:\Builds\boost_1_58_0
-    D:\Builds\boost_1_58_0> bootstrap.bat mingw
+    D:\> cd D:\Builds\boost-1_58_0
+    D:\Builds\boost-1_58_0> bootstrap.bat mingw
 ```
   - bootstrap.bat will create b2.exe.  Run b2 to build and install package.
     - Building boost libraries also takes quite long time.  Please be patient.
 ```
-    D:\Builds\boost_1_58_0> b2 toolset=gcc variant=release threading=multi --without-mpi --without-python install
+    D:\Builds\boost-1_58_0> b2 toolset=gcc variant=release threading=multi --prefix=C:\Boost-w64 --without-mpi --without-python install
 ```
 
 NOTE: If MinGW toolset version is updated for any reason, it is recommended to rebuild Boost libraries from scratch to avoid unnecessary troubles.
@@ -128,17 +127,17 @@ Once all dependent toolsets have been installed, use the following steps to buil
                               + zenXml
 ```
   - Chagne directory to src+builder\FreeFileSync\Platforms\MinGW
-  - Set up environment variable WXWIN to wxWidget installation directory, and PATH to include MinGW binary path (C:\MinGW\bin)
+  - Set up environment variable WXWIN to wxWidget installation directory, and PATH to include MinGW binary path (C:\MinGW-w64\mingw32\bin)
 ```
     C:\> set WXWIN=C:\wxWidget
-    C:\> set PATH=C:\MinGW\bin;%PATH%
+    C:\> set PATH=C:\MinGW-w64\mingw32\bin;%PATH%
 ```
   - Also adjust Makefile-cmdexe.mk MINGW_ROOT, WXWGT_ROOT, BOOST_ROOT, BOOST_VER, BOOST_MINGW according to your build toolset installation.
-    - MINGW_ROOT: MinGW installation directory (C:\MinGW in this README)
-    - WXWGT_ROOT: wxWidget installation directory (C:\wxWidgets in this README)
-    - BOOST_ROOT: Boost installation directory (C:\Boost in this README)
+    - MINGW_ROOT: mingw32 directory under the MinGW installation directory (C:\MinGW-w64\mingw32 in this README)
+    - WXWGT_ROOT: wxWidget installation directory (C:\wxWidgets-w64 in this README)
+    - BOOST_ROOT: Boost installation directory (C:\Boost-w64 in this README)
     - BOOST_VER: Boost version installed. (1_58 in this README)
-    - BOOST_MINGW: MinGW version string in Boost libarry name. (mgw48 for MinGW 4.8 in this README)
+    - BOOST_MINGW: MinGW version string in Boost libarry name. (mgw52 for MinGW-w64 5.2 in this README)
   - Run b.bat to build binary MinFFS.exe
   - Run x.bat to run built MinFFS.exe.  It will copy necessary files to bin-debug and launch MinFFS.exe from bin-debug.
   - Run p.bat to create distributable binary package installer
@@ -149,37 +148,12 @@ Once all dependent toolsets have been installed, use the following steps to buil
 ```
   - Run c.bat to clean up build.
 
-NOTE: When compiling, if the following error is seen, it is a MinGW bug http://ehc.ac/p/mingw/bugs/2250/ and need to manually update MinGW header.
-
-```
-    c:\mingw\include\math.h: In function 'float hypotf(float, float)':
-    c:\mingw\include\math.h:635:30: error: '_hypot' was not declared in this scope
-    { return (float)(_hypot (x, y)); }
-```
-
-Example of modification to get MinFFS compiled is as follows (but not sure if it works for all cases, please use a fixed version of MinGW as appropriate.)
-
-```
-    *** math.h      2015-10-25 14:50:00.285749700 -0500
-    --- math.h-fixed        2015-10-25 14:48:36.130069200 -0500
-    ***************
-    *** 631,636 ****
-    --- 631,637 ----
-      extern double __cdecl hypot (double, double); /* in libmoldname.a */
-      extern float __cdecl hypotf (float, float);
-      #ifndef __NO_INLINE__
-    + _CRTIMP double __cdecl _hypot (double, double);
-      __CRT_INLINE float __cdecl hypotf (float x, float y)
-      { return (float)(_hypot (x, y)); }
-      #endif
-```
-
 
 ### Toolset Versions
 
-As of Oct 30, 2015, MinFFS binary distribution is built by the following toolsets versions.
+As of Nov 1, 2015, MinFFS binary distribution is built by the following toolsets versions.
 
-  - MinGW 4.8.1
+  - MinGW-w64 5.2.0
   - wxWidgets 3.0.2
   - Boost 1.58
   - Unicode NSIS 2.46.5
@@ -195,7 +169,7 @@ Please avoid contacting the original author of FreeFileSync for any bugs/issues 
 ## Links
 
 - FreeFileSync http://www.freefilesync.org/
-- MinGW http://www.mingw.org/
+- MinGW-w64 http://mingw-w64.org/
 - wxWidget https://www.wxwidgets.org/
 - Boost https://www.boost.org/
 - Unicode NSIS http://www.scratchpaper.com/

@@ -77,10 +77,12 @@ public:
     void emitLifeSign() const //try to append one byte...; throw()
     {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS_ActivatePriviledge
         try { activatePrivilege(SE_BACKUP_NAME); }
         catch (const FileError&) {}
         try { activatePrivilege(SE_RESTORE_NAME); }
         catch (const FileError&) {}
+#endif//TODO_MinFFS_ActivatePriviledge
 
         const HANDLE fileHandle = ::CreateFile(applyLongPathPrefix(lockfilepath_).c_str(), //_In_      LPCTSTR lpFileName,
                                                //use both when writing over network, see comment in file_io.cpp
@@ -530,10 +532,12 @@ void releaseLock(const Zstring& lockfilepath) //throw ()
 bool tryLock(const Zstring& lockfilepath) //throw FileError
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS_ActivatePriviledge
     try { activatePrivilege(SE_BACKUP_NAME); }
     catch (const FileError&) {}
     try { activatePrivilege(SE_RESTORE_NAME); }
     catch (const FileError&) {}
+#endif//TODO_MinFFS_ActivatePriviledge
 
     const HANDLE fileHandle = ::CreateFile(applyLongPathPrefix(lockfilepath).c_str(),              //_In_      LPCTSTR lpFileName,
                                            //use both when writing over network, see comment in file_io.cpp

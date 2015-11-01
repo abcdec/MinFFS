@@ -5,7 +5,7 @@
 // **************************************************************************
 // **************************************************************************
 // * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.15        *
+// * FreeFileSync project: http://www.freefilesync.org/ version 7.5         *
 // * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
 // *                          --EXPERIMENTAL--                              *
 // * This program is experimental and not recommended for general use.      *
@@ -38,6 +38,18 @@
         #include <zen/vista_file_op.h> //requires COM initialization!
     #endif
 
+#ifdef MinFFS_PATCH
+// Missing def for FILE_BASIC_INFO https://msdn.microsoft.com/en-us/library/windows/desktop/aa364217(v=vs.85).aspx
+typedef struct _FILE_BASIC_INFO {
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    DWORD         FileAttributes;
+} FILE_BASIC_INFO, *PFILE_BASIC_INFO;
+// Missing def for SYMBOLIC_LINK_FLAG_DIRECTORY https://msdn.microsoft.com/en-us/library/windows/desktop/aa363866(v=vs.85).aspx
+#define SYMBOLIC_LINK_FLAG_DIRECTORY 1
+#endif//MinFFS_PATCH
 
 #elif defined ZEN_LINUX
     #include <sys/vfs.h> //statfs
@@ -2116,7 +2128,11 @@ InSyncAttributes copyFileWindowsDefault(const Zstring& sourceFile, //throw FileE
         if (canCopyAsSparse(sourceFile, targetFile)) //noexcept
             throw ErrorFallbackToCopyAsBackupStream(L"sparse, copy failure");
 
+#ifdef TODO_MinFFS_activatePrivilege
         if (ec == ERROR_ACCESS_DENIED && backupPrivilegesActive)
+#else//TODO_MinFFS_activatePrivilege
+        if (ec == ERROR_ACCESS_DENIED)
+#endif//TODO_MinFFS_activatePrivilege
             //chances are good this will work with copyFileWindowsBackupStream: https://sourceforge.net/p/freefilesync/discussion/open-discussion/thread/1998ebf2/
             throw ErrorFallbackToCopyAsBackupStream(L"access denied");
 

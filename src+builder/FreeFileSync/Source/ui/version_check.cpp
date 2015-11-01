@@ -147,6 +147,7 @@ class InternetConnectionError {};
 //WinInet: 1. uses IE proxy settings! :) 2. follows HTTP redirects by default 3. swallows https
 std::string readBytesFromUrl(const wchar_t* url) //throw InternetConnectionError
 {
+#ifdef TODO_MinFFS_URL
     //::InternetAttemptConnect(0) -> not working as expected: succeeds even when there is no internet connection!
 
     HINTERNET hInternet = ::InternetOpen(getUserAgentName().c_str(),   //_In_  LPCTSTR lpszAgent,
@@ -200,6 +201,9 @@ std::string readBytesFromUrl(const wchar_t* url) //throw InternetConnectionError
         if (bytesRead == 0)
             return buffer;
     }
+#else
+    return std::string();
+#endif//TODO_MinFFS_URL
 }
 
 
@@ -357,6 +361,11 @@ void zen::disableUpdateCheck(time_t& lastUpdateCheck)
 
 void zen::checkForUpdateNow(wxWindow* parent, std::wstring& lastOnlineVersion)
 {
+#ifdef MinFFS_PATCH
+    showNotificationDialog(parent, DialogInfoType::ERROR2, PopupDialogCfg().
+			   setTitle(("Check for Program Updates")).
+			   setMainInstructions(_("MinFFS does not support update check. Please go check https://github.com/abcdec/MinFFS manually.")));
+#else
     std::wstring onlineVersion;
     switch (getOnlineVersion(onlineVersion))
     {
@@ -403,17 +412,22 @@ void zen::checkForUpdateNow(wxWindow* parent, std::wstring& lastOnlineVersion)
             }
             break;
     }
+#endif//MinFFS_PATCH
 }
 
 
 bool zen::runPeriodicUpdateCheckNow(time_t lastUpdateCheck)
 {
+#ifdef MinFFS_PATCH
+    // Do nothing.
+#else
     if (updateCheckActive(lastUpdateCheck))
     {
         static_assert(sizeof(time_t) >= 8, "Still using 32-bit time_t? WTF!!");
         const time_t now = std::time(nullptr);
         return numeric::dist(now, lastUpdateCheck) >= 7 * 24 * 3600; //check weekly
     }
+#endif//MinFFS_PATCH
     return false;
 }
 

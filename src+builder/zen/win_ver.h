@@ -3,6 +3,20 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
+// **************************************************************************
+// * This file is modified from its original source file distributed by the *
+// * FreeFileSync project: http://www.freefilesync.org/ version 7.5         *
+// * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
+// *                          --EXPERIMENTAL--                              *
+// * This program is experimental and not recommended for general use.      *
+// * Please consider using the original FreeFileSync program unless there   *
+// * are specific needs to use this experimental MinFFS version.            *
+// *                          --EXPERIMENTAL--                              *
+// * This modified program is distributed in the hope that it will be       *
+// * useful, but WITHOUT ANY WARRANTY; without even the implied warranty of *
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU       *
+// * General Public License for more details.                               *
+// **************************************************************************
 
 #ifndef WINDOWS_VERSION_HEADER_238470348254325
 #define WINDOWS_VERSION_HEADER_238470348254325
@@ -121,8 +135,13 @@ bool runningWOW64() //test if process is running under WOW64: http://msdn.micros
 inline
 bool running64BitWindows() //http://blogs.msdn.com/b/oldnewthing/archive/2005/02/01/364563.aspx
 {
-    static_assert(zen::is32BitBuild || zen::is64BitBuild, "");
-    return is64BitBuild || runningWOW64(); //should we bother to give a compile-time result in the first case?
+#ifdef ZEN_BUILD_64BIT
+    // MinFFS Patch. if binary is compiled for 64bit Windows, it will not run on 32bit
+    return true;
+#else
+    // MinFFS Patch. if binary is compiled for 32bit windows, it check it is running in 32bit emulation.
+    return runningWOW64();
+#endif
 }
 }
 

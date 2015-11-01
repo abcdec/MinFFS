@@ -41,10 +41,10 @@ typedef HANDLE HTHEME;
 // For definition of:
 // FreeFileSync/Source/lib/resolve_path.cpp : SHGetKnownFolderPath
 // REFKNOWNFOLDERID need be defined in default namespace.
-typedef GUID KNOWNFOLDERID;
-typedef KNOWNFOLDERID *REFKNOWNFOLDERID;
-extern REFKNOWNFOLDERID FOLDERID_Downloads;
-extern REFKNOWNFOLDERID FOLDERID_PublicDownloads;
-extern REFKNOWNFOLDERID FOLDERID_QuickLaunch;
+//typedef GUID KNOWNFOLDERID;
+//typedef KNOWNFOLDERID *REFKNOWNFOLDERID;
+//extern REFKNOWNFOLDERID FOLDERID_Downloads;
+//extern REFKNOWNFOLDERID FOLDERID_PublicDownloads;
+//extern REFKNOWNFOLDERID FOLDERID_QuickLaunch;
 
 #endif//MINFFS_DLLWRAPPER_INCLUDES_HPP_INCLUDED

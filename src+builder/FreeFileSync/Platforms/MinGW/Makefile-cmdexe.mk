@@ -1,5 +1,5 @@
 # // **************************************************************************
-# // * Copyright (C) 2014 abcdec @GitHub - All Rights Reserved                *
+# // * Copyright (C) 2015 abcdec @GitHub - All Rights Reserved                *
 # // * This file is part of a modified version of FreeFileSync, MinFFS.       *
 # // * The original FreeFileSync program and source code are distributed by   *
 # // * the FreeFileSync project: http://www.freefilesync.org/                 *
@@ -21,33 +21,37 @@
 APPNAME     := MinFFS.exe
 
 PROJECT_TOP := ../../..
-MINGW_ROOT  := C:/MinGW
-WXWGT_ROOT  := C:/wxWidgets
-BOOST_ROOT  := C:/Boost
+MINGW_ROOT  := C:/MinGW-w64/mingw32
+WXWGT_ROOT  := C:/wxWidgets-w64
+BOOST_ROOT  := C:/Boost-w64
 BOOST_VER   := 1_58
-BOOST_MINGW := mgw48
+BOOST_MINGW := mgw52
 
 .SUFFIXES:	.rc
 
-  # wxWidgets wx-config --cxxflags
+# wxWidgets wx-config --cxxflags
 CXXFLAGS := -mthreads
 CXXFLAGS += -DHAVE_W32API_H
 CXXFLAGS += -D__WXMSW__
 CXXFLAGS += -D__WXDEBUG__
 CXXFLAGS += -D_UNICODE
-CXXFLAGS += -IC:\wxWidgets\lib\gcc_lib\mswu
-CXXFLAGS += -IC:\wxWidgets\include
+CXXFLAGS += -IC:\wxWidgets-w64\lib\gcc_lib\mswu
+CXXFLAGS += -IC:\wxWidgets-w64\include
 CXXFLAGS += -Wno-ctor-dtor-privacy
 CXXFLAGS += -pipe
 CXXFLAGS += -fmessage-length=0
 CXXFLAGS += -Wl,--subsystem,windows
 CXXFLAGS += -mwindows
 CXXFLAGS += -Wl,--enable-auto-import
+CXXFLAGS += -m32
+CXXFLAGS += -Wno-deprecated-declarations
+CXXFLAGS += -Wno-unused-function
 
   # FreeFileSync
 CXXFLAGS += -DZEN_WIN
-CXXFLAGS += -std=c++11
+CXXFLAGS += -std=c++14
 CXXFLAGS += -DWXINTL_NO_GETTEXT_MACRO
+CXXFLAGS += -DZEN_WIN_PRE_VISTA
 CXXFLAGS += -Wall
 CXXFLAGS += -O3
 
@@ -66,7 +70,6 @@ CXXFLAGS += -DMinFFS_PATCH
 CXXFLAGS += -DUNICODE
 CXXFLAGS += -I$(PROJECT_TOP)/FreeFileSync/Source
 CXXFLAGS += -I$(PROJECT_TOP)
-CXXFLAGS += -I$(PROJECT_TOP)/zenXml
 CXXFLAGS += -I$(PROJECT_TOP)/FreeFileSync/Platforms/MinGW
 CXXFLAGS += -include "zen/i18n.h"
 CXXFLAGS += -include "zen/warn_static.h"
@@ -83,7 +86,7 @@ LINKFLAGS += -mwindows
 
   # wxWidgets wx-config --libs
 LINKFLAGS += -mthreads
-LINKFLAGS += -LC:/wxWidgets/lib/gcc_lib
+LINKFLAGS += -LC:/wxWidgets-w64/lib/gcc_lib
 LINKFLAGS += -lwxmsw30ud_xrc
 LINKFLAGS += -lwxmsw30ud_aui
 LINKFLAGS += -lwxmsw30ud_html
@@ -127,14 +130,17 @@ CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/application.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/comparison.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/structures.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/synchronization.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/fs/abstract.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/fs/concrete.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/fs/native.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/file_hierarchy.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/custom_grid.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/folder_history_box.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/on_completion_box.cpp
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/dir_name.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/folder_selector.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/batch_config.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/batch_status_handler.cpp
-CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/check_version.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/version_check.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/grid_view.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/tree_view.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/gui_generated.cpp
@@ -147,13 +153,12 @@ CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/sync_cfg.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/taskbar.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/triple_splitter.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/ui/tray_icon.cpp
-#CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/deep_file_traverser.cpp
-CPP_LIST+=MinFFS_deep_file_traverser.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/binary.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/db_file.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/dir_lock.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/hard_filter.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/icon_buffer.cpp
+CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/icon_loader.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/localization.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/parallel_scan.cpp
 CPP_LIST+=$(PROJECT_TOP)/FreeFileSync/Source/lib/process_xml.cpp

@@ -27,19 +27,23 @@
 namespace
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS_ComTools
     //manage COM-cleanup at per-thread-scope:
     thread_local std::unique_ptr<ComInitializer> nativeComInitThread;
+#endif//TODO_MinFFS_ComTools
 #endif
 
 
 void initComForThread() //throw FileError
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS_ComTools
     try
     {
         if (!nativeComInitThread) nativeComInitThread = std::make_unique<ComInitializer>(); //throw SysError
     }
     catch (const SysError& e) { throw FileError(e.toString()); } //there's little value in giving additional/misleading context info => just convert SysError to FileError
+#endif//TODO_MinFFS_ComTools
 #endif
 }
 

@@ -5,7 +5,7 @@
 // **************************************************************************
 // **************************************************************************
 // * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.15        *
+// * FreeFileSync project: http://www.freefilesync.org/ version 7.5         *
 // * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
 // *                          --EXPERIMENTAL--                              *
 // * This program is experimental and not recommended for general use.      *
@@ -59,9 +59,6 @@ Zstring getSymlinkTargetRaw   (const Zstring& linkPath); //throw FileError
 
 //################################ implementation ################################
 #ifdef ZEN_WIN
-#ifdef MinFFS_PATCH // Skip defining struct _REPARSE_DATA_BUFFER
-// MinGW defineis this struct in winnt.h so just exclude
-#else//MinFFS_PATCH
 //I don't have Windows Driver Kit at hands right now, so unfortunately we need to redefine this structure and cross fingers...
 typedef struct _REPARSE_DATA_BUFFER //from ntifs.h
 {
@@ -94,7 +91,6 @@ typedef struct _REPARSE_DATA_BUFFER //from ntifs.h
     };
 } REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
 #define REPARSE_DATA_BUFFER_HEADER_SIZE   FIELD_OFFSET(REPARSE_DATA_BUFFER, GenericReparseBuffer)
-#endif//MinFFS_PATCH
 #endif
 
 namespace

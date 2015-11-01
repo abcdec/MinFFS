@@ -36,16 +36,19 @@ public:
         if (!win7OrLater()) //check *before* trying to load DLL
             throw TaskbarNotAvailable();
 
+#ifdef TODO_MinFFS_TaskBar
         freeString_  = DllFun<FunType_freeString >(getDllName(), funName_freeString);
         setStatus_   = DllFun<FunType_setStatus  >(getDllName(), funName_setStatus);
         setProgress_ = DllFun<FunType_setProgress>(getDllName(), funName_setProgress);
 
         if (!assocWindow || !freeString_ || !setStatus_ || !setProgress_)
+#endif//TODO_MinFFS_TaskBar
             throw TaskbarNotAvailable();
     }
 
     ~Pimpl()
     {
+#ifdef TODO_MinFFS_TaskBar
         const wchar_t* errorMsg = nullptr;
         setStatus_(assocWindow, tbseven::STATUS_NOPROGRESS, errorMsg);
         if (errorMsg)
@@ -53,10 +56,12 @@ public:
             ZEN_ON_SCOPE_EXIT(freeString_(errorMsg));
             assert(false);
         }
+#endif//TODO_MinFFS_TaskBar
     }
 
     void setStatus(Status status)
     {
+#ifdef TODO_MinFFS_TaskBar
         TaskBarStatus tbSevenStatus = tbseven::STATUS_NORMAL;
         switch (status)
         {
@@ -81,10 +86,12 @@ public:
             ZEN_ON_SCOPE_EXIT(freeString_(errorMsg));
             assert(false);
         }
+#endif//TODO_MinFFS_TaskBar
     }
 
     void setProgress(double fraction)
     {
+#ifdef TODO_MinFFS_TaskBar
         const wchar_t* errorMsg = nullptr;
         setProgress_(assocWindow, fraction * 100000, 100000, errorMsg);
         if (errorMsg)
@@ -92,14 +99,17 @@ public:
             ZEN_ON_SCOPE_EXIT(freeString_(errorMsg));
             assert(false);
         }
+#endif//TODO_MinFFS_TaskBar
     }
 
 private:
     void* const assocWindow; //HWND
 
+#ifdef TODO_MinFFS_freeString
     DllFun<FunType_freeString>  freeString_;
     DllFun<FunType_setStatus>   setStatus_;
     DllFun<FunType_setProgress> setProgress_;
+#endif//TODO_MinFFS_freeString
 };
 
 #elif defined HAVE_UBUNTU_UNITY //Ubuntu unity

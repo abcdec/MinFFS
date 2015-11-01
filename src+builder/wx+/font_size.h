@@ -14,6 +14,9 @@
     #include <Uxtheme.h>
     #include <vsstyle.h> //TEXT_MAININSTRUCTION
     #include <vssym32.h> //TMT_COLOR
+#ifdef MinFFS_PATCH
+#include <zen/scope_guard.h>
+#endif
 #endif
 
 namespace zen
@@ -65,6 +68,9 @@ void setMainInstructionFont(wxWindow& control)
             ZEN_ON_SCOPE_EXIT(closeThemeData(hTheme));
 
             COLORREF cr = {};
+#ifdef MinFFS_PATCH
+#define TMT_TEXTCOLOR   3803
+#endif
             if (getThemeColor(hTheme,               //_In_   HTHEME hTheme,
                               TEXT_MAININSTRUCTION, //  _In_   int iPartId,
                               0,                    //  _In_   int iStateId,

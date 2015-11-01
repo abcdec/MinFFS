@@ -129,7 +129,7 @@ private:
             {
                 PWSTR path = nullptr;
                 if (SUCCEEDED(shGetKnownFolderPath(rfid,                //_In_      REFKNOWNFOLDERID rfid,
-                                                   KF_FLAG_DONT_VERIFY, //_In_      DWORD dwFlags,
+                                                   0x00004000,          //_In_      DWORD dwFlags KF_FLAG_DONT_VERIFY https://msdn.microsoft.com/en-us/library/windows/desktop/dd378447(v=vs.85).aspx,
                                                    nullptr,             //_In_opt_  HANDLE hToken,
                                                    &path)))             //_Out_     PWSTR *ppszPath
                 {

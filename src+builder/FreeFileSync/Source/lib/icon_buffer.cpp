@@ -387,8 +387,10 @@ void WorkerThread::operator()() const //thread entry
 #ifdef ZEN_WIN
     try
     {
+#ifdef TODO_MinFFS_ComInit
         //1. Initialize COM here due to the icon_loader.h dependency only, but NOT due to native.h, mtp.h's internal COM usage => this is not our responsibility!
         ComInitializer ci; //throw SysError
+#endif//TODO_MinFFS_ComInit
 #endif
 
         for (;;)

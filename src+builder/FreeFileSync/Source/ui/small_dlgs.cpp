@@ -5,7 +5,7 @@
 // **************************************************************************
 // **************************************************************************
 // * This file is modified from its original source file distributed by the *
-// * FreeFileSync project: http://www.freefilesync.org/ version 6.15        *
+// * FreeFileSync project: http://www.freefilesync.org/ version 7.5         *
 // * Modifications made by abcdec @GitHub. https://github.com/abcdec/MinFFS *
 // *                          --EXPERIMENTAL--                              *
 // * This program is experimental and not recommended for general use.      *
@@ -127,7 +127,7 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     wxImage appnameImg = createImageFromText(wxString(L"MinFFS (Modified FreeFileSync)"),
                                              wxFont(wxNORMAL_FONT->GetPointSize() * 1.8, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, L"Tahoma"),
                                              *wxBLACK); //accessibility: align foreground/background colors!
-    wxImage buildImg = createImageFromText(replaceCpy(_("Build: %x") + L" [Based on FreeFileSync " + zen::currentVersion + L"]", L"%x", build),
+    wxImage buildImg = createImageFromText(replaceCpy(_("Build: %x") + L" [Based on FreeFileSync " + zen::ffsVersion + L"]", L"%x", build),
                                            *wxNORMAL_FONT,
                                            *wxBLACK);
 #else//MinFFS_PATCH
@@ -334,7 +334,9 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
     overwriteIfExistsOut(overwriteIfExists)
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS_MouseMove
     new zen::MouseMoveWindow(*this); //allow moving main dialog by clicking (nearly) anywhere...; ownership passed to "this"
+#endif//TODO_MinFFS_MouseMove
     wxWindowUpdateLocker dummy(this); //leads to GUI corruption problems on Linux/OS X!
 #endif
 

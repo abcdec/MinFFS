@@ -87,6 +87,30 @@ ImageHolder copyToImageHolder(const GdkPixbuf* pixbuf)
 
 
 #ifdef ZEN_WIN
+
+#ifdef MinFFS_PATCH
+#ifdef TODO_MinFFS_GetCorrectIcon
+#else
+typedef enum _IconSizeType {
+    ICON_SIZE_16,
+    ICON_SIZE_32,
+    ICON_SIZE_48,
+    ICON_SIZE_128,
+    ICON_SIZE_256
+} IconSizeType;
+
+ImageHolder getIconByIndex(int iIconIn, IconSizeType iconSizeTypeIn)
+{
+    return ImageHolder();
+}
+
+ImageHolder getThumbnail(LPCWSTR filePathIn, int pixelSizeIn)
+{
+    return ImageHolder();
+}
+#endif//TODO_MinFFS_GetCorrectIcon
+#endif//MinFFS_PATCH
+
 IconSizeType getThumbSizeType(int pixelSize)
 {
     //coordinate with IconBuffer::getSize()!
@@ -96,7 +120,6 @@ IconSizeType getThumbSizeType(int pixelSize)
     if (pixelSize >=  32) return ICON_SIZE_32;
     return ICON_SIZE_16;
 }
-
 
 ImageHolder getIconByAttribute(LPCWSTR pszPath, DWORD dwFileAttributes, int pixelSize)
 {

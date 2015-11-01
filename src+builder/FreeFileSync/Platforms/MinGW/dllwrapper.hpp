@@ -20,6 +20,33 @@
 #ifndef MINFFS_DLLWRAPPER_HPP_INCLUDED
 #define MINFFS_DLLWRAPPER_HPP_INCLUDED
 
+#ifdef MinFFS_PATCH
+typedef enum _FILE_INFO_BY_HANDLE_CLASS {
+    FileBasicInfo                   = 0,
+    FileStandardInfo                = 1,
+    FileNameInfo                    = 2,
+    FileRenameInfo                  = 3,
+    FileDispositionInfo             = 4,
+    FileAllocationInfo              = 5,
+    FileEndOfFileInfo               = 6,
+    FileStreamInfo                  = 7,
+    FileCompressionInfo             = 8,
+    FileAttributeTagInfo            = 9,
+    FileIdBothDirectoryInfo         = 10, // 0xA
+    FileIdBothDirectoryRestartInfo  = 11, // 0xB
+    FileIoPriorityHintInfo          = 12, // 0xC
+    FileRemoteProtocolInfo          = 13, // 0xD
+    FileFullDirectoryInfo           = 14, // 0xE
+    FileFullDirectoryRestartInfo    = 15, // 0xF
+    FileStorageInfo                 = 16, // 0x10
+    FileAlignmentInfo               = 17, // 0x11
+    FileIdInfo                      = 18, // 0x12
+    FileIdExtdDirectoryInfo         = 19, // 0x13
+    FileIdExtdDirectoryRestartInfo  = 20, // 0x14
+  MaximumFileInfoByHandlesClass
+} FILE_INFO_BY_HANDLE_CLASS, *PFILE_INFO_BY_HANDLE_CLASS;
+#endif//MinFFS_PATCH
+
 // Name space and dependent headers should be specified in a source
 // file including this header file.
 template <typename T>

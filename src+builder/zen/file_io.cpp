@@ -73,8 +73,10 @@ FileInput::FileInput(const Zstring& filepath) : //throw FileError, ErrorFileLock
     FileBase(filepath), fileHandle(getInvalidHandle())
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS_activatePrivilege
     try { activatePrivilege(SE_BACKUP_NAME); }
     catch (const FileError&) {}
+#endif//TODO_MinFFS_activatePrivilege
 
     auto createHandle = [&](DWORD dwShareMode)
     {
@@ -233,10 +235,12 @@ FileOutput::FileOutput(const Zstring& filepath, AccessFlag access) : //throw Fil
     FileBase(filepath), fileHandle(getInvalidHandle())
 {
 #ifdef ZEN_WIN
+#ifdef TODO_MinFFS_activatePrivilege
     try { activatePrivilege(SE_BACKUP_NAME); }
     catch (const FileError&) {}
     try { activatePrivilege(SE_RESTORE_NAME); }
     catch (const FileError&) {}
+#endif//TODO_MinFFS_activatePrivilege
 
     const DWORD dwCreationDisposition = access == FileOutput::ACC_OVERWRITE ? CREATE_ALWAYS : CREATE_NEW;
 

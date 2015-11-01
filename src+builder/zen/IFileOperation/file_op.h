@@ -26,7 +26,7 @@
 
 namespace fileop
 {
-    // freeString is not compiled right now (as of 6.15 porting)
+    // freeString is not compiled right now (as of 7.5 porting)
     // TODO to clean up freeString issue. 10/31/2015
     typedef wchar_t* (*FunType_freeString)(const wchar_t*);
     typedef wchar_t* (*FunType_getLastErrorMessage)(void);
