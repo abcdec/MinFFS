@@ -12,6 +12,8 @@
 
     #ifdef ZEN_WIN_VISTA_AND_LATER
         #include "vista_file_op.h"
+    #else
+        #include "com_tools.h"
     #endif
 
 #elif defined ZEN_LINUX
@@ -179,12 +181,18 @@ bool zen::recycleBinExists(const Zstring& dirPath, const std::function<void ()>&
 
 #else
     //excessive runtime if recycle bin exists, is full and drive is slow:
-    auto ft = runAsync([dirPath]()
+    auto ft = runAsync([dirPath]() -> HRESULT
     {
-        SHQUERYRBINFO recInfo = {};
-        recInfo.cbSize = sizeof(recInfo);
-        return ::SHQueryRecycleBin(dirPath.c_str(), //__in_opt  LPCTSTR pszRootPath,
-                                   &recInfo);       //__inout   LPSHQUERYRBINFO pSHQueryRBInfo
+        try
+        {
+            ComInitializer ci; //throw SysError
+
+            SHQUERYRBINFO recInfo = {};
+            recInfo.cbSize = sizeof(recInfo);
+            return ::SHQueryRecycleBin(dirPath.c_str(), //__in_opt  LPCTSTR pszRootPath,
+                                       &recInfo);       //__inout   LPSHQUERYRBINFO pSHQueryRBInfo
+        }
+        catch (SysError&) { assert(false); return ERROR_GEN_FAILURE; }
     });
 
     while (ft.wait_for(std::chrono::milliseconds(50)) != std::future_status::ready)

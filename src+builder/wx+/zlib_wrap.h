@@ -4,10 +4,11 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef ZLIB_H_INCLUDED_428597064566
-#define ZLIB_H_INCLUDED_428597064566
+#ifndef ZLIB_WRAP_H_428597064566
+#define ZLIB_WRAP_H_428597064566
 
 #include <zen/serialize.h>
+
 
 namespace zen
 {
@@ -110,4 +111,4 @@ BinContainer decompress(const BinContainer& stream) //throw ZlibInternalError
 }
 }
 
-#endif //ZLIB_H_INCLUDED_428597064566
+#endif //ZLIB_WRAP_H_428597064566

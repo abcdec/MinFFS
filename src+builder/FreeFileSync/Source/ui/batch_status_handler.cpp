@@ -24,15 +24,15 @@ namespace
 //"Backup FreeFileSync 2013-09-15 015052 [Error].log"
 
 //return value always bound!
-std::pair<std::unique_ptr<ABF::OutputStream>, AbstractPathRef> prepareNewLogfile(ABF& abf, //throw FileError
-        const std::wstring& jobName,
-        const TimeComp& timeStamp,
-        const std::wstring& status)
+std::pair<std::unique_ptr<AFS::OutputStream>, AbstractPath> prepareNewLogfile(const AbstractPath& logFolderPath, //throw FileError
+                                                                              const std::wstring& jobName,
+                                                                              const TimeComp& timeStamp,
+                                                                              const std::wstring& status)
 {
     assert(!jobName.empty());
 
-    //create logfile directory if required
-    ABF::createFolderRecursively(abf.getAbstractPath()); //throw FileError
+    //create logfile folder if required
+    AFS::createFolderRecursively(logFolderPath); //throw FileError
 
     //const std::string colon = "\xcb\xb8"; //="modifier letter raised colon" => regular colon is forbidden in file names on Windows and OS X
     //=> too many issues, most notably cmd.exe is not Unicode-awere: http://sourceforge.net/p/freefilesync/discussion/open-discussion/thread/c559a5fb/
@@ -47,8 +47,8 @@ std::pair<std::unique_ptr<ABF::OutputStream>, AbstractPathRef> prepareNewLogfile
     for (int i = 0;; ++i)
         try
         {
-            const AbstractPathRef logFilePath = abf.getAbstractPath(logFileName);
-            auto outStream = ABF::getOutputStream(logFilePath, //throw FileError, ErrorTargetExisting
+            const AbstractPath logFilePath = AFS::appendRelPath(logFolderPath, logFileName);
+            auto outStream = AFS::getOutputStream(logFilePath, //throw FileError, ErrorTargetExisting
                                                   nullptr, /*streamSize*/
                                                   nullptr /*modificationTime*/);
             return std::make_pair(std::move(outStream), logFilePath);
@@ -61,7 +61,7 @@ std::pair<std::unique_ptr<ABF::OutputStream>, AbstractPathRef> prepareNewLogfile
 }
 
 
-struct LogTraverserCallback: public ABF::TraverserCallback
+struct LogTraverserCallback: public AFS::TraverserCallback
 {
     LogTraverserCallback(std::vector<Zstring>& logFileNames, const Zstring& prefix, const std::function<void()>& onUpdateStatus) :
         logFileNames_(logFileNames),
@@ -88,14 +88,14 @@ private:
 };
 
 
-void limitLogfileCount(ABF& abf, const std::wstring& jobname, size_t maxCount, const std::function<void()>& onUpdateStatus) //noexcept
+void limitLogfileCount(const AbstractPath& logFolderPath, const std::wstring& jobname, size_t maxCount, const std::function<void()>& onUpdateStatus) //noexcept
 {
     std::vector<Zstring> logFileNames;
     {
         const Zstring prefix = utfCvrtTo<Zstring>(jobname);
         LogTraverserCallback lt(logFileNames, prefix, onUpdateStatus); //traverse source directory one level deep
 
-        ABF::traverseFolder(abf.getAbstractPath(), lt);
+        AFS::traverseFolder(logFolderPath, lt);
     }
 
     if (logFileNames.size() <= maxCount)
@@ -108,7 +108,7 @@ void limitLogfileCount(ABF& abf, const std::wstring& jobname, size_t maxCount, c
     {
         try
         {
-            ABF::removeFile(abf.getAbstractPath(logFileName)); //throw FileError
+            AFS::removeFile(AFS::appendRelPath(logFolderPath, logFileName)); //throw FileError
         }
         catch (FileError&) { assert(false); };
 
@@ -149,14 +149,12 @@ BatchStatusHandler::BatchStatusHandler(bool showProgress,
             logFolderPathPhrase_(logFolderPathPhrase)
 {
     //ATTENTION: "progressDlg" is an unmanaged resource!!! However, at this point we already consider construction complete! =>
-    ScopeGuard constructorGuard = zen::makeGuard([&] { /*cleanup();*/ /*destructor call would lead to member double clean-up!!!*/ });
+    //ZEN_ON_SCOPE_FAIL( cleanup(); ); //destructor call would lead to member double clean-up!!!
 
     //...
 
     //if (logFile)
     //  ::wxSetEnv(L"logfile", utfCvrtTo<wxString>(logFile->getFilename()));
-
-    constructorGuard.dismiss();
 }
 
 
@@ -250,16 +248,16 @@ BatchStatusHandler::~BatchStatusHandler()
     //create not before destruction: 1. avoid issues with FFS trying to sync open log file 2. simplify transactional retry on failure 3. no need to rename log file to include status
     if (logfilesCountLimit_ != 0)
     {
-        std::unique_ptr<AbstractBaseFolder> logFileAbf = createAbstractBaseFolder(trimCpy(logFolderPathPhrase_).empty() ? getConfigDir() + Zstr("Logs") : logFolderPathPhrase_); //noexcept
+        const AbstractPath logFolderPath = createAbstractPath(trimCpy(logFolderPathPhrase_).empty() ? getConfigDir() + Zstr("Logs") : logFolderPathPhrase_); //noexcept
         try
         {
             tryReportingError([&] //errors logged here do not impact final status calculation above! => not a problem!
             {
-                auto rv = prepareNewLogfile(*logFileAbf, jobName_, timeStamp_, status); //throw FileError; return value always bound!
-                ABF::OutputStream&    logFileStream = *rv.first;
-                const AbstractPathRef logFilePath   = rv.second;
+                auto rv = prepareNewLogfile(logFolderPath, jobName_, timeStamp_, status); //throw FileError; return value always bound!
+                AFS::OutputStream& logFileStream = *rv.first;
+                const AbstractPath logFilePath   = rv.second;
 
-                saveLogToFile(summary, errorLog, logFileStream, OnUpdateLogfileStatusNoThrow(*this, ABF::getDisplayPath(logFilePath))); //throw FileError
+                saveLogToFile(summary, errorLog, logFileStream, OnUpdateLogfileStatusNoThrow(*this, AFS::getDisplayPath(logFilePath))); //throw FileError
                 logFileStream.finalize([&] { try { requestUiRefresh(); } catch (...) {} }); //throw FileError
             }, *this); //throw X?
         }
@@ -269,7 +267,7 @@ BatchStatusHandler::~BatchStatusHandler()
         {
             try { reportStatus(_("Cleaning up old log files...")); }
             catch (...) {}
-            limitLogfileCount(*logFileAbf, jobName_, logfilesCountLimit_, [&] { try { requestUiRefresh(); } catch (...) {} }); //noexcept
+            limitLogfileCount(logFolderPath, jobName_, logfilesCountLimit_, [&] { try { requestUiRefresh(); } catch (...) {} }); //noexcept
         }
     }
     //----------------- write results into LastSyncs.log------------------------
@@ -406,7 +404,7 @@ ProcessCallback::Response BatchStatusHandler::reportError(const std::wstring& er
 
 
     //always, except for "retry":
-    zen::ScopeGuard guardWriteLog = zen::makeGuard([&] { errorLog.logMsg(errorMessage, TYPE_ERROR); });
+    auto guardWriteLog = zen::makeGuard<ScopeGuardRunMode::ON_EXIT>([&] { errorLog.logMsg(errorMessage, TYPE_ERROR); });
 
     switch (handleError_)
     {

@@ -6,14 +6,10 @@
 
 #include "zstring.h"
 #include <stdexcept>
-#include <unordered_map>
 
 #ifdef ZEN_WIN
     #include "dll.h"
-    #include "win_ver.h"
-
-#elif defined ZEN_MAC
-    #include <ctype.h> //toupper()
+    //#include "win_ver.h"
 #endif
 
 using namespace zen;
@@ -52,7 +48,7 @@ const SysDllFun<CompareStringOrdinalFunc> compareStringOrdinal = SysDllFun<Compa
 }
 
 
-int cmpFilePath(const Zchar* lhs, size_t lhsLen, const Zchar* rhs, size_t rhsLen)
+int cmpStringNoCase(const wchar_t* lhs, size_t lhsLen, const wchar_t* rhs, size_t rhsLen)
 {
     assert(std::find(lhs, lhs + lhsLen, 0) == lhs + lhsLen); //don't expect embedded nulls!
     assert(std::find(rhs, rhs + rhsLen, 0) == rhs + rhsLen); //
@@ -79,7 +75,7 @@ int cmpFilePath(const Zchar* lhs, size_t lhsLen, const Zchar* rhs, size_t rhsLen
         if (minSize == 0) //LCMapString does not allow input sizes of 0!
             return static_cast<int>(lhsLen) - static_cast<int>(rhsLen);
 
-        auto copyToUpperCase = [&](const wchar_t* strIn, wchar_t* strOut)
+        auto copyToUpperCase = [minSize](const wchar_t* strIn, wchar_t* strOut)
         {
             //faster than CharUpperBuff + wmemcpy or CharUpper + wmemcpy and same speed like ::CompareString()
             if (::LCMapString(LOCALE_INVARIANT,          //__in   LCID Locale,
@@ -118,43 +114,18 @@ int cmpFilePath(const Zchar* lhs, size_t lhsLen, const Zchar* rhs, size_t rhsLen
 }
 
 
-Zstring makeUpperCopy(const Zstring& str)
+void makeUpperInPlace(wchar_t* str, size_t strLen)
 {
-    const int len = static_cast<int>(str.size());
-
-    if (len == 0) //LCMapString does not allow input sizes of 0!
-        return str;
-
-    Zstring output = str;
-
-    //LOCALE_INVARIANT is NOT available with Windows 2000 -> ok
-
-    //use Windows' upper case conversion: faster than ::CharUpper()
-    if (::LCMapString(LOCALE_INVARIANT, //__in   LCID Locale,
-                      LCMAP_UPPERCASE,  //__in   DWORD dwMapFlags,
-                      str.c_str(),      //__in   LPCTSTR lpSrcStr,
-                      len,              //__in   int cchSrc,
-                      &*output.begin(), //__out  LPTSTR lpDestStr,
-                      len) == 0)        //__in   int cchDest
-        throw std::runtime_error("Error comparing strings (LCMapString). " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
-
-    return output;
-}
-
-
-#elif defined ZEN_MAC
-Zstring makeUpperCopy(const Zstring& str)
-{
-    const size_t len = str.size();
-
-    Zstring output;
-    output.resize(len);
-
-    std::transform(str.begin(), str.end(), output.begin(), [](char c) { return static_cast<char>(::toupper(static_cast<unsigned char>(c))); }); //locale-dependent!
-
-    //result of toupper() is an unsigned char mapped to int range, so the char representation is in the last 8 bits and we need not care about signedness!
-    //this should work for UTF-8, too: all chars >= 128 are mapped upon themselves!
-
-    return output;
+    //- use Windows' upper case conversion: faster than ::CharUpper()
+    //- LOCALE_INVARIANT is NOT available with Windows 2000 -> ok
+    //- MSDN: "The destination string can be the same as the source string only if LCMAP_UPPERCASE or LCMAP_LOWERCASE is set"
+    if (strLen != 0) //LCMapString does not allow input sizes of 0!
+        if (::LCMapString(LOCALE_INVARIANT, //__in   LCID Locale,
+                          LCMAP_UPPERCASE,  //__in   DWORD dwMapFlags,
+                          str,              //__in   LPCTSTR lpSrcStr,
+                          static_cast<int>(strLen), //__in   int cchSrc,
+                          str,              //__out  LPTSTR lpDestStr,
+                          static_cast<int>(strLen)) == 0) //__in   int cchDest
+            throw std::runtime_error("Error comparing strings (LCMapString). " + std::string(__FILE__) + ":" + numberTo<std::string>(__LINE__));
 }
 #endif

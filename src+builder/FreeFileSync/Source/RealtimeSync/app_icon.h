@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef RTS_APP_ICON_8914578394545
-#define RTS_APP_ICON_8914578394545
+#ifndef APP_ICON_H_8914578394545342
+#define APP_ICON_H_8914578394545342
 
 #include <wx/icon.h>
 #include <wx+/image_resources.h>
@@ -37,4 +37,4 @@ wxIcon getRtsIcon()
 }
 
 
-#endif //RTS_APP_ICON_8914578394545
+#endif //APP_ICON_H_8914578394545342

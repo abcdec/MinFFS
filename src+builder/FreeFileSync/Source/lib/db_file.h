@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef DBFILE_H_834275398588021574
-#define DBFILE_H_834275398588021574
+#ifndef DB_FILE_H_834275398588021574
+#define DB_FILE_H_834275398588021574
 
 #include <zen/file_error.h>
 #include "../file_hierarchy.h"
@@ -17,12 +17,12 @@ const Zchar SYNC_DB_FILE_ENDING[] = Zstr(".ffs_db"); //don't use Zstring as glob
 
 struct InSyncDescrFile //subset of FileDescriptor
 {
-    InSyncDescrFile(std::int64_t lastWriteTimeRawIn, const ABF::FileId& idIn) :
+    InSyncDescrFile(std::int64_t lastWriteTimeRawIn, const AFS::FileId& idIn) :
         lastWriteTimeRaw(lastWriteTimeRawIn),
         fileId(idIn) {}
 
     std::int64_t lastWriteTimeRaw;
-    ABF::FileId fileId; // == file id: optional! (however, always set on Linux, and *generally* available on Windows)
+    AFS::FileId fileId; // == file id: optional! (however, always set on Linux, and *generally* available on Windows)
 };
 
 struct InSyncDescrLink
@@ -51,7 +51,7 @@ struct InSyncSymlink
     CompareVariant cmpVar;
 };
 
-struct InSyncDir
+struct InSyncFolder
 {
     //for directories we have a logical problem: we cannot have "not existent" as an indicator for
     //"no last synchronous state" since this precludes child elements that may be in sync!
@@ -60,24 +60,24 @@ struct InSyncDir
         DIR_STATUS_IN_SYNC,
         DIR_STATUS_STRAW_MAN //there is no last synchronous state, but used as container only
     };
-    InSyncDir(InSyncStatus statusIn) : status(statusIn) {}
+    InSyncFolder(InSyncStatus statusIn) : status(statusIn) {}
 
     InSyncStatus status;
 
     //------------------------------------------------------------------
-    typedef std::map<Zstring, InSyncDir,     LessFilePath> DirList;  //
-    typedef std::map<Zstring, InSyncFile,    LessFilePath> FileList; // key: file name
-    typedef std::map<Zstring, InSyncSymlink, LessFilePath> LinkList; //
+    typedef std::map<Zstring, InSyncFolder,  LessFilePath> FolderList;  //
+    typedef std::map<Zstring, InSyncFile,    LessFilePath> FileList;    // key: file name
+    typedef std::map<Zstring, InSyncSymlink, LessFilePath> SymlinkList; //
     //------------------------------------------------------------------
 
-    DirList  dirs;
-    FileList files;
-    LinkList symlinks; //non-followed symlinks
+    FolderList  folders;
+    FileList    files;
+    SymlinkList symlinks; //non-followed symlinks
 
     //convenience
-    InSyncDir& addDir(const Zstring& shortName, InSyncStatus st)
+    InSyncFolder& addFolder(const Zstring& shortName, InSyncStatus st)
     {
-        return dirs.emplace(shortName, InSyncDir(st)).first->second;
+        return folders.emplace(shortName, InSyncFolder(st)).first->second;
     }
 
     void addFile(const Zstring& shortName, const InSyncDescrFile& dataL, const InSyncDescrFile& dataR, CompareVariant cmpVar, std::uint64_t fileSize)
@@ -94,11 +94,11 @@ struct InSyncDir
 
 DEFINE_NEW_FILE_ERROR(FileErrorDatabaseNotExisting);
 
-std::shared_ptr<InSyncDir> loadLastSynchronousState(const BaseDirPair& baseDirObj, //throw FileError, FileErrorDatabaseNotExisting -> return value always bound!
-                                                    const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus);
+std::shared_ptr<InSyncFolder> loadLastSynchronousState(const BaseFolderPair& baseDirObj, //throw FileError, FileErrorDatabaseNotExisting -> return value always bound!
+                                                       const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus);
 
-void saveLastSynchronousState(const BaseDirPair& baseDirObj, //throw FileError
+void saveLastSynchronousState(const BaseFolderPair& baseDirObj, //throw FileError
                               const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus);
 }
 
-#endif //DBFILE_H_834275398588021574
+#endif //DB_FILE_H_834275398588021574

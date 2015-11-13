@@ -4,14 +4,15 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef WX_PLOT_HEADER_2344252459
-#define WX_PLOT_HEADER_2344252459
+#ifndef GRAPH_H_234425245936567345799
+#define GRAPH_H_234425245936567345799
 
 #include <map>
 #include <vector>
 #include <memory>
 #include <wx/panel.h>
 #include <wx/settings.h>
+#include <wx/bitmap.h>
 #include <zen/string_tools.h>
 #include <zen/optional.h>
 
@@ -177,7 +178,7 @@ public:
     class CurveAttributes
     {
     public:
-		CurveAttributes() {} //required by GCC
+        CurveAttributes() {} //required by GCC
         CurveAttributes& setColor     (const wxColour& col) { color = col; autoColor = false; return *this; }
         CurveAttributes& fillCurveArea(const wxColour& col) { fillColor = col; drawCurveArea = true; return *this; }
         CurveAttributes& setLineWidth(size_t width) { lineWidth = static_cast<int>(width); return *this; }
@@ -276,7 +277,7 @@ public:
 
         PosLabelX labelposX = X_LABEL_BOTTOM;
         int xLabelHeight = 25;
-		std::shared_ptr<LabelFormatter> labelFmtX = std::make_shared<DecimalNumberFormatter>();
+        std::shared_ptr<LabelFormatter> labelFmtX = std::make_shared<DecimalNumberFormatter>();
 
         PosLabelY labelposY = Y_LABEL_LEFT;
         int yLabelWidth = 60;
@@ -333,7 +334,7 @@ private:
 
     MainAttributes attr; //global attributes
 
-    std::unique_ptr<wxBitmap> doubleBuffer;
+    Opt<wxBitmap> doubleBuffer;
 
     typedef std::vector<std::pair<std::shared_ptr<CurveData>, CurveAttributes>> CurveList;
     CurveList curves_;
@@ -341,4 +342,4 @@ private:
 };
 }
 
-#endif //WX_PLOT_HEADER_2344252459
+#endif //GRAPH_H_234425245936567345799

@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef ZEN_TIME_HEADER_845709281432434
-#define ZEN_TIME_HEADER_845709281432434
+#ifndef TIME_H_8457092814324342453627
+#define TIME_H_8457092814324342453627
 
 #include <ctime>
 #include "string_tools.h"
@@ -13,16 +13,14 @@
 
 namespace zen
 {
-struct TimeComp //replaces "struct std::tm" and SYSTEMTIME
+struct TimeComp //replaces std::tm and SYSTEMTIME
 {
-    TimeComp() : year(0), month(0), day(0), hour(0), minute(0), second(0) {}
-
-    int year;   // -
-    int month;  //1-12
-    int day;    //1-31
-    int hour;   //0-23
-    int minute; //0-59
-    int second; //0-61
+    int year   = 0; // -
+    int month  = 0; //1-12
+    int day    = 0; //1-31
+    int hour   = 0; //0-23
+    int minute = 0; //0-59
+    int second = 0; //0-60 (including leap second)
 };
 
 TimeComp localTime   (time_t utc = std::time(nullptr)); //convert time_t (UTC) to local time components
@@ -32,9 +30,9 @@ time_t   localToTimeT(const TimeComp& comp);            //convert local time com
 
 /*
 format (current) date and time; example:
-        formatTime<std::wstring>(L"%Y*%m*%d");     -> "2011*10*29"
-        formatTime<std::wstring>(FORMAT_DATE);     -> "2011-10-29"
-        formatTime<std::wstring>(FORMAT_TIME);     -> "17:55:34"
+        formatTime<std::wstring>(L"%Y|%m|%d"); -> "2011|10|29"
+        formatTime<std::wstring>(FORMAT_DATE); -> "2011-10-29"
+        formatTime<std::wstring>(FORMAT_TIME); -> "17:55:34"
 */
 template <class String, class String2>
 String formatTime(const String2& format, const TimeComp& comp = localTime()); //format as specified by "std::strftime", returns empty string on failure
@@ -74,7 +72,7 @@ bool parseTime(const String& format, const String2& str, TimeComp& comp); //simi
 namespace implementation
 {
 inline
-struct std::tm toClibTimeComponents(const TimeComp& comp)
+std::tm toClibTimeComponents(const TimeComp& comp)
 {
     assert(1 <= comp.month  && comp.month  <= 12 &&
            1 <= comp.day    && comp.day    <= 31 &&
@@ -82,19 +80,21 @@ struct std::tm toClibTimeComponents(const TimeComp& comp)
            0 <= comp.minute && comp.minute <= 59 &&
            0 <= comp.second && comp.second <= 61);
 
-    struct std::tm ctc = {};
+    std::tm ctc = {};
     ctc.tm_year  = comp.year - 1900; //years since 1900
     ctc.tm_mon   = comp.month - 1;   //0-11
     ctc.tm_mday  = comp.day;         //1-31
     ctc.tm_hour  = comp.hour;        //0-23
     ctc.tm_min   = comp.minute;      //0-59
-    ctc.tm_sec   = comp.second;      //0-61
+    ctc.tm_sec   = comp.second;      //0-60 (including leap second)
     ctc.tm_isdst = -1;               //> 0 if DST is active, == 0 if DST is not active, < 0 if the information is not available
+    //ctc.tm_wday
+    //ctc.tm_yday
     return ctc;
 }
 
 inline
-TimeComp toZenTimeComponents(const struct ::tm& ctc)
+TimeComp toZenTimeComponents(const std::tm& ctc)
 {
     TimeComp comp;
     comp.year   = ctc.tm_year + 1900;
@@ -157,21 +157,21 @@ struct GetFormat<FormatIsoDateTimeTag> //%Y-%m-%d %H:%M:%S - e.g. 2001-08-23 14:
 //  VS 2010: CRASH unless "_invalid_parameter_handler" is set: http://msdn.microsoft.com/en-us/library/ksazx244.aspx
 //  GCC: returns 0, apparently no crash. Still, considering some clib maintainer's comments, we should expect the worst!
 inline
-size_t strftimeWrap_impl(char* buffer, size_t bufferSize, const char* format, const struct std::tm* timeptr)
+size_t strftimeWrap_impl(char* buffer, size_t bufferSize, const char* format, const std::tm* timeptr)
 {
     return std::strftime(buffer, bufferSize, format, timeptr);
 }
 
 
 inline
-size_t strftimeWrap_impl(wchar_t* buffer, size_t bufferSize, const wchar_t* format, const struct std::tm* timeptr)
+size_t strftimeWrap_impl(wchar_t* buffer, size_t bufferSize, const wchar_t* format, const std::tm* timeptr)
 {
     return std::wcsftime(buffer, bufferSize, format, timeptr);
 }
 
 /*
 inline
-bool isValid(const struct std::tm& t)
+bool isValid(const std::tm& t)
 {
      -> not enough! MSCRT has different limits than the C standard which even seem to change with different versions:
         _VALIDATE_RETURN((( timeptr->tm_sec >=0 ) && ( timeptr->tm_sec <= 59 ) ), EINVAL, FALSE)
@@ -194,7 +194,7 @@ bool isValid(const struct std::tm& t)
 */
 
 template <class CharType> inline
-size_t strftimeWrap(CharType* buffer, size_t bufferSize, const CharType* format, const struct std::tm* timeptr)
+size_t strftimeWrap(CharType* buffer, size_t bufferSize, const CharType* format, const std::tm* timeptr)
 {
 #if defined _MSC_VER && !defined NDEBUG
     //there's no way around: application init must register an invalid parameter handler that does nothing !!!
@@ -215,7 +215,7 @@ template <class String, class String2> inline
 String formatTime(const String2& format, const TimeComp& comp, UserDefinedFormatTag) //format as specified by "std::strftime", returns empty string on failure
 {
     typedef typename GetCharType<String>::Type CharType;
-    struct std::tm ctc = toClibTimeComponents(comp);
+    std::tm ctc = toClibTimeComponents(comp);
     std::mktime(&ctc); // unfortunately std::strftime() needs all elements of "struct tm" filled, e.g. tm_wday, tm_yday
     //note: although std::mktime() explicitly expects "local time", calculating weekday and day of year *should* be time-zone and DST independent
 
@@ -236,10 +236,9 @@ String formatTime(FormatType, const TimeComp& comp, PredefinedFormatTag)
 inline
 TimeComp localTime(time_t utc)
 {
-    struct ::tm lt = {};
+    std::tm lt = {};
 
-    //use thread-safe variants of localtime()!
-#ifdef ZEN_WIN
+#ifdef ZEN_WIN //use thread-safe variants of std::localtime()!
     if (::localtime_s(&lt, &utc) != 0)
 #else
     if (::localtime_r(&utc, &lt) == nullptr)
@@ -253,7 +252,7 @@ TimeComp localTime(time_t utc)
 inline
 time_t localToTimeT(const TimeComp& comp) //returns -1 on error
 {
-    struct std::tm ctc = implementation::toClibTimeComponents(comp);
+    std::tm ctc = implementation::toClibTimeComponents(comp);
     return std::mktime(&ctc);
 }
 
@@ -279,36 +278,36 @@ bool parseTime(const String& format, const String2& str, TimeComp& comp) //retur
     typedef typename GetCharType<String>::Type CharType;
     static_assert(IsSameType<CharType, typename GetCharType<String2>::Type>::value, "");
 
-    const CharType*       iterFmt = strBegin(format);
-    const CharType* const fmtLast = iterFmt + strLength(format);
+    const CharType*       itFmt = strBegin(format);
+    const CharType* const fmtLast = itFmt + strLength(format);
 
-    const CharType*       iterStr = strBegin(str);
-    const CharType* const strLast = iterStr + strLength(str);
+    const CharType*       itStr = strBegin(str);
+    const CharType* const strLast = itStr + strLength(str);
 
     auto extractNumber = [&](int& result, size_t digitCount) -> bool
     {
-        if (strLast - iterStr < makeSigned(digitCount))
+        if (strLast - itStr < makeSigned(digitCount))
             return false;
 
-        if (std::any_of(iterStr, iterStr + digitCount, [](CharType c) { return !isDigit(c); }))
+        if (std::any_of(itStr, itStr + digitCount, [](CharType c) { return !isDigit(c); }))
         return false;
 
-        result = zen::stringTo<int>(StringRef<CharType>(iterStr, iterStr + digitCount));
-        iterStr += digitCount;
+        result = zen::stringTo<int>(StringRef<const CharType>(itStr, itStr + digitCount));
+        itStr += digitCount;
         return true;
     };
 
-    for (; iterFmt != fmtLast; ++iterFmt)
+    for (; itFmt != fmtLast; ++itFmt)
     {
-        const CharType fmt = *iterFmt;
+        const CharType fmt = *itFmt;
 
         if (fmt == '%')
         {
-            ++iterFmt;
-            if (iterFmt == fmtLast)
+            ++itFmt;
+            if (itFmt == fmtLast)
                 return false;
 
-            switch (*iterFmt)
+            switch (*itFmt)
             {
                 case 'Y':
                     if (!extractNumber(comp.year, 4))
@@ -340,19 +339,19 @@ bool parseTime(const String& format, const String2& str, TimeComp& comp) //retur
         }
         else if (isWhiteSpace(fmt)) //single whitespace in format => skip 0..n whitespace chars
         {
-            while (iterStr != strLast && isWhiteSpace(*iterStr))
-                ++iterStr;
+            while (itStr != strLast && isWhiteSpace(*itStr))
+                ++itStr;
         }
         else
         {
-            if (iterStr == strLast || *iterStr != fmt)
+            if (itStr == strLast || *itStr != fmt)
                 return false;
-            ++iterStr;
+            ++itStr;
         }
     }
 
-    return iterStr == strLast;
+    return itStr == strLast;
 }
 }
 
-#endif //ZEN_TIME_HEADER_845709281432434
+#endif //TIME_H_8457092814324342453627

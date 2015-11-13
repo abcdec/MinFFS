@@ -7,6 +7,18 @@
 	<plural_definition>n == 1 ? 0 : 1</plural_definition>
 </header>
 
+<source>This FreeFileSync installer for donors has reached its installation limit. Download the regular version from the FreeFileSync homepage now?</source>
+<target>Das FreeFileSync Installationsprogramm für Spender hat sein Installationslimit erreicht. Jetzt die normale Version von der FreeFileSync Homepage herunterladen?</target>
+
+<source>Thanks for your donation and support!</source>
+<target>Danke für Ihre Spende und Unterstützung!</target>
+
+<source>%x is not a regular directory name.</source>
+<target>%x ist kein regulärer Verzeichnisname.</target>
+
+<source>If you ignore this error the folders are considered empty. Missing folders are created automatically when needed.</source>
+<target>Wird dieser Fehler ignoriert, werden die Ordner als leer angesehen. Fehlende Ordner werden bei Bedarf automatisch erstellt.</target>
+
 <source>Both sides have changed since last synchronization.</source>
 <target>Beide Seiten wurden seit der letzten Synchronisation verändert.</target>
 
@@ -108,9 +120,6 @@
 
 <source>Cannot find the following folders:</source>
 <target>Die folgenden Ordner wurden nicht gefunden:</target>
-
-<source>You can ignore this error to consider each folder as empty. The folders then will be created automatically during synchronization.</source>
-<target>Dieser Fehler kann ignoriert werden, um die Ordner als leer anzusehen und beim Synchronisieren automatisch zu erstellen.</target>
 
 <source>A folder input field is empty.</source>
 <target>Ein Ordnereingabefeld ist leer.</target>
@@ -255,9 +264,6 @@ Tatsächlich: %y bytes
 <source>Cannot find device %x.</source>
 <target>Das Gerät %x wurde nicht gefunden.</target>
 
-<source>Cannot determine free disk space for %x.</source>
-<target>Der freie Speicherplatz für %x konnte nicht ermittelt werden.</target>
-
 <source>Cannot create directory %x.</source>
 <target>Das Verzeichnis %x kann nicht erstellt werden.</target>
 
@@ -276,11 +282,14 @@ Tatsächlich: %y bytes
 <source>Cannot resolve symbolic link %x.</source>
 <target>Die symbolische Verknüpfung %x kann nicht aufgelöst werden.</target>
 
-<source>Unable to move %x to the recycle bin.</source>
-<target>%x kann nicht in den Papierkorb verschoben werden.</target>
-
 <source>Cannot open directory %x.</source>
 <target>Das Verzeichnis %x kann nicht geöffnet werden.</target>
+
+<source>Cannot determine free disk space for %x.</source>
+<target>Der freie Speicherplatz für %x konnte nicht ermittelt werden.</target>
+
+<source>Unable to move %x to the recycle bin.</source>
+<target>%x kann nicht in den Papierkorb verschoben werden.</target>
 
 <source>Incorrect command line:</source>
 <target>Ungültige Befehlszeile:</target>

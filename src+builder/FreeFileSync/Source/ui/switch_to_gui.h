@@ -4,11 +4,12 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef SWITCHTOGUI_H_132047815734845
-#define SWITCHTOGUI_H_132047815734845
+#ifndef SWITCH_TO_GUI_H_132047815734845
+#define SWITCH_TO_GUI_H_132047815734845
 
 #include "../lib/process_xml.h"
 #include "main_dlg.h" //in "application.cpp" we have this dependency anyway!
+
 
 namespace zen
 {
@@ -41,4 +42,4 @@ private:
 };
 }
 
-#endif //SWITCHTOGUI_H_132047815734845
+#endif //SWITCH_TO_GUI_H_132047815734845

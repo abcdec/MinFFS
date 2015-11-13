@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef PROGRESS_INDICATOR_H_INCLUDED_8037493452348
-#define PROGRESS_INDICATOR_H_INCLUDED_8037493452348
+#ifndef PROGRESS_INDICATOR_H_8037493452348
+#define PROGRESS_INDICATOR_H_8037493452348
 
 #include <functional>
 #include <zen/error_log.h>
@@ -88,4 +88,4 @@ private:
 };
 
 
-#endif //PROGRESS_INDICATOR_H_INCLUDED_8037493452348
+#endif //PROGRESS_INDICATOR_H_8037493452348

@@ -5,39 +5,35 @@
 // **************************************************************************
 
 #include "search.h"
-#include <zen/string_tools.h>
-
+#include <zen/zstring.h>
+#include <zen/perf.h>
 
 using namespace zen;
+
 
 namespace
 {
 template <bool respectCase>
-class ContainsMatch
+class MatchFound
 {
 public:
-    ContainsMatch(const wxString& textToFind) : textToFind_(textToFind) {}
-    bool operator()(const wxString& phrase) const { return contains(phrase, textToFind_); }
+    MatchFound(const std::wstring& textToFind) : textToFind_(textToFind) {}
+    bool operator()(const std::wstring& phrase) const { return contains(phrase, textToFind_); }
 
 private:
-    const wxString textToFind_;
+    const std::wstring textToFind_;
 };
 
 
 template <>
-class ContainsMatch<false>
+class MatchFound<false>
 {
 public:
-    ContainsMatch(const wxString& textToFind) : textToFind_(textToFind.Upper()) {}
-    bool operator()(wxString&& phrase) const
-    {
-        //wxWidgets::MakeUpper() is inefficient! But performance is not THAT important for this high-level search functionality
-        phrase.MakeUpper();
-        return contains(phrase, textToFind_);
-    }
+    MatchFound(const std::wstring& textToFind) : textToFind_(makeUpperCopy(textToFind)) {}
+    bool operator()(std::wstring&& phrase) const { return contains(makeUpperCopy(phrase), textToFind_); }
 
 private:
-    const wxString textToFind_;
+    const std::wstring textToFind_;
 };
 
 //###########################################################################################
@@ -54,11 +50,11 @@ ptrdiff_t findRow(const Grid& grid, //return -1 if no matching row found
         erase_if(colAttr, [](const Grid::ColumnAttribute& ca) { return !ca.visible_; });
         if (!colAttr.empty())
         {
-            const ContainsMatch<respectCase> containsMatch(searchString);
+            const MatchFound<respectCase> matchFound(copyStringTo<std::wstring>(searchString));
 
             for (size_t row = rowFirst; row < rowLast; ++row)
                 for (auto iterCol = colAttr.begin(); iterCol != colAttr.end(); ++iterCol)
-                    if (containsMatch(prov->getValue(row, iterCol->type_)))
+                    if (matchFound(prov->getValue(row, iterCol->type_)))
                         return row;
         }
     }
@@ -69,6 +65,8 @@ ptrdiff_t findRow(const Grid& grid, //return -1 if no matching row found
 
 std::pair<const Grid*, ptrdiff_t> zen::findGridMatch(const Grid& grid1, const Grid& grid2, const wxString& searchString, bool respectCase)
 {
+    //PERF_START
+
     const size_t rowCountL = grid1.getRowCount();
     const size_t rowCountR = grid2.getRowCount();
 

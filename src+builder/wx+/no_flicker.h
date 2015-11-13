@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef NO_FLICKER_HEADER_893421590321532
-#define NO_FLICKER_HEADER_893421590321532
+#ifndef NO_FLICKER_H_893421590321532
+#define NO_FLICKER_H_893421590321532
 
 #include <wx/textctrl.h>
 #include <wx/stattext.h>
@@ -40,4 +40,4 @@ void setText(wxStaticText& control, wxString newText, bool* additionalLayoutChan
 }
 }
 
-#endif //NO_FLICKER_HEADER_893421590321532
+#endif //NO_FLICKER_H_893421590321532

@@ -11,9 +11,8 @@
 
 namespace zen
 {
-bool acceptsFolderPathPhraseNative(const Zstring& folderPathPhrase); //noexcept
-
-std::unique_ptr<AbstractBaseFolder> createBaseFolderNative(const Zstring& folderPathPhrase); //noexcept
+bool acceptsItemPathPhraseNative (const Zstring& itemPathPhrase); //noexcept
+AbstractPath createItemPathNative(const Zstring& itemPathPhrase); //noexcept
 }
 
 #endif //FS_NATIVE_183247018532434563465

@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef SYNCHRONIZATION_H_INCLUDED
-#define SYNCHRONIZATION_H_INCLUDED
+#ifndef SYNCHRONIZATION_H_8913470815943295
+#define SYNCHRONIZATION_H_8913470815943295
 
 #include <zen/time.h>
 #include "file_hierarchy.h"
@@ -17,44 +17,48 @@ namespace zen
 {
 class SyncStatistics //this class counts *logical* operations, (create, update, delete + bytes), *not* disk accesses!
 {
-    //-> note the fundamental difference to counting disk accesses!
+    //-> note the fundamental difference compared to counting disk accesses!
 public:
-    SyncStatistics(const HierarchyObject&  hierObj);
     SyncStatistics(const FolderComparison& folderCmp);
-    SyncStatistics(const FilePair& fileObj);
+    SyncStatistics(const HierarchyObject& hierObj);
+    SyncStatistics(const FilePair& file);
 
-    int getCreate() const;
-    template <SelectedSide side> int getCreate() const;
+    template <SelectedSide side>
+    int createCount() const { return SelectParam<side>::ref(createLeft, createRight); }
+    int createCount() const { return createLeft + createRight; }
 
-    int getUpdate() const;
-    template <SelectedSide side> int getUpdate() const;
+    template <SelectedSide side>
+    int updateCount() const { return SelectParam<side>::ref(updateLeft, updateRight); }
+    int updateCount() const { return updateLeft + updateRight; }
 
-    int getDelete() const;
-    template <SelectedSide side> int getDelete() const;
+    template <SelectedSide side>
+    int deleteCount() const { return SelectParam<side>::ref(deleteLeft, deleteRight); }
+    int deleteCount() const { return deleteLeft + deleteRight; }
 
-    int getConflict() const { return static_cast<int>(conflictMsgs.size()); }
-
-    typedef std::vector<std::pair<Zstring, std::wstring>> ConflictTexts; // Pair(filepath/conflict text)
-    const ConflictTexts& getConflictMessages() const { return conflictMsgs; }
+    int conflictCount() const { return static_cast<int>(conflictMsgs.size()); }
 
     std::int64_t getDataToProcess() const { return dataToProcess; }
-    size_t       getRowCount() const { return rowsTotal; }
+    size_t       rowCount        () const { return rowsTotal; }
+
+    using ConflictInfo = std::pair<Zstring, std::wstring>; //pair(filePath/conflict message)
+    const std::vector<ConflictInfo>& getConflicts() const { return conflictMsgs; }
 
 private:
-    void init();
-
     void recurse(const HierarchyObject& hierObj);
 
-    void processFile(const FilePair& fileObj);
-    void processLink(const SymlinkPair& linkObj);
-    void processDir(const DirPair& dirObj);
+    void processFile(const FilePair& file);
+    void processLink(const SymlinkPair& link);
+    void processFolder(const FolderPair& folder);
 
-    int createLeft, createRight;
-    int updateLeft, updateRight;
-    int deleteLeft, deleteRight;
-    ConflictTexts conflictMsgs; //conflict texts to display as a warning message
-    std::int64_t dataToProcess;
-    size_t rowsTotal;
+    int createLeft  = 0;
+    int createRight = 0;
+    int updateLeft  = 0;
+    int updateRight = 0;
+    int deleteLeft  = 0;
+    int deleteRight = 0;
+    std::vector<ConflictInfo> conflictMsgs; //conflict texts to display as a warning message
+    std::int64_t dataToProcess = 0;
+    size_t rowsTotal = 0;
 };
 
 
@@ -91,71 +95,6 @@ void synchronize(const TimeComp& timeStamp,
                  const std::vector<FolderPairSyncCfg>& syncConfig, //CONTRACT: syncConfig and folderCmp correspond row-wise!
                  FolderComparison& folderCmp,                      //
                  ProcessCallback& callback);
-
-
-
-
-
-
-
-
-
-
-// -----------  implementation ----------------
-template <> inline
-int SyncStatistics::getCreate<LEFT_SIDE>() const
-{
-    return createLeft;
 }
 
-template <> inline
-int SyncStatistics::getCreate<RIGHT_SIDE>() const
-{
-    return createRight;
-}
-
-inline
-int SyncStatistics::getCreate() const
-{
-    return getCreate<LEFT_SIDE>() + getCreate<RIGHT_SIDE>();
-}
-
-template <> inline
-int SyncStatistics::getUpdate<LEFT_SIDE>() const
-{
-    return updateLeft;
-}
-
-template <> inline
-int SyncStatistics::getUpdate<RIGHT_SIDE>() const
-{
-    return updateRight;
-}
-
-inline
-int SyncStatistics::getUpdate() const
-{
-    return getUpdate<LEFT_SIDE>() + getUpdate<RIGHT_SIDE>();
-}
-
-
-template <> inline
-int SyncStatistics::getDelete<LEFT_SIDE>() const
-{
-    return deleteLeft;
-}
-
-template <> inline
-int SyncStatistics::getDelete<RIGHT_SIDE>() const
-{
-    return deleteRight;
-}
-
-inline
-int SyncStatistics::getDelete() const
-{
-    return getDelete<LEFT_SIDE>() + getDelete<RIGHT_SIDE>();
-}
-}
-
-#endif // SYNCHRONIZATION_H_INCLUDED
+#endif //SYNCHRONIZATION_H_8913470815943295

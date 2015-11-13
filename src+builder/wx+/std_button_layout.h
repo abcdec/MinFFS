@@ -4,12 +4,13 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef STD_BUTTON_ORDER_H_18347032147831732143214
-#define STD_BUTTON_ORDER_H_18347032147831732143214
+#ifndef STD_BUTTON_LAYOUT_H_183470321478317214
+#define STD_BUTTON_LAYOUT_H_183470321478317214
 
 #include <algorithm>
 #include <wx/sizer.h>
 #include <wx/button.h>
+
 
 namespace zen
 {
@@ -143,4 +144,4 @@ void setStandardButtonLayout(wxBoxSizer& sizer, const StdButtons& buttons)
 }
 }
 
-#endif //STD_BUTTON_ORDER_H_18347032147831732143214
+#endif //STD_BUTTON_LAYOUT_H_183470321478317214

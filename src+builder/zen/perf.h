@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef DEBUG_PERF_HEADER_83947184145342652456
-#define DEBUG_PERF_HEADER_83947184145342652456
+#ifndef PERF_H_83947184145342652456
+#define PERF_H_83947184145342652456
 
 #include "deprecate.h"
 #include "tick_count.h"
@@ -16,6 +16,7 @@
 #else
     #include <iostream>
 #endif
+
 
 //############# two macros for quick performance measurements ###############
 #define PERF_START zen::PerfTimer perfTest;
@@ -30,19 +31,14 @@ public:
     class TimerError {};
 
     ZEN_DEPRECATE
-    PerfTimer() : //throw TimerError
-        ticksPerSec_(ticksPerSec()),
-        resultShown(false),
-        startTime(getTicksNow()),
-        paused(false),
-        elapsedUntilPause(0)
+    PerfTimer() : startTime(getTicksNow()) //throw TimerError
     {
         //std::clock() - "counts CPU time in Linux GCC and wall time in VC++" - WTF!???
         if (ticksPerSec_ == 0)
             throw TimerError();
     }
 
-    ~PerfTimer() { if (!resultShown) try { showResult(); } catch (TimerError&) {} }
+    ~PerfTimer() { if (!resultShown) try { showResult(); } catch (TimerError&) { assert(false); } }
 
     void pause()
     {
@@ -102,12 +98,12 @@ private:
         return now;
     }
 
-    const std::int64_t ticksPerSec_;
-    bool resultShown;
+    const std::int64_t ticksPerSec_ = ticksPerSec(); //return 0 on error
+    bool resultShown = false;
     TickVal startTime;
-    bool paused;
-    int64_t elapsedUntilPause;
+    bool paused = false;
+    int64_t elapsedUntilPause = 0;
 };
 }
 
-#endif //DEBUG_PERF_HEADER_83947184145342652456
+#endif //PERF_H_83947184145342652456

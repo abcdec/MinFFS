@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef HELPPROVIDER_H_85930427583421563126
-#define HELPPROVIDER_H_85930427583421563126
+#ifndef HELP_PROVIDER_H_85930427583421563126
+#define HELP_PROVIDER_H_85930427583421563126
 
 #ifdef ZEN_WIN
     #include <zen/zstring.h>
@@ -126,4 +126,4 @@ void uninitializeHelp()
 }
 }
 
-#endif //HELPPROVIDER_H_85930427583421563126
+#endif //HELP_PROVIDER_H_85930427583421563126

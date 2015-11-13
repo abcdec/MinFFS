@@ -150,14 +150,11 @@ FileInput::FileInput(const Zstring& filepath) : //throw FileError, ErrorFileLock
 
     //------------------------------------------------------------------------------------------------------
 
-    ScopeGuard constructorGuard = zen::makeGuard([&] //destructor call would lead to member double clean-up!!!
-    {
-#ifdef ZEN_WIN
-        ::CloseHandle(fileHandle);
+#ifdef ZEN_WIN  //destructor call would lead to member double clean-up!!!
+    ZEN_ON_SCOPE_FAIL(::CloseHandle(fileHandle));
 #elif defined ZEN_LINUX || defined ZEN_MAC
-        ::close(fileHandle);
+    ZEN_ON_SCOPE_FAIL(::close(fileHandle));
 #endif
-    });
 
 #ifdef ZEN_LINUX //handle still un-owned => need constructor guard
     //optimize read-ahead on input file:
@@ -167,8 +164,6 @@ FileInput::FileInput(const Zstring& filepath) : //throw FileError, ErrorFileLock
 #elif defined ZEN_MAC
     //"dtruss" doesn't show use of "fcntl() F_RDAHEAD/F_RDADVISE" for "cp")
 #endif
-
-    constructorGuard.dismiss();
 }
 
 

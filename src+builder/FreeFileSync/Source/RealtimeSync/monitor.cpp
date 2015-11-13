@@ -72,7 +72,7 @@ WaitResult waitForChanges(const std::vector<Zstring>& folderPathPhrases, //throw
             auto ftDirExists = runAsync([=] { return zen::dirExists(folderPathFmt); });
             //we need to check dirExists(), not somethingExists(): it's not clear if DirWatcher detects a type clash (file instead of directory!)
             while (ftDirExists.wait_for(std::chrono::milliseconds(rts::UI_UPDATE_INTERVAL / 2)) != std::future_status::ready)
-                onRefreshGui(false); //may throw!
+                onRefreshGui(false /*readyForSync*/); //may throw!
             if (!ftDirExists.get())
                 return WaitResult(folderPathFmt);
 
@@ -113,7 +113,7 @@ WaitResult waitForChanges(const std::vector<Zstring>& folderPathPhrases, //throw
                     return WaitResult(folderPath);
             try
             {
-                std::vector<DirWatcher::Entry> changedItems = watcher.getChanges([&] { onRefreshGui(false); /*may throw!*/ }); //throw FileError
+                std::vector<DirWatcher::Entry> changedItems = watcher.getChanges([&] { onRefreshGui(false /*readyForSync*/); /*may throw!*/ }); //throw FileError
 
                 //remove to be ignored changes
                 erase_if(changedItems, [](const DirWatcher::Entry& e)
@@ -140,7 +140,7 @@ WaitResult waitForChanges(const std::vector<Zstring>& folderPathPhrases, //throw
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(rts::UI_UPDATE_INTERVAL / 2));
-        onRefreshGui(true); //throw ?: may start sync at this presumably idle time
+        onRefreshGui(true /*readyForSync*/); //throw ?: may start sync at this presumably idle time
     }
 }
 

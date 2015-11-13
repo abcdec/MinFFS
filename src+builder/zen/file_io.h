@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef FILEIO_89578342758342572345
-#define FILEIO_89578342758342572345
+#ifndef FILE_IO_H_89578342758342572345
+#define FILE_IO_H_89578342758342572345
 
 #include "file_error.h"
 
@@ -88,4 +88,4 @@ private:
 };
 }
 
-#endif //FILEIO_89578342758342572345
+#endif //FILE_IO_H_89578342758342572345

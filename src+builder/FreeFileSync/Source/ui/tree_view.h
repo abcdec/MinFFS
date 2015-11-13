@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef TREE_H_INCLUDED_841703190201835280256673425
-#define TREE_H_INCLUDED_841703190201835280256673425
+#ifndef TREE_VIEW_H_841703190201835280256673425
+#define TREE_VIEW_H_841703190201835280256673425
 
 #include <functional>
 #include <zen/optional.h>
@@ -79,16 +79,16 @@ public:
 
     struct DirNode : public Node
     {
-        DirNode(int percent, std::uint64_t bytes, int itemCount, unsigned int level, NodeStatus status, DirPair& dirObj) : Node(percent, bytes, itemCount, level, status), dirObj_(dirObj) {}
-        DirPair& dirObj_;
+        DirNode(int percent, std::uint64_t bytes, int itemCount, unsigned int level, NodeStatus status, FolderPair& folder) : Node(percent, bytes, itemCount, level, status), folder_(folder) {}
+        FolderPair& folder_;
     };
 
     struct RootNode : public Node
     {
-        RootNode(int percent, std::uint64_t bytes, int itemCount, NodeStatus status, BaseDirPair& baseDirObj, const std::wstring& displayName) :
-            Node(percent, bytes, itemCount, 0, status), baseDirObj_(baseDirObj), displayName_(displayName) {}
+        RootNode(int percent, std::uint64_t bytes, int itemCount, NodeStatus status, BaseFolderPair& baseFolder, const std::wstring& displayName) :
+            Node(percent, bytes, itemCount, 0, status), baseFolder_(baseFolder), displayName_(displayName) {}
 
-        BaseDirPair& baseDirObj_;
+        BaseFolderPair& baseFolder_;
         const std::wstring displayName_;
     };
 
@@ -131,13 +131,13 @@ private:
     struct DirNodeImpl : public Container
     {
         DirNodeImpl() : objId(nullptr) {}
-        FileSystemObject::ObjectId objId; //weak pointer to DirPair
+        FileSystemObject::ObjectId objId; //weak pointer to FolderPair
     };
 
     struct RootNodeImpl : public Container
     {
         RootNodeImpl() {}
-        std::shared_ptr<BaseDirPair> baseDirObj;
+        std::shared_ptr<BaseFolderPair> baseFolder;
         std::wstring displayName;
     };
 
@@ -177,7 +177,7 @@ private:
     /*             /|\
                     | (update...)
                     |                         */
-    std::vector<std::shared_ptr<BaseDirPair>> folderCmp; //full raw data
+    std::vector<std::shared_ptr<BaseFolderPair>> folderCmp; //full raw data
 
     ColumnTypeNavi sortColumn;
     bool sortAscending;
@@ -199,4 +199,4 @@ std::vector<ColumnAttributeNavi>   convertConfig(const std::vector<Grid::ColumnA
 }
 }
 
-#endif //TREE_H_INCLUDED_841703190201835280256673425
+#endif //TREE_VIEW_H_841703190201835280256673425

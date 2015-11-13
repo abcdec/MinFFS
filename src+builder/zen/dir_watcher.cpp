@@ -14,6 +14,7 @@
     #include "device_notify.h"
     #include "win.h" //includes "windows.h"
     #include "long_path_prefix.h"
+    #include "optional.h"
 
 #elif defined ZEN_LINUX
     #include <map>
@@ -119,9 +120,7 @@ public:
     void reportError(const std::wstring& msg, const std::wstring& description, DWORD errorCode) //throw()
     {
         std::lock_guard<std::mutex> dummy(lockAccess);
-
-        ErrorInfo newInfo = { copyStringTo<BasicWString>(msg), copyStringTo<BasicWString>(description), errorCode };
-        errorInfo = std::make_unique<ErrorInfo>(newInfo);
+        errorInfo = ErrorInfo({ copyStringTo<BasicWString>(msg), copyStringTo<BasicWString>(description), errorCode });
     }
 
 private:
@@ -136,7 +135,7 @@ private:
         BasicWString descr;
         DWORD errorCode;
     };
-    std::unique_ptr<ErrorInfo> errorInfo; //non-empty if errors occurred in thread
+    Opt<ErrorInfo> errorInfo; //non-empty if errors occurred in thread
 };
 
 
@@ -147,8 +146,7 @@ public:
     ReadChangesAsync(const Zstring& directory, //make sure to not leak-in thread-unsafe types!
                      const std::shared_ptr<SharedData>& shared) :
         shared_(shared),
-        dirpathPf(appendSeparator(directory)),
-        hDir(INVALID_HANDLE_VALUE)
+        dirpathPf(appendSeparator(directory))        
     {
         hDir = ::CreateFile(applyLongPathPrefix(dirpathPf).c_str(),                 //_In_      LPCTSTR lpFileName,
                             FILE_LIST_DIRECTORY,                                    //_In_      DWORD dwDesiredAccess,
@@ -218,7 +216,7 @@ public:
             }
 
             //async I/O is a resource that needs to be guarded since it will write to local variable "buffer"!
-            zen::ScopeGuard guardAio = zen::makeGuard([&]
+            auto guardAio = zen::makeGuard<ScopeGuardRunMode::ON_EXIT>([&]
             {
                 //Canceling Pending I/O Operations: http://msdn.microsoft.com/en-us/library/aa363789(v=vs.85).aspx
 #ifdef ZEN_WIN_VISTA_AND_LATER
@@ -265,7 +263,7 @@ private:
     std::shared_ptr<SharedData> shared_;
     //worker thread only:
     Zstring dirpathPf; //thread safe!
-    HANDLE hDir;
+    HANDLE hDir = INVALID_HANDLE_VALUE;
 };
 
 
@@ -277,11 +275,9 @@ public:
                         InterruptibleThread& worker) :
         notificationHandle(registerFolderRemovalNotification(hDir, //throw FileError
                                                              displayPath,
-                                                             [this]                 { this->onRequestRemoval (); },   //noexcept!
+                                                             [this]{ this->onRequestRemoval (); }, //noexcept!
     [this](bool successful) { this->onRemovalFinished(); })), //
-    worker_(worker),
-    removalRequested(false),
-    operationComplete(false) {}
+    worker_(worker) {}
 
     ~HandleVolumeRemoval()
     {
@@ -311,8 +307,8 @@ private:
 
     DeviceNotificationHandle* notificationHandle;
     InterruptibleThread& worker_;
-    bool removalRequested;
-    bool operationComplete;
+    bool removalRequested  = false;
+    bool operationComplete = false;
 };
 }
 
@@ -375,9 +371,7 @@ std::vector<DirWatcher::Entry> DirWatcher::getChanges(const std::function<void()
 #elif defined ZEN_LINUX
 struct DirWatcher::Pimpl
 {
-    Pimpl() : notifDescr() {}
-
-    int notifDescr;
+    int notifDescr = 0;
     std::map<int, Zstring> watchDescrs; //watch descriptor and (sub-)directory name (postfixed with separator) -> owned by "notifDescr"
 };
 
@@ -387,14 +381,14 @@ DirWatcher::DirWatcher(const Zstring& dirPath) : //throw FileError
     pimpl_(std::make_unique<Pimpl>())
 {
     //get all subdirectories
-    std::vector<Zstring> fullDirList { baseDirPath };
+    std::vector<Zstring> fullFolderList { baseDirPath };
     {
         std::function<void (const Zstring& path)> traverse;
 
-        traverse = [&traverse, &fullDirList](const Zstring& path)
+        traverse = [&traverse, &fullFolderList](const Zstring& path)
         {
             traverseFolder(path, nullptr,
-            [&](const DirInfo& di ) { fullDirList.push_back(di.fullPath); traverse(di.fullPath); },
+            [&](const DirInfo& di ) { fullFolderList.push_back(di.fullPath); traverse(di.fullPath); },
             nullptr, //don't traverse into symlinks (analog to windows build)
             [&](const std::wstring& errorMsg) { throw FileError(errorMsg); });
         };
@@ -407,7 +401,7 @@ DirWatcher::DirWatcher(const Zstring& dirPath) : //throw FileError
     if (pimpl_->notifDescr == -1)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(baseDirPath)), L"inotify_init");
 
-    zen::ScopeGuard guardDescr = zen::makeGuard([&] { ::close(pimpl_->notifDescr); });
+    ZEN_ON_SCOPE_FAIL( ::close(pimpl_->notifDescr); );
 
     //set non-blocking mode
     bool initSuccess = false;
@@ -420,7 +414,7 @@ DirWatcher::DirWatcher(const Zstring& dirPath) : //throw FileError
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(baseDirPath)), L"fcntl");
 
     //add watches
-    for (const Zstring& subDirPath : fullDirList)
+    for (const Zstring& subDirPath : fullFolderList)
     {
         int wd = ::inotify_add_watch(pimpl_->notifDescr, subDirPath.c_str(),
                                      IN_ONLYDIR     | //"Only watch pathname if it is a directory."
@@ -445,8 +439,6 @@ DirWatcher::DirWatcher(const Zstring& dirPath) : //throw FileError
 
         pimpl_->watchDescrs.emplace(wd, appendSeparator(subDirPath));
     }
-
-    guardDescr.dismiss();
 }
 
 
@@ -557,8 +549,7 @@ void eventCallback(ConstFSEventStreamRef streamRef,
 
 struct DirWatcher::Pimpl
 {
-    Pimpl() : eventStream() {}
-    FSEventStreamRef eventStream;
+	FSEventStreamRef eventStream = nullptr;
     std::vector<DirWatcher::Entry> changedFiles;
 };
 
@@ -583,6 +574,7 @@ DirWatcher::DirWatcher(const Zstring& dirPath) :
     FSEventStreamContext context = {};
     context.info = &pimpl_->changedFiles;
 
+    //can this fail?? not documented!
     pimpl_->eventStream = ::FSEventStreamCreate(nullptr,        //CFAllocatorRef allocator,
                                                 &eventCallback, //FSEventStreamCallback callback,
                                                 &context,       //FSEventStreamContext* context,
@@ -591,22 +583,16 @@ DirWatcher::DirWatcher(const Zstring& dirPath) :
                                                 0,              //CFTimeInterval latency, in seconds
                                                 kFSEventStreamCreateFlagWatchRoot |
                                                 kFSEventStreamCreateFlagFileEvents); //FSEventStreamCreateFlags flags
-    //can this fail?? not documented!
+    ZEN_ON_SCOPE_FAIL( ::FSEventStreamRelease(pimpl_->eventStream); );
 
-    zen::ScopeGuard guardCreate = zen::makeGuard([&] { ::FSEventStreamRelease(pimpl_->eventStream); });
-
+    //no-fail:
     ::FSEventStreamScheduleWithRunLoop(pimpl_->eventStream,     //FSEventStreamRef streamRef,
                                        ::CFRunLoopGetCurrent(), //CFRunLoopRef runLoop;  CFRunLoopGetCurrent(): failure not documented!
                                        kCFRunLoopDefaultMode);  //CFStringRef runLoopMode
-    //no-fail
-
-    zen::ScopeGuard guardRunloop = zen::makeGuard([&] { ::FSEventStreamInvalidate(pimpl_->eventStream); });
+    ZEN_ON_SCOPE_FAIL( ::FSEventStreamInvalidate(pimpl_->eventStream); );
 
     if (!::FSEventStreamStart(pimpl_->eventStream))
         throw FileError(replaceCpy(_("Cannot monitor directory %x."), L"%x", fmtPath(baseDirPath)), L"Function call failed: FSEventStreamStart"); //no error code documented!
-
-    guardCreate .dismiss();
-    guardRunloop.dismiss();
 }
 
 

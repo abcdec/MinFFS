@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef WX_TIMESPAN_CTRL_HEADER_INCLUDED
-#define WX_TIMESPAN_CTRL_HEADER_INCLUDED
+#ifndef TIMESPAN_H_254783756533456
+#define TIMESPAN_H_254783756533456
 
 #include <wx/textctrl.h>
 #include <wx/datetime.h>
@@ -31,7 +31,7 @@ class TimeSpanCtrl : public wxPanel
 {
 public:
     TimeSpanCtrl(wxWindow* parent, wxWindowID id,
-                 const wxString& value = wxEmptyString,
+                 const wxString& value = {},
                  const wxPoint& pos = wxDefaultPosition,
                  const wxSize& size = wxDefaultSize,
                  long style = 0,
@@ -42,7 +42,7 @@ public:
     {
         wxBoxSizer* bSizer27 = new wxBoxSizer( wxHORIZONTAL );
 
-        m_textCtrl = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_CENTRE );
+        m_textCtrl = new wxTextCtrl(this, wxID_ANY, wxString(), wxDefaultPosition, wxDefaultSize, wxTE_CENTRE );
         bSizer27->Add(m_textCtrl, 1, wxALIGN_CENTER_VERTICAL | wxEXPAND, 5 );
 
         m_spinBtn = new wxSpinButton(this, wxID_ANY, wxDefaultPosition, wxSize( 20, -1 ), wxSP_ARROW_KEYS );
@@ -163,4 +163,4 @@ private:
 }
 
 
-#endif //WX_TIMESPAN_CTRL_HEADER_INCLUDED
+#endif //TIMESPAN_H_254783756533456

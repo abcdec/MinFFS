@@ -66,13 +66,13 @@ void FolderHistoryBox::OnRequireHistoryUpdate(wxEvent& event)
 }
 
 //set value and update list are technically entangled: see potential bug description below
-void FolderHistoryBox::setValueAndUpdateList(const wxString& dirpath)
+void FolderHistoryBox::setValueAndUpdateList(const wxString& folderPathPhrase)
 {
     //populate selection list....
     std::vector<wxString> dirList;
     {
         //add some aliases to allow user changing to volume name and back, if possible
-        std::vector<Zstring> aliases = getDirectoryAliases(toZ(dirpath)); //may block when resolving [<volume name>]
+        std::vector<Zstring> aliases = getDirectoryAliases(toZ(folderPathPhrase)); //may block when resolving [<volume name>]
         std::transform(aliases.begin(), aliases.end(), std::back_inserter(dirList), [](const Zstring& str) { return utfCvrtTo<wxString>(str); });
     }
     if (sharedHistory_.get())
@@ -91,8 +91,8 @@ void FolderHistoryBox::setValueAndUpdateList(const wxString& dirpath)
     //attention: if the target value is not part of the dropdown list, SetValue() will look for a string that *starts with* this value:
     //e.g. if the dropdown list contains "222" SetValue("22") will erroneously set and select "222" instead, while "111" would be set correctly!
     // -> by design on Windows!
-    if (std::find(dirList.begin(), dirList.end(), dirpath) == dirList.end())
-        dirList.insert(dirList.begin(), dirpath);
+    if (std::find(dirList.begin(), dirList.end(), folderPathPhrase) == dirList.end())
+        dirList.insert(dirList.begin(), folderPathPhrase);
 
     //this->Clear(); -> NO! emits yet another wxEVT_COMMAND_TEXT_UPDATED!!!
     wxItemContainer::Clear(); //suffices to clear the selection items only!
@@ -100,7 +100,7 @@ void FolderHistoryBox::setValueAndUpdateList(const wxString& dirpath)
     for (const wxString& dir : dirList)
         this->Append(dir);
     //this->SetSelection(wxNOT_FOUND); //don't select anything
-    ChangeValue(dirpath);          //preserve main text!
+    ChangeValue(folderPathPhrase);          //preserve main text!
 }
 
 
@@ -116,7 +116,7 @@ void FolderHistoryBox::OnKeyEvent(wxKeyEvent& event)
         if (0 <= pos && pos < static_cast<int>(this->GetCount()) &&
             //what a mess...:
             (GetValue() != GetString(pos) || //avoid problems when a character shall be deleted instead of list item
-             GetValue() == wxEmptyString)) //exception: always allow removing empty entry
+             GetValue().empty())) //exception: always allow removing empty entry
         {
             //save old (selected) value: deletion seems to have influence on this
             const wxString currentVal = this->GetValue();

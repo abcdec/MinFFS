@@ -52,8 +52,8 @@
 			<param name="Local" value="html\schedule-a-batch-job.html">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="Synchronize with FTP">
-			<param name="Local" value="html\synchronize-with-ftp.html">
+			<param name="Name" value="Synchronize with SFTP">
+			<param name="Local" value="html\synchronize-with-sftp.html">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
 			<param name="Name" value="Tips and Tricks">

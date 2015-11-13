@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef PARALLEL_SCAN_H_INCLUDED
-#define PARALLEL_SCAN_H_INCLUDED
+#ifndef PARALLEL_SCAN_H_924588904275284572857
+#define PARALLEL_SCAN_H_924588904275284572857
 
 #include <map>
 #include <set>
@@ -18,17 +18,18 @@ namespace zen
 {
 struct DirectoryKey
 {
-    DirectoryKey(const ABF& baseFolder,
+    DirectoryKey(const AbstractPath& folderPath,
                  const HardFilter::FilterRef& filter,
                  SymLinkHandling handleSymlinks) :
-        baseFolder_(&baseFolder),
+        folderPath_(folderPath),
         filter_(filter),
         handleSymlinks_(handleSymlinks) {}
 
-    const ABF* baseFolder_; //always bound!
+    const AbstractPath folderPath_; //always bound!
     HardFilter::FilterRef filter_; //filter interface: always bound by design!
     SymLinkHandling handleSymlinks_;
 };
+
 
 inline
 bool operator<(const DirectoryKey& lhs, const DirectoryKey& rhs)
@@ -36,9 +37,9 @@ bool operator<(const DirectoryKey& lhs, const DirectoryKey& rhs)
     if (lhs.handleSymlinks_ != rhs.handleSymlinks_)
         return lhs.handleSymlinks_ < rhs.handleSymlinks_;
 
-    if (ABF::LessItemPath()(lhs.baseFolder_, rhs.baseFolder_))
+    if (AFS::LessAbstractPath()(lhs.folderPath_, rhs.folderPath_))
         return true;
-    if (ABF::LessItemPath()(rhs.baseFolder_, lhs.baseFolder_))
+    if (AFS::LessAbstractPath()(rhs.folderPath_, lhs.folderPath_))
         return false;
 
     return *lhs.filter_ < *rhs.filter_;
@@ -47,18 +48,17 @@ bool operator<(const DirectoryKey& lhs, const DirectoryKey& rhs)
 
 struct DirectoryValue
 {
-    DirContainer dirCont;
+    FolderContainer folderCont;
     //relative names (or empty string for root) for directories that could not be read (completely), e.g. access denied, or temporal network drop
-    std::map<Zstring, std::wstring, LessFilePath> failedDirReads; //with corresponding error message
+    std::map<Zstring, std::wstring, LessFilePath> failedFolderReads; //with corresponding error message
 
     //relative names (never empty) for failure to read single file/dir/symlink with corresponding error message
     std::map<Zstring, std::wstring, LessFilePath> failedItemReads;
 };
 
 
-class FillBufferCallback
+struct FillBufferCallback
 {
-public:
     virtual ~FillBufferCallback() {}
 
     enum HandleError
@@ -78,4 +78,4 @@ void fillBuffer(const std::set<DirectoryKey>& keysToRead, //in
                 size_t updateIntervalMs); //unit: [ms]
 }
 
-#endif // PARALLEL_SCAN_H_INCLUDED
+#endif //PARALLEL_SCAN_H_924588904275284572857

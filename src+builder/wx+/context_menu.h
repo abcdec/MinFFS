@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef CONTEXT_HEADER_18047302153418174632141234
-#define CONTEXT_HEADER_18047302153418174632141234
+#ifndef CONTEXT_MENU_H_18047302153418174632141234
+#define CONTEXT_MENU_H_18047302153418174632141234
 
 #include <map>
 #include <vector>
@@ -73,8 +73,8 @@ public:
     void popup(wxWindow& wnd) //show popup menu + process lambdas
     {
         //eventually all events from submenu items will be received by this menu
-        for (auto iter = commandList.begin(); iter != commandList.end(); ++iter)
-            menu->Connect(iter->first, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(ContextMenu::onSelection), new GenericCommand(iter->second) /*pass ownership*/, this);
+        for (const auto& item : commandList)
+            menu->Connect(item.first, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(ContextMenu::onSelection), new GenericCommand(item.second) /*pass ownership*/, this);
 
         wnd.PopupMenu(menu.get());
         wxTheApp->ProcessPendingEvents(); //make sure lambdas are evaluated before going out of scope;
@@ -99,4 +99,4 @@ private:
 };
 }
 
-#endif //CONTEXT_HEADER_18047302153418174632141234
+#endif //CONTEXT_MENU_H_18047302153418174632141234

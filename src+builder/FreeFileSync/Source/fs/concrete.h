@@ -11,7 +11,7 @@
 
 namespace zen
 {
-std::unique_ptr<AbstractBaseFolder> createAbstractBaseFolder(const Zstring& folderPathPhrase); //noexcept
+AbstractPath createAbstractPath(const Zstring& itemPathPhrase); //noexcept
 }
 
 #endif //FS_CONCRETE_348787329573243

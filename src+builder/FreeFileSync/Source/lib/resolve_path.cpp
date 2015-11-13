@@ -6,7 +6,6 @@
 #include <zen/utf.h>
 #include <zen/optional.h>
 #include <zen/scope_guard.h>
-#include <wx/utils.h> //wxGetEnv
 
 #ifdef ZEN_WIN
     #include <zen/long_path_prefix.h>
@@ -28,8 +27,64 @@ using namespace zen;
 
 namespace
 {
-Zstring resolveRelativePath(const Zstring& relativePath) //note: ::GetFullPathName() is documented to be NOT thread-safe!
+#ifndef NDEBUG
+    const std::thread::id mainThreadId = std::this_thread::get_id();
+#endif
+
+
+Opt<Zstring> getEnvironmentVar(const Zstring& name)
 {
+    assert(std::this_thread::get_id() == mainThreadId); //getenv() is not thread-safe!
+
+#ifdef ZEN_WIN
+    const DWORD bufferSize = 32767; //MSDN: "maximum buffer size"
+    std::vector<wchar_t> buffer(bufferSize);
+
+    ::SetLastError(ERROR_SUCCESS); //GetEnvironmentVariable() does not touch global error code when successfully returning variable of zero length!
+    const DWORD rv = ::GetEnvironmentVariable(name.c_str(), //_In_opt_  LPCTSTR lpName,
+                                              &buffer[0],   //_Out_opt_ LPTSTR  lpBuffer,
+                                              bufferSize);  //_In_      DWORD   nSize
+    if (rv == 0)
+    {
+        const DWORD ec = ::GetLastError();
+
+        if (ec == ERROR_SUCCESS) //variable exists but is empty
+            return Zstring();
+
+        assert(ec == ERROR_ENVVAR_NOT_FOUND);
+        return NoValue();
+    }
+    else if (rv >= bufferSize)
+    {
+        assert(false);
+        return NoValue();
+    }
+    Zstring value(&buffer[0], rv);
+
+#elif defined ZEN_LINUX || defined ZEN_MAC
+    const char* buffer = ::getenv(name.c_str()); //no extended error reporting
+    if (!buffer)
+        return NoValue();
+    Zstring value(buffer);
+#endif
+
+    //some postprocessing:
+    trim(value); //remove leading, trailing blanks
+
+    //remove leading, trailing double-quotes
+    if (startsWith(value, Zstr("\"")) &&
+        endsWith  (value, Zstr("\"")) &&
+        value.length() >= 2)
+        value = Zstring(value.c_str() + 1, value.length() - 2);
+
+    return value;
+}
+
+
+Zstring resolveRelativePath(const Zstring& relativePath)
+{
+    assert(std::this_thread::get_id() == mainThreadId); //GetFullPathName() is documented to NOT be thread-safe!
+
 #ifdef ZEN_WIN
     //- don't use long path prefix here! does not work with relative paths "." and ".."
     //- function also replaces "/" characters by "\"
@@ -60,14 +115,14 @@ Zstring resolveRelativePath(const Zstring& relativePath) //note: ::GetFullPathNa
         */
         if (startsWith(relativePath, "~/") || relativePath == "~")
         {
-            const char* homeDir = ::getenv("HOME");
+            Opt<Zstring> homeDir = getEnvironmentVar("HOME");
             if (!homeDir)
                 return relativePath; //error! no further processing!
 
             if (startsWith(relativePath, "~/"))
-                return appendSeparator(homeDir) + afterFirst(relativePath, '/', IF_MISSING_RETURN_NONE);
+                return appendSeparator(*homeDir) + afterFirst(relativePath, '/', IF_MISSING_RETURN_NONE);
             else if (relativePath == "~")
-                return homeDir;
+                return *homeDir;
         }
 
         //we cannot use ::realpath() since it resolves *existing* relative paths only!
@@ -205,30 +260,9 @@ private:
 #endif
 
 
-Opt<Zstring> getEnvironmentVar(const Zstring& envName) //return null if not found
-{
-    wxString value;
-    if (!wxGetEnv(utfCvrtTo<wxString>(envName), &value))
-        return NoValue();
-
-    //some postprocessing:
-    trim(value); //remove leading, trailing blanks
-
-    //remove leading, trailing double-quotes
-    if (startsWith(value, L"\"") &&
-        endsWith  (value, L"\"") &&
-        value.length() >= 2)
-        value = wxString(value.c_str() + 1, value.length() - 2);
-
-    return utfCvrtTo<Zstring>(value);
-}
-
-
 Opt<Zstring> resolveMacro(const Zstring& macro, //macro without %-characters
                           const std::vector<std::pair<Zstring, Zstring>>& ext) //return nullptr if not resolved
 {
-    auto equalNoCase = [](const Zstring& lhs, const Zstring& rhs) { return utfCvrtTo<wxString>(lhs).CmpNoCase(utfCvrtTo<wxString>(rhs)) == 0; };
-
     //there exist environment variables named %TIME%, %DATE% so check for our internal macros first!
     if (equalNoCase(macro, Zstr("time")))
         return formatTime<Zstring>(Zstr("%H%M%S"));
@@ -239,24 +273,24 @@ Opt<Zstring> resolveMacro(const Zstring& macro, //macro without %-characters
     if (equalNoCase(macro, Zstr("timestamp")))
         return formatTime<Zstring>(Zstr("%Y-%m-%d %H%M%S")); //e.g. "2012-05-15 131513"
 
-    Zstring cand;
-    auto processPhrase = [&](const Zchar* phrase, const Zchar* format) -> bool
+    Zstring timeStr;
+    auto resolveTimePhrase = [&](const Zchar* phrase, const Zchar* format) -> bool
     {
         if (!equalNoCase(macro, phrase))
             return false;
 
-        cand = formatTime<Zstring>(format);
+        timeStr = formatTime<Zstring>(format);
         return true;
     };
 
-    if (processPhrase(Zstr("weekday"), Zstr("%A"))) return cand;
-    if (processPhrase(Zstr("day"    ), Zstr("%d"))) return cand;
-    if (processPhrase(Zstr("month"  ), Zstr("%m"))) return cand;
-    if (processPhrase(Zstr("week"   ), Zstr("%U"))) return cand;
-    if (processPhrase(Zstr("year"   ), Zstr("%Y"))) return cand;
-    if (processPhrase(Zstr("hour"   ), Zstr("%H"))) return cand;
-    if (processPhrase(Zstr("min"    ), Zstr("%M"))) return cand;
-    if (processPhrase(Zstr("sec"    ), Zstr("%S"))) return cand;
+    if (resolveTimePhrase(Zstr("weekday"), Zstr("%A"))) return timeStr;
+    if (resolveTimePhrase(Zstr("day"    ), Zstr("%d"))) return timeStr;
+    if (resolveTimePhrase(Zstr("month"  ), Zstr("%m"))) return timeStr;
+    if (resolveTimePhrase(Zstr("week"   ), Zstr("%U"))) return timeStr;
+    if (resolveTimePhrase(Zstr("year"   ), Zstr("%Y"))) return timeStr;
+    if (resolveTimePhrase(Zstr("hour"   ), Zstr("%H"))) return timeStr;
+    if (resolveTimePhrase(Zstr("min"    ), Zstr("%M"))) return timeStr;
+    if (resolveTimePhrase(Zstr("sec"    ), Zstr("%S"))) return timeStr;
 
     //check domain-specific extensions
     {
@@ -267,7 +301,7 @@ Opt<Zstring> resolveMacro(const Zstring& macro, //macro without %-characters
 
     //try to resolve as environment variable
     if (Opt<Zstring> value = getEnvironmentVar(macro))
-        return value;
+        return *value;
 
 #ifdef ZEN_WIN
     //try to resolve as CSIDL value
@@ -333,11 +367,11 @@ Opt<Zstring> getPathByVolumenName(const Zstring& volumeName) //return no value o
         {
             const Zstring path = it;
 
-            firstMatch.addJob([path, volumeName]() -> std::unique_ptr<Zstring>
+            firstMatch.addJob([path, volumeName]() -> Opt<Zstring>
             {
                 UINT type = ::GetDriveType(appendSeparator(path).c_str()); //non-blocking call!
                 if (type == DRIVE_REMOTE || type == DRIVE_CDROM)
-                    return nullptr;
+                    return NoValue();
 
                 //next call seriously blocks for non-existing network drives!
                 std::vector<wchar_t> volName(MAX_PATH + 1); //docu says so
@@ -350,9 +384,9 @@ Opt<Zstring> getPathByVolumenName(const Zstring& volumeName) //return no value o
                 nullptr,     //__out_opt  LPDWORD lpFileSystemFlags,
                 nullptr,     //__out      LPTSTR  lpFileSystemNameBuffer,
                 0))          //__in       DWORD nFileSystemNameSize
-                    if (EqualFilePath()(volumeName, &volName[0]))
-                        return std::make_unique<Zstring>(path);
-                return nullptr;
+                    if (equalFilePath(volumeName, &volName[0]))
+                        return path;
+                return NoValue();
             });
         }
         if (auto result = firstMatch.get()) //blocks until ready
@@ -363,7 +397,7 @@ Opt<Zstring> getPathByVolumenName(const Zstring& volumeName) //return no value o
 }
 
 
-//networks and cdrom excluded - this should not block
+//networks and cdrom excluded - may still block while HDD is spinning up
 Zstring getVolumeName(const Zstring& volumePath) //return empty string on error
 {
     UINT rv = ::GetDriveType(appendSeparator(volumePath).c_str()); //non-blocking call!
@@ -530,7 +564,7 @@ Zstring zen::getResolvedFilePath(const Zstring& pathPhrase) //noexcept
 
     //remove leading/trailing whitespace before allowing misinterpretation in applyLongPathPrefix()
     trim(path, true, false);
-    while (endsWith(path, Zstr(' '))) //don't remove all whitespace from right, e.g. 0xa0 may be used as part of dir name
+    while (endsWith(path, Zstr(' '))) //don't remove any whitespace from right, e.g. 0xa0 may be used as part of folder name
         path.resize(path.size() - 1);
 
 #ifdef ZEN_WIN
@@ -544,10 +578,10 @@ Zstring zen::getResolvedFilePath(const Zstring& pathPhrase) //noexcept
     /*
     need to resolve relative paths:
     WINDOWS:
-     - \\?\-prefix which needs absolute names
+     - \\?\-prefix requires absolute names
      - Volume Shadow Copy: volume name needs to be part of each file path
      - file icon buffer (at least for extensions that are actually read from disk, like "exe")
-     - ::SHFileOperation(): Using relative path names is not thread safe
+     - Use of relative path names is not thread safe! (e.g. SHFileOperation)
     WINDOWS/LINUX:
      - detection of dependent directories, e.g. "\" and "C:\test"
      */

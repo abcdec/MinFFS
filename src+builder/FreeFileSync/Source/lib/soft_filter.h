@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef SOFT_FILTER_H_INCLUDED
-#define SOFT_FILTER_H_INCLUDED
+#ifndef SOFT_FILTER_H_810457108534657
+#define SOFT_FILTER_H_810457108534657
 
 #include <algorithm>
 #include <limits>
@@ -108,8 +108,8 @@ bool SoftFilter::isNull() const //filter is equivalent to NullFilter, but may be
     return timeFrom_ == std::numeric_limits<std::int64_t>::min() &&
            sizeMin_  == 0U &&
            sizeMax_  == std::numeric_limits<std::uint64_t>::max() &&
-           matchesFolder_ == true;;
+           matchesFolder_ == true;
 }
 }
 
-#endif // SOFT_FILTER_H_INCLUDED
+#endif //SOFT_FILTER_H_810457108534657

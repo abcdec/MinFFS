@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef RTS_MAIN_DLG_H_2384790842252445
-#define RTS_MAIN_DLG_H_2384790842252445
+#ifndef MAIN_DLG_H_2384790842252445
+#define MAIN_DLG_H_2384790842252445
 
 #include "gui_generated.h"
 #include <vector>
@@ -15,6 +15,7 @@
 #include <wx+/file_drop.h>
 #include <wx/timer.h>
 #include "folder_selector2.h"
+
 
 namespace xmlAccess
 {
@@ -67,4 +68,4 @@ private:
     zen::AsyncGuiQueue guiQueue; //schedule and run long-running tasks asynchronously, but process results on GUI queue
 };
 
-#endif //RTS_MAIN_DLG_H_2384790842252445
+#endif //MAIN_DLG_H_2384790842252445

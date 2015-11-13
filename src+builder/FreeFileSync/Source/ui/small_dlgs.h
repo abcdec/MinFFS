@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef SMALLDIALOGS_H_8321790875018750245
-#define SMALLDIALOGS_H_8321790875018750245
+#ifndef SMALL_DLGS_H_8321790875018750245
+#define SMALL_DLGS_H_8321790875018750245
 
 #include <wx/window.h>
 #include "../lib/process_xml.h"
@@ -59,4 +59,4 @@ ReturnSmallDlg::ButtonPressed showSelectTimespanDlg(wxWindow* parent, std::int64
 #endif
 }
 
-#endif //SMALLDIALOGS_H_8321790875018750245
+#endif //SMALL_DLGS_H_8321790875018750245

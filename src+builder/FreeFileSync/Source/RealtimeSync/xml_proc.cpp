@@ -103,7 +103,7 @@ xmlAccess::XmlRealConfig convertBatchToReal(const xmlAccess::XmlBatchConfig& bat
 
     xmlAccess::XmlRealConfig output;
     output.directories.assign(uniqueFolders.begin(), uniqueFolders.end());
-    output.commandline = Zstr("\"") + zen::getFreeFileSyncLauncher() + Zstr("\" \"") + batchFilePath + Zstr("\"");
+    output.commandline = Zstr("\"") + zen::getFreeFileSyncLauncherPath() + Zstr("\" \"") + batchFilePath + Zstr("\"");
     return output;
 }
 }

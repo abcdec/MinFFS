@@ -1,5 +1,11 @@
-#ifndef CMP_FILETIME_H_INCLUDED
-#define CMP_FILETIME_H_INCLUDED
+// **************************************************************************
+// * This file is part of the FreeFileSync project. It is distributed under *
+// * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
+// * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
+// **************************************************************************
+
+#ifndef CMP_FILETIME_H_032180451675845
+#define CMP_FILETIME_H_032180451675845
 
 #include <ctime>
 #include <algorithm>
@@ -75,4 +81,4 @@ TimeResult compareFileTime(std::int64_t lhs, std::int64_t rhs, int tolerance, un
 }
 }
 
-#endif // CMP_FILETIME_H_INCLUDED
+#endif //CMP_FILETIME_H_032180451675845

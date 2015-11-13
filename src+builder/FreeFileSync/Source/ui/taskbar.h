@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef TASKBARPROGRESS_H_INCLUDED
-#define TASKBARPROGRESS_H_INCLUDED
+#ifndef TASKBAR_H_98170845709124456
+#define TASKBAR_H_98170845709124456
 
 #include <memory>
 #include <wx/frame.h>
@@ -48,4 +48,4 @@ private:
 
 }
 
-#endif // TASKBARPROGRESS_H_INCLUDED
+#endif //TASKBAR_H_98170845709124456

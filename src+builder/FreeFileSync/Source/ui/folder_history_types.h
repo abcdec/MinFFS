@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef FOLDER_HIST_TYPES_32481457137432143214
-#define FOLDER_HIST_TYPES_32481457137432143214
+#ifndef FOLDER_HISTORY_TYPES_H_32481457137432143214
+#define FOLDER_HISTORY_TYPES_H_32481457137432143214
 
 #include <zen/zstring.h>
 
@@ -21,4 +21,4 @@ struct ConfigHistoryItem
 };
 }
 
-#endif //FOLDER_HIST_TYPES_32481457137432143214
+#endif //FOLDER_HISTORY_TYPES_H_32481457137432143214

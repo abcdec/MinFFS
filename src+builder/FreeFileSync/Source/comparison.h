@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef COMPARISON_H_INCLUDED
-#define COMPARISON_H_INCLUDED
+#ifndef COMPARISON_H_8032178534545426
+#define COMPARISON_H_8032178534545426
 
 #include "file_hierarchy.h"
 #include "lib/process_xml.h"
@@ -60,4 +60,4 @@ FolderComparison compare(xmlAccess::OptionalDialogs& warnings,
                          ProcessCallback& callback);
 }
 
-#endif // COMPARISON_H_INCLUDED
+#endif //COMPARISON_H_8032178534545426

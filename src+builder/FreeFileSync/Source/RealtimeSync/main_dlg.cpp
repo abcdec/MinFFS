@@ -239,7 +239,7 @@ void MainDialog::OnConfigSave(wxCommandEvent& event)
         defaultFileName = beforeLast(defaultFileName, Zstr("."), IF_MISSING_RETURN_NONE) + Zstr(".ffs_real");
 
     wxFileDialog filePicker(this,
-                            wxEmptyString,
+                            wxString(),
                             //OS X really needs dir/file separated like this:
                             utfCvrtTo<wxString>(beforeLast(defaultFileName, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)), //default dir
                             utfCvrtTo<wxString>(afterLast (defaultFileName, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)), //default file
@@ -306,9 +306,9 @@ void MainDialog::setLastUsedConfig(const Zstring& filepath)
 void MainDialog::OnConfigLoad(wxCommandEvent& event)
 {
     wxFileDialog filePicker(this,
-                            wxEmptyString,
+                            wxString(),
                             utfCvrtTo<wxString>(beforeLast(currentConfigFileName, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)), //default dir
-                            wxEmptyString,
+                            wxString(),
                             wxString(L"RealtimeSync (*.ffs_real; *.ffs_batch)|*.ffs_real;*.ffs_batch") + L"|" +_("All files") + L" (*.*)|*",
                             wxFD_OPEN);
     if (filePicker.ShowModal() == wxID_OK)

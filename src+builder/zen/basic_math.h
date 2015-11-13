@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef BASIC_MATH_HEADER_34726398432
-#define BASIC_MATH_HEADER_34726398432
+#ifndef BASIC_MATH_H_3472639843265675
+#define BASIC_MATH_H_3472639843265675
 
 #include <algorithm>
 #include <iterator>
@@ -13,6 +13,7 @@
 #include <cmath>
 #include <functional>
 #include <cassert>
+
 
 namespace numeric
 {
@@ -26,10 +27,10 @@ template <class T>
 int sign(T value); //returns -1/0/1
 
 template <class T>
-const T& min(const T& a, const T& b, const T& c);
+T min(T a, T b, T c);
 
 template <class T>
-const T& max(const T& a, const T& b, const T& c);
+T max(T a, T b, T c);
 
 template <class T>
 void clamp(T& val, const T& minVal, const T& maxVal); //make sure minVal <= val && val <= maxVal
@@ -114,14 +115,14 @@ int sign(T value) //returns -1/0/1
 
 
 template <class T> inline
-const T& min(const T& a, const T& b, const T& c)
+T min(T a, T b, T c) //don't follow std::min's "const T&(const T&, const T&)" API
 {
     return std::min(std::min(a, b), c);
 }
 
 
 template <class T> inline
-const T& max(const T& a, const T& b, const T& c)
+T max(T a, T b, T c)
 {
     return std::max(std::max(a, b), c);
 }
@@ -396,4 +397,4 @@ double norm2(InputIterator first, InputIterator last)
 }
 }
 
-#endif //BASIC_MATH_HEADER_34726398432
+#endif //BASIC_MATH_H_3472639843265675

@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef BINARY_H_INCLUDED_3941281398513241134
-#define BINARY_H_INCLUDED_3941281398513241134
+#ifndef BINARY_H_3941281398513241134
+#define BINARY_H_3941281398513241134
 
 #include <functional>
 #include <zen/file_error.h>
@@ -14,9 +14,9 @@
 
 namespace zen
 {
-bool filesHaveSameContent(const AbstractPathRef& filePath1, //throw FileError
-                          const AbstractPathRef& filePath2,
+bool filesHaveSameContent(const AbstractPath& filePath1, //throw FileError
+                          const AbstractPath& filePath2,
                           const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus); //may be nullptr
 }
 
-#endif //BINARY_H_INCLUDED_3941281398513241134
+#endif //BINARY_H_3941281398513241134

@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef TRAYICON_H_84217830427534285
-#define TRAYICON_H_84217830427534285
+#ifndef TRAY_ICON_H_84217830427534285
+#define TRAY_ICON_H_84217830427534285
 
 #include <functional>
 #include <wx/image.h>
@@ -42,4 +42,4 @@ private:
     wxImage logo;
 };
 
-#endif //TRAYICON_H_84217830427534285
+#endif //TRAY_ICON_H_84217830427534285

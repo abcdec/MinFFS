@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef WX_CHOICE_ENUM_H_INCLUDED
-#define WX_CHOICE_ENUM_H_INCLUDED
+#ifndef CHOICE_ENUM_H_132413545345687
+#define CHOICE_ENUM_H_132413545345687
 
 #include <vector>
 #include <wx/choice.h>
@@ -39,7 +39,7 @@ namespace zen
 template <class Enum>
 struct EnumDescrList
 {
-    EnumDescrList& add(Enum value, const wxString& text, const wxString& tooltip = wxEmptyString)
+    EnumDescrList& add(Enum value, const wxString& text, const wxString& tooltip = {})
     {
         descrList.emplace_back(value, std::make_pair(text, tooltip));
         return *this;
@@ -112,4 +112,4 @@ template <class Enum> void updateTooltipEnumVal(const EnumDescrList<Enum>& mappi
 }
 
 
-#endif //WX_CHOICE_ENUM_H_INCLUDED
+#endif //CHOICE_ENUM_H_132413545345687

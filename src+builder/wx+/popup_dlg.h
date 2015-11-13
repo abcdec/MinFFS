@@ -4,11 +4,12 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef MESSAGEPOPUP_H_820780154723456
-#define MESSAGEPOPUP_H_820780154723456
+#ifndef POPUP_DLG_H_820780154723456
+#define POPUP_DLG_H_820780154723456
 
 #include <wx/window.h>
 #include <wx/string.h>
+
 
 namespace zen
 {
@@ -88,4 +89,4 @@ private:
 };
 }
 
-#endif //MESSAGEPOPUP_H_820780154723456
+#endif //POPUP_DLG_H_820780154723456

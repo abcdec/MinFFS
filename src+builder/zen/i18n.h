@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef I18_N_HEADER_3843489325045
-#define I18_N_HEADER_3843489325045
+#ifndef I18_N_H_3843489325044253425456
+#define I18_N_H_3843489325044253425456
 
 #include <string>
 #include <memory>
@@ -28,18 +28,24 @@
 
 namespace zen
 {
-//implement handler to enable program wide localizations: implement THREAD-SAFE ACCESS!
+//implement handler to enable program wide localizations:
 struct TranslationHandler
 {
+    //THREAD-SAFETY: "const" member must model thread-safe access!
+    TranslationHandler() {}
     virtual ~TranslationHandler() {}
 
     //C++11: std::wstring should be thread-safe like an int
-    virtual std::wstring translate(const std::wstring& text) = 0; //simple translation
-    virtual std::wstring translate(const std::wstring& singular, const std::wstring& plural, std::int64_t n) = 0;
+    virtual std::wstring translate(const std::wstring& text) const = 0; //simple translation
+    virtual std::wstring translate(const std::wstring& singular, const std::wstring& plural, std::int64_t n) const = 0;
+
+private:
+    TranslationHandler           (const TranslationHandler&) = delete;
+    TranslationHandler& operator=(const TranslationHandler&) = delete;
 };
 
-void setTranslator(std::unique_ptr<TranslationHandler>&& newHandler = nullptr); //take ownership
-TranslationHandler* getTranslator();
+void setTranslator(std::unique_ptr<const TranslationHandler>&& newHandler = nullptr); //take ownership
+const TranslationHandler* getTranslator();
 
 
 
@@ -59,11 +65,12 @@ namespace implementation
 inline
 std::wstring translate(const std::wstring& text)
 {
-    if (TranslationHandler* t = getTranslator())
+    if (const TranslationHandler* t = getTranslator())
         return t->translate(text);
 
     return text;
 }
+
 
 //translate plural forms: "%x day" "%x days"
 //returns "1 day" if n == 1; "123 days" if n == 123 for english language
@@ -72,7 +79,7 @@ std::wstring translate(const std::wstring& singular, const std::wstring& plural,
 {
     assert(contains(plural, L"%x"));
 
-    if (TranslationHandler* t = getTranslator())
+    if (const TranslationHandler* t = getTranslator())
     {
         std::wstring translation = t->translate(singular, plural, n);
         assert(!contains(translation, L"%x"));
@@ -82,6 +89,7 @@ std::wstring translate(const std::wstring& singular, const std::wstring& plural,
     return replaceCpy(std::abs(n) == 1 ? singular : plural, L"%x", toGuiString(n));
 }
 
+
 template <class T> inline
 std::wstring translate(const std::wstring& singular, const std::wstring& plural, T n)
 {
@@ -89,19 +97,22 @@ std::wstring translate(const std::wstring& singular, const std::wstring& plural,
     return translate(singular, plural, static_cast<std::int64_t>(n));
 }
 
+
 inline
-std::unique_ptr<TranslationHandler>& globalHandler()
+std::unique_ptr<const TranslationHandler>& globalHandler()
 {
-    static std::unique_ptr<TranslationHandler> inst; //external linkage even in header!
+    static std::unique_ptr<const TranslationHandler> inst; //external linkage even in header!
     return inst;
 }
 }
 
-inline
-void setTranslator(std::unique_ptr<TranslationHandler>&& newHandler) { implementation::globalHandler() = std::move(newHandler); }
 
 inline
-TranslationHandler* getTranslator() { return implementation::globalHandler().get(); }
+void setTranslator(std::unique_ptr<const TranslationHandler>&& newHandler) { implementation::globalHandler() = std::move(newHandler); }
+
+
+inline
+const TranslationHandler* getTranslator() { return implementation::globalHandler().get(); }
 }
 
-#endif //I18_N_HEADER_3843489325045
+#endif //I18_N_H_3843489325044253425456

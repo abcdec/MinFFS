@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef STRING_TOOLS_HEADER_213458973046
-#define STRING_TOOLS_HEADER_213458973046
+#ifndef STRING_TOOLS_H_213458973046
+#define STRING_TOOLS_H_213458973046
 
 #include <cctype>  //isspace
 #include <cwctype> //iswspace
@@ -42,8 +42,8 @@ template <class S, class T> S afterFirst (const S& str, const T& term, FailureRe
 template <class S, class T> S beforeFirst(const S& str, const T& term, FailureReturnVal rv);
 
 template <class S, class T> std::vector<S> split(const S& str, const T& delimiter);
-template <class S> void trim   (      S& str, bool fromLeft = true, bool fromRight = true);
-template <class S> S    trimCpy(const S& str, bool fromLeft = true, bool fromRight = true);
+template <class S> void trim   (S& str, bool fromLeft = true, bool fromRight = true);
+template <class S> S    trimCpy(S  str, bool fromLeft = true, bool fromRight = true);
 template <class S, class T, class U> void replace   (      S& str, const T& oldTerm, const U& newTerm, bool replaceAll = true);
 template <class S, class T, class U> S    replaceCpy(const S& str, const T& oldTerm, const U& newTerm, bool replaceAll = true);
 
@@ -54,7 +54,7 @@ template <class Num, class S  > Num stringTo(const S&   str);
 template <class S, class T, class Num> S printNumber(const T& format, const Num& number); //format a single number using std::snprintf()
 
 //string to string conversion: converts string-like type into char-compatible target string class
-template <class T, class S> T copyStringTo(const S& str);
+template <class T, class S> T copyStringTo(S&& str);
 
 
 
@@ -93,6 +93,7 @@ bool isDigit(Char ch) //similar to implmenetation of std::::isdigit()!
     static_assert(IsSameType<Char, char>::value || IsSameType<Char, wchar_t>::value, "");
     return static_cast<Char>('0') <= ch && ch <= static_cast<Char>('9');
 }
+
 
 template <> bool isAlpha(char ch) = delete; //probably not a good idea with UTF-8 anyway...
 
@@ -252,7 +253,7 @@ std::vector<S> split(const S& str, const T& delimiter)
 }
 
 
-namespace implementation
+namespace impl
 {
 ZEN_INIT_DETECT_MEMBER(append);
 
@@ -295,8 +296,8 @@ S replaceCpy(const S& str, const T& oldTerm, const U& newTerm, bool replaceAll)
 
     for (;;)
     {
-        implementation::stringAppend(output, strPos, strMatch - strPos);
-        implementation::stringAppend(output, newBegin, newLen);
+        impl::stringAppend(output, strPos, strMatch - strPos);
+        impl::stringAppend(output, newBegin, newLen);
 
         strPos = strMatch + oldLen;
 
@@ -308,7 +309,7 @@ S replaceCpy(const S& str, const T& oldTerm, const U& newTerm, bool replaceAll)
         if (strMatch == strEnd)
             break;
     }
-    implementation::stringAppend(output, strPos, strEnd - strPos);
+    impl::stringAppend(output, strPos, strEnd - strPos);
 
     return output;
 }
@@ -346,16 +347,15 @@ void trim(S& str, bool fromLeft, bool fromRight)
 
 
 template <class S> inline
-S trimCpy(const S& str, bool fromLeft, bool fromRight)
+S trimCpy(S str, bool fromLeft, bool fromRight)
 {
     //implementing trimCpy() in terms of trim(), instead of the other way round, avoids memory allocations when trimming from right!
-    S tmp = str;
-    trim(tmp, fromLeft, fromRight);
-    return tmp;
+    trim(str, fromLeft, fromRight);
+    return std::move(str); //"str" is an l-value parameter => no copy elision!
 }
 
 
-namespace implementation
+namespace impl
 {
 template <class S, class T>
 struct CopyStringToString
@@ -363,18 +363,19 @@ struct CopyStringToString
     T copy(const S& src) const { return T(strBegin(src), strLength(src)); }
 };
 
-template <class S>
-struct CopyStringToString<S, S> //perf: we don't need a deep copy if string types match
+template <class T>
+struct CopyStringToString<T, T> //perf: we don't need a deep copy if string types match
 {
-    const S& copy(const S& src) const { return src; }
+    template <class S>
+    T copy(S&& str) const { return std::forward<S>(str); }
 };
 }
 
 template <class T, class S> inline
-T copyStringTo(const S& str) { return implementation::CopyStringToString<S, T>().copy(str); }
+T copyStringTo(S&& str) { return impl::CopyStringToString<std::decay_t<S>, T>().copy(std::forward<S>(str)); }
 
 
-namespace implementation
+namespace impl
 {
 template <class Num> inline
 int saferPrintf(char* buffer, size_t bufferSize, const char* format, const Num& number) //there is no such thing as a "safe" printf ;)
@@ -400,17 +401,18 @@ int saferPrintf(wchar_t* buffer, size_t bufferSize, const wchar_t* format, const
 template <class S, class T, class Num> inline
 S printNumber(const T& format, const Num& number) //format a single number using ::sprintf
 {
-    typedef typename GetCharType<S>::Type CharType;
+    static_assert(IsSameType<typename GetCharType<S>::Type, typename GetCharType<T>::Type>::value, "");
+	using CharType = typename GetCharType<S>::Type;
 
     const int BUFFER_SIZE = 128;
-    CharType buffer[BUFFER_SIZE];
-    const int charsWritten = implementation::saferPrintf(buffer, BUFFER_SIZE, strBegin(format), number);
+    CharType buffer[BUFFER_SIZE]; //zero-initialize?
+    const int charsWritten = impl::saferPrintf(buffer, BUFFER_SIZE, strBegin(format), number);
 
     return charsWritten > 0 ? S(buffer, charsWritten) : S();
 }
 
 
-namespace implementation
+namespace impl
 {
 enum NumberType
 {
@@ -424,7 +426,7 @@ enum NumberType
 template <class S, class Num> inline
 S numberTo(const Num& number, Int2Type<NUM_TYPE_OTHER>) //default number to string conversion using streams: convenient, but SLOW, SLOW, SLOW!!!! (~ factor of 20)
 {
-    typedef typename GetCharType<S>::Type CharType;
+		using CharType = typename GetCharType<S>::Type;
 
     std::basic_ostringstream<CharType> ss;
     ss << number;
@@ -453,7 +455,7 @@ template <class OutputIterator, class Num> inline
 void formatNegativeInteger(Num n, OutputIterator& it)
 {
     assert(n < 0);
-    typedef typename std::iterator_traits<OutputIterator>::value_type CharType;
+		using CharType = typename std::iterator_traits<OutputIterator>::value_type;
     do
     {
         const Num tmp = n / 10;
@@ -469,7 +471,7 @@ template <class OutputIterator, class Num> inline
 void formatPositiveInteger(Num n, OutputIterator& it)
 {
     assert(n >= 0);
-    typedef typename std::iterator_traits<OutputIterator>::value_type CharType;
+		using CharType = typename std::iterator_traits<OutputIterator>::value_type;
     do
     {
         const Num tmp = n / 10;
@@ -483,8 +485,9 @@ void formatPositiveInteger(Num n, OutputIterator& it)
 template <class S, class Num> inline
 S numberTo(const Num& number, Int2Type<NUM_TYPE_SIGNED_INT>)
 {
-    typedef typename GetCharType<S>::Type CharType;
-    CharType buffer[2 + sizeof(Num) * 241 / 100]; //it's generally faster to use a buffer than to rely on String::operator+=() (in)efficiency
+    using CharType = typename GetCharType<S>::Type;
+    CharType buffer[2 + sizeof(Num) * 241 / 100]; //zero-initialize?
+   //it's generally faster to use a buffer than to rely on String::operator+=() (in)efficiency
     //required chars (+ sign char): 1 + ceil(ln_10(256^sizeof(n) / 2 + 1))    -> divide by 2 for signed half-range; second +1 since one half starts with 1!
     // <= 1 + ceil(ln_10(256^sizeof(n))) =~ 1 + ceil(sizeof(n) * 2.4082) <= 2 + floor(sizeof(n) * 2.41)
 
@@ -503,8 +506,8 @@ S numberTo(const Num& number, Int2Type<NUM_TYPE_SIGNED_INT>)
 template <class S, class Num> inline
 S numberTo(const Num& number, Int2Type<NUM_TYPE_UNSIGNED_INT>)
 {
-    typedef typename GetCharType<S>::Type CharType;
-    CharType buffer[1 + sizeof(Num) * 241 / 100];
+		using CharType = typename GetCharType<S>::Type;
+    CharType buffer[1 + sizeof(Num) * 241 / 100]; //zero-initialize?
     //required chars: ceil(ln_10(256^sizeof(n))) =~ ceil(sizeof(n) * 2.4082) <= 1 + floor(sizeof(n) * 2.41)
 
     auto it = std::end(buffer);
@@ -519,7 +522,7 @@ S numberTo(const Num& number, Int2Type<NUM_TYPE_UNSIGNED_INT>)
 template <class Num, class S> inline
 Num stringTo(const S& str, Int2Type<NUM_TYPE_OTHER>) //default string to number conversion using streams: convenient, but SLOW
 {
-    typedef typename GetCharType<S>::Type CharType;
+		using CharType = typename GetCharType<S>::Type;
     Num number = 0;
     std::basic_istringstream<CharType>(copyStringTo<std::basic_string<CharType>>(str)) >> number;
     return number;
@@ -538,8 +541,8 @@ Num stringTo(const S& str, Int2Type<NUM_TYPE_FLOATING_POINT>)
 template <class Num, class S>
 Num extractInteger(const S& str, bool& hasMinusSign) //very fast conversion to integers: slightly faster than std::atoi, but more importantly: generic
 {
-    typedef typename GetCharType<S>::Type CharType;
-
+	using CharType = typename GetCharType<S>::Type;
+	
     const CharType* first = strBegin(str);
     const CharType* last  = first + strLength(str);
 
@@ -606,28 +609,28 @@ Num stringTo(const S& str, Int2Type<NUM_TYPE_UNSIGNED_INT>) //very fast conversi
 template <class S, class Num> inline
 S numberTo(const Num& number)
 {
-    typedef Int2Type<
-    IsSignedInt  <Num>::value ? implementation::NUM_TYPE_SIGNED_INT :
-    IsUnsignedInt<Num>::value ? implementation::NUM_TYPE_UNSIGNED_INT :
-    IsFloat      <Num>::value ? implementation::NUM_TYPE_FLOATING_POINT :
-    implementation::NUM_TYPE_OTHER> TypeTag;
+    using TypeTag = Int2Type<
+    IsSignedInt  <Num>::value ? impl::NUM_TYPE_SIGNED_INT :
+    IsUnsignedInt<Num>::value ? impl::NUM_TYPE_UNSIGNED_INT :
+    IsFloat      <Num>::value ? impl::NUM_TYPE_FLOATING_POINT :
+    impl::NUM_TYPE_OTHER>;
 
-    return implementation::numberTo<S>(number, TypeTag());
+    return impl::numberTo<S>(number, TypeTag());
 }
 
 
 template <class Num, class S> inline
 Num stringTo(const S& str)
 {
-    typedef Int2Type<
-    IsSignedInt  <Num>::value ? implementation::NUM_TYPE_SIGNED_INT :
-    IsUnsignedInt<Num>::value ? implementation::NUM_TYPE_UNSIGNED_INT :
-    IsFloat      <Num>::value ? implementation::NUM_TYPE_FLOATING_POINT :
-    implementation::NUM_TYPE_OTHER> TypeTag;
+    using TypeTag = Int2Type<
+    IsSignedInt  <Num>::value ? impl::NUM_TYPE_SIGNED_INT :
+    IsUnsignedInt<Num>::value ? impl::NUM_TYPE_UNSIGNED_INT :
+    IsFloat      <Num>::value ? impl::NUM_TYPE_FLOATING_POINT :
+    impl::NUM_TYPE_OTHER>;
 
-    return implementation::stringTo<Num>(str, TypeTag());
+    return impl::stringTo<Num>(str, TypeTag());
 }
 
 }
 
-#endif //STRING_TOOLS_HEADER_213458973046
+#endif //STRING_TOOLS_H_213458973046

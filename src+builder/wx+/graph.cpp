@@ -280,9 +280,10 @@ struct GetIntersectionX
         const double deltaX = to.x - from.x;
         const double deltaY = to.y - from.y;
         return numeric::isNull(deltaX) ? to : CurvePoint(x_, from.y + (x_ - from.x) / deltaX * deltaY);
-    };
+    }
+
 private:
-    double x_;
+    const double x_;
 };
 
 struct GetIntersectionY
@@ -293,9 +294,10 @@ struct GetIntersectionY
         const double deltaX = to.x - from.x;
         const double deltaY = to.y - from.y;
         return numeric::isNull(deltaY) ? to : CurvePoint(from.x + (y_ - from.y) / deltaY * deltaX, y_);
-    };
+    }
+
 private:
-    double y_;
+    const double y_;
 };
 
 void cutPointsOutsideX(std::vector<CurvePoint>& curvePoints, std::vector<char>& oobMarker, double minX, double maxX)

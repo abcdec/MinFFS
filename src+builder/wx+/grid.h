@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef GENERIC_GRID_HEADER_83470213483173
-#define GENERIC_GRID_HEADER_83470213483173
+#ifndef GRID_H_834702134831734869987
+#define GRID_H_834702134831734869987
 
 #include <memory>
 #include <numeric>
@@ -91,27 +91,27 @@ public:
     virtual size_t getRowCount() const = 0;
 
     //grid area
-    virtual wxString getValue(size_t row, ColumnType colType) const = 0;
-    virtual void     renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row,                     bool enabled, bool selected); //default implementation
-    virtual void     renderCell        (wxDC& dc, const wxRect& rect, size_t row, ColumnType colType, bool enabled, bool selected); //
-    virtual int      getBestSize       (wxDC& dc, size_t row, ColumnType colType                                                 ); //must correspond to renderCell()!
-    virtual wxString getToolTip        (size_t row, ColumnType colType) const { return wxString(); }
+    virtual std::wstring getValue(size_t row, ColumnType colType) const = 0;
+    virtual void         renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row,                     bool enabled, bool selected); //default implementation
+    virtual void         renderCell        (wxDC& dc, const wxRect& rect, size_t row, ColumnType colType, bool enabled, bool selected); //
+    virtual int          getBestSize       (wxDC& dc, size_t row, ColumnType colType                                                 ); //must correspond to renderCell()!
+    virtual std::wstring getToolTip        (size_t row, ColumnType colType) const { return std::wstring(); }
 
     //label area
-    virtual wxString getColumnLabel(ColumnType colType) const = 0;
+    virtual std::wstring getColumnLabel(ColumnType colType) const = 0;
     virtual void renderColumnLabel(Grid& grid, wxDC& dc, const wxRect& rect, ColumnType colType, bool highlighted); //default implementation
-    virtual wxString getToolTip(ColumnType colType) const { return wxString(); }
+    virtual std::wstring getToolTip(ColumnType colType) const { return std::wstring(); }
 
     static const int COLUMN_GAP_LEFT; //for left-aligned text
 
 protected: //optional helper routines
     static wxRect drawCellBorder  (wxDC& dc, const wxRect& rect); //returns inner rectangle
     static void drawCellBackground(wxDC& dc, const wxRect& rect, bool enabled, bool selected, const wxColor& backgroundColor);
-    static void drawCellText      (wxDC& dc, const wxRect& rect, const wxString& text, bool enabled, int alignment = wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
+    static void drawCellText      (wxDC& dc, const wxRect& rect, const std::wstring& text, bool enabled, int alignment = wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
 
     static wxRect drawColumnLabelBorder  (wxDC& dc, const wxRect& rect); //returns inner rectangle
     static void drawColumnLabelBackground(wxDC& dc, const wxRect& rect, bool highlighted);
-    static void drawColumnLabelText      (wxDC& dc, const wxRect& rect, const wxString& text);
+    static void drawColumnLabelText      (wxDC& dc, const wxRect& rect, const std::wstring& text);
 };
 
 enum GridEventPolicy
@@ -300,8 +300,8 @@ private:
 
     struct ColAction
     {
-        bool wantResize; //"!wantResize" means "move" or "single click"
-        size_t col;
+        bool wantResize = false; //"!wantResize" means "move" or "single click"
+        size_t col = 0;
     };
     Opt<ColAction> clientPosToColumnAction(const wxPoint& pos) const;
     void moveColumn(size_t colFrom, size_t colTo);
@@ -341,4 +341,4 @@ private:
 };
 }
 
-#endif //GENERIC_GRID_HEADER_83470213483173
+#endif //GRID_H_834702134831734869987

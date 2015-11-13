@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef APPMAIN_H_INCLUDED
-#define APPMAIN_H_INCLUDED
+#ifndef APP_MAIN_H_08215601837818347575856
+#define APP_MAIN_H_08215601837818347575856
 
 #include <wx/window.h>
 #include <wx/app.h>
@@ -47,4 +47,4 @@ void setMainWindow(wxWindow* window)
 inline bool mainWindowWasSet() { return refMainWndStatus(); }
 }
 
-#endif // APPMAIN_H_INCLUDED
+#endif //APP_MAIN_H_08215601837818347575856

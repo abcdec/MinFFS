@@ -177,7 +177,7 @@ private:
         {
             osx::dockIconSetText(str); //throw SysError
         }
-        catch (const zen::SysError& e) { assert(false); }
+        catch (const zen::SysError&) { assert(false); }
     }
 };
 

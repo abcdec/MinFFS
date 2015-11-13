@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef STATUSHANDLER_IMPL_H_INCLUDED
-#define STATUSHANDLER_IMPL_H_INCLUDED
+#ifndef STATUS_HANDLER_IMPL_H_07682758976
+#define STATUS_HANDLER_IMPL_H_07682758976
 
 #include <zen/optional.h>
 #include <zen/file_error.h>
@@ -92,4 +92,4 @@ private:
 };
 }
 
-#endif //STATUSHANDLER_IMPL_H_INCLUDED
+#endif //STATUS_HANDLER_IMPL_H_07682758976

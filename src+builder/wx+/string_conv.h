@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef STRINGCONV_H_INCLUDED
-#define STRINGCONV_H_INCLUDED
+#ifndef STRING_CONV_H_893217450815743
+#define STRING_CONV_H_893217450815743
 
 #include <zen/utf.h>
 #include <wx/string.h>
@@ -25,4 +25,4 @@ inline std::vector<Zstring> toZ(const std::vector<wxString>& strList)
 }
 }
 
-#endif // STRINGCONV_H_INCLUDED
+#endif //STRING_CONV_H_893217450815743

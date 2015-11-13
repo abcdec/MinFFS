@@ -281,8 +281,6 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
         raiseReturnCode(returnCode, FFS_RC_ABORTED);
     };
 
-    auto equalNoCase = [](const Zstring& lhs, const Zstring& rhs) { return utfCvrtTo<wxString>(lhs).CmpNoCase(utfCvrtTo<wxString>(rhs)) == 0; };
-
     //parse command line arguments
     std::vector<Zstring> dirPathPhrasesLeft;
     std::vector<Zstring> dirPathPhrasesRight;
@@ -413,7 +411,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
 
     //distinguish sync scenarios:
     //---------------------------
-    const Zstring globalConfigFilePath = globalConfigFile? *globalConfigFile : xmlAccess::getGlobalConfigFile();
+    const Zstring globalConfigFilePath = globalConfigFile ? *globalConfigFile : xmlAccess::getGlobalConfigFile();
 
     if (configFiles.empty())
     {
@@ -532,8 +530,11 @@ void showSyntaxHelp()
     showNotificationDialog(nullptr, DialogInfoType::INFO, PopupDialogCfg().
                            setTitle(_("Command line")).
                            setDetailInstructions(_("Syntax:") + L"\n\n" +
-
+#ifdef ZEN_WIN
                                                  L"FreeFileSync.exe " + L"\n" +
+#elif defined ZEN_LINUX || defined ZEN_MAC
+                                                 L"./FreeFileSync " + L"\n" +
+#endif
                                                  L"    [" + _("global config file:") + L" GlobalSettings.xml]" + L"\n" +
                                                  L"    [" + _("config files:") + L" *.ffs_gui/*.ffs_batch]" + L"\n" +
                                                  L"    [-LeftDir " + _("directory") + L"] [-RightDir " + _("directory") + L"]" + L"\n" +

@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef GRIDVIEW_H_INCLUDED
-#define GRIDVIEW_H_INCLUDED
+#ifndef GRID_VIEW_H_9285028345703475842569
+#define GRID_VIEW_H_9285028345703475842569
 
 #include <vector>
 #include <unordered_map>
@@ -19,7 +19,7 @@ namespace zen
 class GridView
 {
 public:
-    GridView() : folderPairCount(0) {}
+    GridView() {}
 
     //direct data access via row number
     const FileSystemObject* getObject(size_t row) const; //returns nullptr if object is not found; complexity: constant!
@@ -33,25 +33,23 @@ public:
 
     struct StatusCmpResult
     {
-        StatusCmpResult();
+        bool existsExcluded = false;
+        bool existsEqual    = false;
+        bool existsConflict = false;
 
-        bool existsExcluded;
-        bool existsEqual;
-        bool existsConflict;
+        bool existsLeftOnly   = false;
+        bool existsRightOnly  = false;
+        bool existsLeftNewer  = false;
+        bool existsRightNewer = false;
+        bool existsDifferent  = false;
 
-        bool existsLeftOnly;
-        bool existsRightOnly;
-        bool existsLeftNewer;
-        bool existsRightNewer;
-        bool existsDifferent;
+        unsigned int filesOnLeftView    = 0;
+        unsigned int foldersOnLeftView  = 0;
+        unsigned int filesOnRightView   = 0;
+        unsigned int foldersOnRightView = 0;
 
-        unsigned int filesOnLeftView;
-        unsigned int foldersOnLeftView;
-        unsigned int filesOnRightView;
-        unsigned int foldersOnRightView;
-
-        std::uint64_t filesizeLeftView;
-        std::uint64_t filesizeRightView;
+        std::uint64_t filesizeLeftView  = 0;
+        std::uint64_t filesizeRightView = 0;
     };
 
     //comparison results view
@@ -66,27 +64,25 @@ public:
 
     struct StatusSyncPreview
     {
-        StatusSyncPreview();
+        bool existsExcluded = false;
+        bool existsEqual    = false;
+        bool existsConflict = false;
 
-        bool existsExcluded;
-        bool existsEqual;
-        bool existsConflict;
+        bool existsSyncCreateLeft  = false;
+        bool existsSyncCreateRight = false;
+        bool existsSyncDeleteLeft  = false;
+        bool existsSyncDeleteRight = false;
+        bool existsSyncDirLeft     = false;
+        bool existsSyncDirRight    = false;
+        bool existsSyncDirNone     = false;
 
-        bool existsSyncCreateLeft;
-        bool existsSyncCreateRight;
-        bool existsSyncDeleteLeft;
-        bool existsSyncDeleteRight;
-        bool existsSyncDirLeft;
-        bool existsSyncDirRight;
-        bool existsSyncDirNone;
+        unsigned int filesOnLeftView    = 0;
+        unsigned int foldersOnLeftView  = 0;
+        unsigned int filesOnRightView   = 0;
+        unsigned int foldersOnRightView = 0;
 
-        unsigned int filesOnLeftView;
-        unsigned int foldersOnLeftView;
-        unsigned int filesOnRightView;
-        unsigned int foldersOnRightView;
-
-        std::uint64_t filesizeLeftView;
-        std::uint64_t filesizeRightView;
+        std::uint64_t filesizeLeftView  = 0;
+        std::uint64_t filesizeRightView = 0;
     };
 
     //synchronization preview
@@ -119,12 +115,15 @@ public:
     const SortInfo* getSortInfo() const { return currentSort.get(); } //return nullptr if currently not sorted
 
     ptrdiff_t findRowDirect(FileSystemObject::ObjectIdConst objId) const; // find an object's row position on view list directly, return < 0 if not found
-    ptrdiff_t findRowFirstChild(const HierarchyObject* hierObj)    const; // find first child of DirPair or BaseDirPair *on sorted sub view*
+    ptrdiff_t findRowFirstChild(const HierarchyObject* hierObj)    const; // find first child of FolderPair or BaseFolderPair *on sorted sub view*
     //"hierObj" may be invalid, it is NOT dereferenced, return < 0 if not found
 
     size_t getFolderPairCount() const { return folderPairCount; } //count non-empty pairs to distinguish single/multiple folder pair cases
 
 private:
+    GridView           (const GridView&) = delete;
+    GridView& operator=(const GridView&) = delete;
+
     struct RefIndex
     {
         RefIndex(size_t folderInd, FileSystemObject::ObjectId id) :
@@ -150,7 +149,7 @@ private:
                     | (setData...)
                     |                         */
     //std::shared_ptr<FolderComparison> folderCmp; //actual comparison data: owned by GridView!
-    size_t folderPairCount; //number of non-empty folder pairs
+    size_t folderPairCount = 0; //number of non-empty folder pairs
 
 
     class SerializeHierarchy;
@@ -180,7 +179,7 @@ private:
     template <bool ascending>
     struct LessSyncDirection;
 
-    std::unique_ptr<SortInfo> currentSort;
+    Opt<SortInfo> currentSort;
 };
 
 
@@ -207,4 +206,4 @@ FileSystemObject* GridView::getObject(size_t row)
 }
 
 
-#endif // GRIDVIEW_H_INCLUDED
+#endif //GRID_VIEW_H_9285028345703475842569

@@ -400,7 +400,7 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const std::ws
 
 
     //always, except for "retry":
-    zen::ScopeGuard guardWriteLog = zen::makeGuard([&] { errorLog.logMsg(errorMessage, TYPE_ERROR); });
+    auto guardWriteLog = zen::makeGuard<ScopeGuardRunMode::ON_EXIT>([&] { errorLog.logMsg(errorMessage, TYPE_ERROR); });
 
     switch (handleError_)
     {

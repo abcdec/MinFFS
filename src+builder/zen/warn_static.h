@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef WARN_STATIC_HEADER_08724567834560832745
-#define WARN_STATIC_HEADER_08724567834560832745
+#ifndef WARN_STATIC_H_08724567834560832745
+#define WARN_STATIC_H_08724567834560832745
 
 /*
 Portable Compile-Time Warning
@@ -30,4 +30,4 @@ Usage:
     enum { STATIC_WARNING_CONCAT(warn_static_dummy_value, __LINE__) = sizeof(STATIC_WARNING_87903124) };
 #endif
 
-#endif //WARN_STATIC_HEADER_08724567834560832745
+#endif //WARN_STATIC_H_08724567834560832745

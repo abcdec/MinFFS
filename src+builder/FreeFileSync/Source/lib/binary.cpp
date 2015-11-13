@@ -10,7 +10,7 @@
 #include <zen/file_io.h>
 
 using namespace zen;
-using ABF = AbstractBaseFolder;
+using AFS = AbstractFileSystem;
 
 namespace
 {
@@ -72,10 +72,10 @@ const std::int64_t TICKS_PER_SEC = ticksPerSec();
 }
 
 
-bool zen::filesHaveSameContent(const AbstractPathRef& filePath1, const AbstractPathRef& filePath2, const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus) //throw FileError
+bool zen::filesHaveSameContent(const AbstractPath& filePath1, const AbstractPath& filePath2, const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus) //throw FileError
 {
-    const std::unique_ptr<ABF::InputStream> inStream1 = ABF::getInputStream(filePath1); //throw FileError, (ErrorFileLocked)
-    const std::unique_ptr<ABF::InputStream> inStream2 = ABF::getInputStream(filePath2); //
+    const std::unique_ptr<AFS::InputStream> inStream1 = AFS::getInputStream(filePath1); //throw FileError, (ErrorFileLocked)
+    const std::unique_ptr<AFS::InputStream> inStream2 = AFS::getInputStream(filePath2); //
 
     BufferSize dynamicBufSize(std::min(inStream1->optimalBlockSize(),
                                        inStream2->optimalBlockSize()));

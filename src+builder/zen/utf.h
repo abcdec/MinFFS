@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef STRING_UTF8_HEADER_01832479146991573473545
-#define STRING_UTF8_HEADER_01832479146991573473545
+#ifndef UTF_H_01832479146991573473545
+#define UTF_H_01832479146991573473545
 
 #include <cstdint>
 #include <iterator>
@@ -455,4 +455,4 @@ TargetString utfCvrtTo(const SourceString& str)
 }
 }
 
-#endif //STRING_UTF8_HEADER_01832479146991573473545
+#endif //UTF_H_01832479146991573473545

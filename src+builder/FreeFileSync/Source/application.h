@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef FREEFILESYNCAPP_H
-#define FREEFILESYNCAPP_H
+#ifndef APPLICATION_H_081568741942010985702395
+#define APPLICATION_H_081568741942010985702395
 
 #include <vector>
 #include <zen/zstring.h>
@@ -31,4 +31,4 @@ private:
     zen::FfsReturnCode returnCode;
 };
 
-#endif // FREEFILESYNCAPP_H
+#endif //APPLICATION_H_081568741942010985702395

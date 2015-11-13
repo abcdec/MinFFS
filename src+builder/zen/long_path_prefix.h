@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef LONGPATHPREFIX_H_INCLUDED
-#define LONGPATHPREFIX_H_INCLUDED
+#ifndef LONG_PATH_PREFIX_H_3984678473567247567
+#define LONG_PATH_PREFIX_H_3984678473567247567
 
 #include "win.h"
 #include "zstring.h"
@@ -60,7 +60,7 @@ Zstring applyLongPathPrefixImpl(const Zstring& path)
     assert(!path.empty()); //nicely check almost all WinAPI accesses!
     assert(!zen::isWhiteSpace(path[0]));
 
-    //http://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx#naming_conventions))
+    //http://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx#naming_conventions
     /*
       - special names like ".NUL" create all kinds of trouble (e.g. CreateDirectory() reports success, but does nothing)
         unless prefix is supplied => accept as limitation
@@ -131,4 +131,4 @@ Zstring zen::ntPathToWin32Path(const Zstring& path) //noexcept
     return path;
 }
 
-#endif //LONGPATHPREFIX_H_INCLUDED
+#endif //LONG_PATH_PREFIX_H_3984678473567247567

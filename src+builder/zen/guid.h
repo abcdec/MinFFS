@@ -4,16 +4,15 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef GUID_H_INCLUDED_80425780237502345
-#define GUID_H_INCLUDED_80425780237502345
+#ifndef GUID_H_80425780237502345
+#define GUID_H_80425780237502345
 
 #include <string>
 #include <boost/uuid/uuid.hpp>
 
 #ifdef __GNUC__  //boost should clean this mess up
     #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wshadow"
-    #pragma GCC diagnostic ignored "-Wuninitialized"
+	#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
 #include <boost/uuid/uuid_generators.hpp>
@@ -35,4 +34,4 @@ std::string generateGUID() //creates a 16 byte GUID
 }
 }
 
-#endif //GUID_H_INCLUDED_80425780237502345
+#endif //GUID_H_80425780237502345

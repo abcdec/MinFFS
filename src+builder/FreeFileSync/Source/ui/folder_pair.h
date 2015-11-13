@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef FOLDERPAIR_H_89341750847252345
-#define FOLDERPAIR_H_89341750847252345
+#ifndef FOLDER_PAIR_H_89341750847252345
+#define FOLDER_PAIR_H_89341750847252345
 
 #include <wx/event.h>
 #include <wx/menu.h>
@@ -169,4 +169,4 @@ private:
 }
 
 
-#endif //FOLDERPAIR_H_89341750847252345
+#endif //FOLDER_PAIR_H_89341750847252345

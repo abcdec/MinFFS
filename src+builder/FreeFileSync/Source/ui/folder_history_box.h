@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef CUSTOMCOMBOBOX_H_INCLUDED
-#define CUSTOMCOMBOBOX_H_INCLUDED
+#ifndef FOLDER_HISTORY_BOX_H_08170517045945
+#define FOLDER_HISTORY_BOX_H_08170517045945
 
 #include <wx/combobox.h>
 #include <memory>
@@ -21,39 +21,39 @@ class FolderHistory
 public:
     FolderHistory() : maxSize_(0) {}
 
-    FolderHistory(const std::vector<Zstring>& dirpaths, size_t maxSize) :
+    FolderHistory(const std::vector<Zstring>& folderPathPhrases, size_t maxSize) :
         maxSize_(maxSize),
-        dirpaths_(dirpaths)
+        folderPathPhrases_(folderPathPhrases)
     {
-        if (dirpaths_.size() > maxSize_) //keep maximal size of history list
-            dirpaths_.resize(maxSize_);
+        if (folderPathPhrases_.size() > maxSize_) //keep maximal size of history list
+            folderPathPhrases_.resize(maxSize_);
     }
 
-    const std::vector<Zstring>& getList() const { return dirpaths_; }
+    const std::vector<Zstring>& getList() const { return folderPathPhrases_; }
 
     static const wxString separationLine() { return L"---------------------------------------------------------------------------------------------------------------"; }
 
-    void addItem(const Zstring& dirpath)
+    void addItem(const Zstring& folderPathPhrase)
     {
-        if (dirpath.empty() || dirpath == zen::utfCvrtTo<Zstring>(separationLine()))
+        if (folderPathPhrase.empty() || folderPathPhrase == zen::utfCvrtTo<Zstring>(separationLine()))
             return;
 
-        const Zstring nameTmp = zen::trimCpy(dirpath);
+        const Zstring nameTmp = zen::trimCpy(folderPathPhrase);
 
         //insert new folder or put it to the front if already existing
-        zen::erase_if(dirpaths_, [&](const Zstring& item) { return ::EqualFilePath()(item, nameTmp); });
+        zen::erase_if(folderPathPhrases_, [&](const Zstring& item) { return equalFilePath(item, nameTmp); });
 
-        dirpaths_.insert(dirpaths_.begin(), nameTmp);
+        folderPathPhrases_.insert(folderPathPhrases_.begin(), nameTmp);
 
-        if (dirpaths_.size() > maxSize_) //keep maximal size of history list
-            dirpaths_.resize(maxSize_);
+        if (folderPathPhrases_.size() > maxSize_) //keep maximal size of history list
+            folderPathPhrases_.resize(maxSize_);
     }
 
-    void delItem(const Zstring& dirpath) { zen::erase_if(dirpaths_, [&](const Zstring& item) { return ::EqualFilePath()(item, dirpath); }); }
+    void delItem(const Zstring& folderPathPhrase) { zen::erase_if(folderPathPhrases_, [&](const Zstring& item) { return equalFilePath(item, folderPathPhrase); }); }
 
 private:
     size_t maxSize_;
-    std::vector<Zstring> dirpaths_;
+    std::vector<Zstring> folderPathPhrases_;
 };
 
 
@@ -62,7 +62,7 @@ class FolderHistoryBox : public wxComboBox
 public:
     FolderHistoryBox(wxWindow* parent,
                      wxWindowID id,
-                     const wxString& value = wxEmptyString,
+                     const wxString& value = {},
                      const wxPoint& pos = wxDefaultPosition,
                      const wxSize& size = wxDefaultSize,
                      int n = 0,
@@ -73,9 +73,9 @@ public:
 
     void init(const std::shared_ptr<FolderHistory>& sharedHistory) { sharedHistory_ = sharedHistory; }
 
-    void setValue(const wxString& dirpath)
+    void setValue(const wxString& folderPathPhrase)
     {
-        setValueAndUpdateList(dirpath); //required for setting value correctly; Linux: ensure the dropdown is shown as being populated
+        setValueAndUpdateList(folderPathPhrase); //required for setting value correctly; Linux: ensure the dropdown is shown as being populated
     }
 
     // GetValue
@@ -83,10 +83,10 @@ public:
 private:
     void OnKeyEvent(wxKeyEvent& event);
     void OnRequireHistoryUpdate(wxEvent& event);
-    void setValueAndUpdateList(const wxString& dirpath);
+    void setValueAndUpdateList(const wxString& folderPathPhrase);
 
     std::shared_ptr<FolderHistory> sharedHistory_;
 };
 
 
-#endif // CUSTOMCOMBOBOX_H_INCLUDED
+#endif //FOLDER_HISTORY_BOX_H_08170517045945

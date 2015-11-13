@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef TOGGLEBUTTON_H_INCLUDED
-#define TOGGLEBUTTON_H_INCLUDED
+#ifndef TOGGLE_BUTTON_H_8173024810574556
+#define TOGGLE_BUTTON_H_8173024810574556
 
 #include <wx/bmpbuttn.h>
 #include <wx+/bitmap_button.h>
@@ -20,9 +20,7 @@ public:
                  const wxSize&      size = wxDefaultSize,
                  long               style = 0,
                  const wxValidator& validator = wxDefaultValidator,
-                 const wxString&    name = wxButtonNameStr) :
-        wxBitmapButton(parent, id, bitmap, pos, size, style, validator, name),
-        active(false)
+                 const wxString&    name = wxButtonNameStr) : wxBitmapButton(parent, id, bitmap, pos, size, style, validator, name)
     {
         SetLayoutDirection(wxLayout_LeftToRight); //avoid mirroring RTL languages like Hebrew or Arabic
     }
@@ -35,17 +33,11 @@ public:
     void toggle()         { setActive(!active); }
 
 private:
-    bool active;
+    bool active = false;
 
     wxBitmap activeBmp_;
     wxBitmap inactiveBmp_;
 };
-
-
-
-
-
-
 
 
 
@@ -72,4 +64,4 @@ void ToggleButton::setActive(bool value)
     zen::setImage(*this, active ? activeBmp_ : inactiveBmp_);
 }
 
-#endif // TOGGLEBUTTON_H_INCLUDED
+#endif //TOGGLE_BUTTON_H_8173024810574556

@@ -4,11 +4,12 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef MONITOR_HEADER_345087425834253425
-#define MONITOR_HEADER_345087425834253425
+#ifndef MONITOR_H_345087425834253425
+#define MONITOR_H_345087425834253425
 
 #include <functional>
 #include <zen/zstring.h>
+
 
 namespace rts
 {
@@ -35,4 +36,4 @@ void monitorDirectories(const std::vector<Zstring>& folderPathPhrases,
                         MonitorCallback& callback);
 }
 
-#endif //MONITOR_HEADER_345087425834253425
+#endif //MONITOR_H_345087425834253425

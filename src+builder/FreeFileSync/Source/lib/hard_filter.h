@@ -21,7 +21,7 @@ Semantics of HardFilter:
 
     class hierarchy:
 
-          HardFilter (interface)
+           HardFilter (interface)
                /|\
        _________|_____________
       |         |             |

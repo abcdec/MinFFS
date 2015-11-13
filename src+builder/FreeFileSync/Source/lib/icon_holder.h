@@ -4,12 +4,12 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef IMAGE_HOLDER_284578426342567457
-#define IMAGE_HOLDER_284578426342567457
+#ifndef IMAGE_HOLDER_H_284578426342567457
+#define IMAGE_HOLDER_H_284578426342567457
 
 #include <memory>
 
-//used by fs_abstract.h => check carefully before adding dependencies!
+//used by fs/abstract.h => check carefully before adding dependencies!
 
 namespace zen
 {
@@ -48,4 +48,4 @@ private:
 };
 }
 
-#endif //IMAGE_HOLDER_284578426342567457
+#endif //IMAGE_HOLDER_H_284578426342567457

@@ -3,8 +3,9 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
-#ifndef DIR_LOCK_H_INCLUDED
-#define DIR_LOCK_H_INCLUDED
+
+#ifndef DIR_LOCK_H_81740832174954356
+#define DIR_LOCK_H_81740832174954356
 
 #include <memory>
 #include <zen/file_error.h>
@@ -26,14 +27,14 @@ RAII structure to place a directory lock against other FFS processes:
         - ownership shared between all object instances refering to a specific lock location(= GUID)
         - can be copied safely and efficiently! (ref-counting)
         - detects and resolves abandoned locks (instantly if lock is associated with local pc, else after 30 seconds)
-        - temporary locks created during abandoned lock resolution keep "lockfilepath"'s extension
+        - temporary locks created during abandoned lock resolution keep "lockFilePath"'s extension
         - race-free (Windows, almost on Linux(NFS))
-        - NOT thread-safe! (1. static LockAdmin 2. directory name aliases must be resolved sequentially!)
+        - NOT thread-safe! (1. global LockAdmin 2. directory name aliases must be resolved sequentially!)
 */
 class DirLock
 {
 public:
-    DirLock(const Zstring& lockfilepath, DirLockCallback* callback = nullptr); //throw FileError, callback only used during construction
+    DirLock(const Zstring& lockFilePath, DirLockCallback* callback = nullptr); //throw FileError, callback only used during construction
 
 private:
     class LockAdmin;
@@ -42,4 +43,4 @@ private:
 };
 }
 
-#endif // DIR_LOCK_H_INCLUDED
+#endif //DIR_LOCK_H_81740832174954356

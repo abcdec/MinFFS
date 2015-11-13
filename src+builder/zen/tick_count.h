@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef ZEN_TICK_COUNT_HEADER_3807326
-#define ZEN_TICK_COUNT_HEADER_3807326
+#ifndef TICK_COUNT_H_3807326223463457
+#define TICK_COUNT_H_3807326223463457
 
 #include <cstdint>
 #include "type_traits.h"
@@ -13,18 +13,12 @@
 
 #ifdef ZEN_WIN
     #include "win.h" //includes "windows.h"
-
 #elif defined ZEN_LINUX
     #include <time.h> //Posix ::clock_gettime()
-
 #elif defined ZEN_MAC
     #include <mach/mach_time.h>
 #endif
-//template <class T> inline
-//T dist(T a, T b)
-//{
-//    return a > b ? a - b : b - a;
-//}
+
 
 namespace zen
 {
@@ -55,7 +49,7 @@ public:
     typedef uint64_t NativeVal;
 #endif
 
-    TickVal() : val_() {}
+    TickVal() {}
     explicit TickVal(const NativeVal& val) : val_(val) {}
 
     inline friend
@@ -92,7 +86,7 @@ public:
     bool isValid() const { return dist(*this, TickVal()) != 0; }
 
 private:
-    NativeVal val_;
+    NativeVal val_ {};
 };
 
 
@@ -144,4 +138,4 @@ TickVal getTicks() //return !isValid() on error
 }
 }
 
-#endif //ZEN_TICK_COUNT_HEADER_3807326
+#endif //TICK_COUNT_H_3807326223463457

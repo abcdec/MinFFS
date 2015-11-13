@@ -4,13 +4,14 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef STATISTICS_H_INCLUDED
-#define STATISTICS_H_INCLUDED
+#ifndef PERF_CHECK_H_87804217589312454
+#define PERF_CHECK_H_87804217589312454
 
 #include <cstdint>
 #include <map>
 #include <string>
 #include <zen/optional.h>
+
 
 class PerfCheck
 {
@@ -28,9 +29,9 @@ public:
 private:
     struct Record
     {
-        Record(int itemCount, double data) : itemCount_(itemCount), data_(data) {}
-        int itemCount_;
-        double data_; //unit: [bytes]
+        Record(int items, double bytes) : items_(items), bytes_(bytes) {}
+        const int items_;
+        const double bytes_;
     };
 
     std::pair<const std::multimap<int64_t, Record>::value_type*,
@@ -43,4 +44,4 @@ private:
     std::map<int64_t, Record> samples; //time, unit: [ms]
 };
 
-#endif // STATISTICS_H_INCLUDED
+#endif //PERF_CHECK_H_87804217589312454

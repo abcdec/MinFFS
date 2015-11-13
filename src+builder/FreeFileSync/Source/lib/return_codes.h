@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef RETURN_CODES_H_INCLUDED
-#define RETURN_CODES_H_INCLUDED
+#ifndef RETURN_CODES_H_81307482137054156
+#define RETURN_CODES_H_81307482137054156
 
 namespace zen
 {
@@ -27,4 +27,4 @@ void raiseReturnCode(FfsReturnCode& rc, FfsReturnCode rcProposed)
 }
 }
 
-#endif // RETURN_CODES_H_INCLUDED
+#endif //RETURN_CODES_H_81307482137054156

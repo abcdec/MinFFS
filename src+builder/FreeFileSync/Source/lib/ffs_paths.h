@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef STANDARDPATHS_H_84275908342534253425
-#define STANDARDPATHS_H_84275908342534253425
+#ifndef FFS_PATHS_H_842759083425342534253
+#define FFS_PATHS_H_842759083425342534253
 
 #include <zen/zstring.h>
 
@@ -18,8 +18,8 @@ Zstring getResourceDir(); //resource directory WITH path separator at end
 Zstring getConfigDir  (); //config directory WITH path separator at end
 //------------------------------------------------------------------------------
 
-Zstring getFreeFileSyncLauncher(); //full path to application launcher C:\...\FreeFileSync.exe
+Zstring getFreeFileSyncLauncherPath(); //full path to application launcher C:\...\FreeFileSync.exe
 bool manualProgramUpdateRequired();
 }
 
-#endif //STANDARDPATHS_H_84275908342534253425
+#endif //FFS_PATHS_H_842759083425342534253

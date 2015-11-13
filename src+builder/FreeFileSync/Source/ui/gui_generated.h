@@ -28,8 +28,8 @@ namespace zen { class TripleSplitter; }
 #include <wx/font.h>
 #include <wx/colour.h>
 #include <wx/settings.h>
-#include <wx/bmpbuttn.h>
 #include <wx/button.h>
+#include <wx/bmpbuttn.h>
 #include <wx/sizer.h>
 #include <wx/panel.h>
 #include <wx/stattext.h>
@@ -92,9 +92,9 @@ protected:
     wxBoxSizer* bSizerPanelHolder;
     wxPanel* m_panelTopButtons;
     wxBoxSizer* bSizerTopButtons;
-    wxBitmapButton* m_bpButtonCmpConfig;
     zen::BitmapTextButton* m_buttonCancel;
     zen::BitmapTextButton* m_buttonCompare;
+    wxBitmapButton* m_bpButtonCmpConfig;
     wxBitmapButton* m_bpButtonFilter;
     wxBitmapButton* m_bpButtonSyncConfig;
     zen::BitmapTextButton* m_buttonSync;

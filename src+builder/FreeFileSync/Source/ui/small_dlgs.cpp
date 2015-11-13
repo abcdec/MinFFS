@@ -182,7 +182,7 @@ SftpSetupDlg::SftpSetupDlg(wxWindow* parent, Zstring& folderPathPhrase) : SftpSe
     m_checkBoxShowPassword->SetValue(false);
     m_textCtrlPasswordVisible->Hide();
 
-    if (acceptsFolderPathPhraseSftp(folderPathPhrase)) //noexcept
+    if (acceptsItemPathPhraseSftp(folderPathPhrase)) //noexcept
     {
         const auto res = getResolvedSftpPath(folderPathPhrase); //noexcept
         const SftpLoginInfo login         = res.first;
@@ -223,7 +223,7 @@ void SftpSetupDlg::OnToggleShowPassword(wxCommandEvent& event)
 
 std::pair<SftpLoginInfo, Zstring /*host-relative path*/> SftpSetupDlg::getSftpLogin() const
 {
-    SftpLoginInfo login = {};
+    SftpLoginInfo login;
     login.server   = utfCvrtTo<Zstring>(m_textCtrlServer  ->GetValue());
     login.port     = stringTo<int>     (m_textCtrlPort    ->GetValue()); //0 if empty
     login.username = utfCvrtTo<Zstring>(m_textCtrlUserName->GetValue());
@@ -586,12 +586,12 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
     };
 
     setValue(*m_staticTextData, st.getDataToProcess() == 0, filesizeToShortString(st.getDataToProcess()), *m_bitmapData,  L"data");
-    setIntValue(*m_staticTextCreateLeft,  st.getCreate<LEFT_SIDE >(), *m_bitmapCreateLeft,  L"so_create_left_small");
-    setIntValue(*m_staticTextUpdateLeft,  st.getUpdate<LEFT_SIDE >(), *m_bitmapUpdateLeft,  L"so_update_left_small");
-    setIntValue(*m_staticTextDeleteLeft,  st.getDelete<LEFT_SIDE >(), *m_bitmapDeleteLeft,  L"so_delete_left_small");
-    setIntValue(*m_staticTextCreateRight, st.getCreate<RIGHT_SIDE>(), *m_bitmapCreateRight, L"so_create_right_small");
-    setIntValue(*m_staticTextUpdateRight, st.getUpdate<RIGHT_SIDE>(), *m_bitmapUpdateRight, L"so_update_right_small");
-    setIntValue(*m_staticTextDeleteRight, st.getDelete<RIGHT_SIDE>(), *m_bitmapDeleteRight, L"so_delete_right_small");
+    setIntValue(*m_staticTextCreateLeft,  st.createCount<LEFT_SIDE >(), *m_bitmapCreateLeft,  L"so_create_left_small");
+    setIntValue(*m_staticTextUpdateLeft,  st.updateCount<LEFT_SIDE >(), *m_bitmapUpdateLeft,  L"so_update_left_small");
+    setIntValue(*m_staticTextDeleteLeft,  st.deleteCount<LEFT_SIDE >(), *m_bitmapDeleteLeft,  L"so_delete_left_small");
+    setIntValue(*m_staticTextCreateRight, st.createCount<RIGHT_SIDE>(), *m_bitmapCreateRight, L"so_create_right_small");
+    setIntValue(*m_staticTextUpdateRight, st.updateCount<RIGHT_SIDE>(), *m_bitmapUpdateRight, L"so_update_right_small");
+    setIntValue(*m_staticTextDeleteRight, st.deleteCount<RIGHT_SIDE>(), *m_bitmapDeleteRight, L"so_delete_right_small");
 
     m_panelStatistics->Layout();
 
@@ -792,7 +792,7 @@ void OptionsDlg::OnDefault(wxCommandEvent& event)
 void OptionsDlg::setExtApp(const xmlAccess::ExternalApps& extApp)
 {
     auto extAppTmp = extApp;
-    erase_if(extAppTmp, [](decltype(extAppTmp[0])& entry) { return entry.first.empty() && entry.second.empty(); });
+    erase_if(extAppTmp, [](auto& entry) { return entry.first.empty() && entry.second.empty(); });
 
     extAppTmp.resize(extAppTmp.size() + 1); //append empty row to facilitate insertions
 
