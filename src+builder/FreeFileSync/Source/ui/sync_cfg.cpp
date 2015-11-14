@@ -422,7 +422,7 @@ std::shared_ptr<const CompConfig> ConfigDialog::getCompConfig() const
     if (!m_checkBoxUseLocalCmpOptions->GetValue())
         return nullptr;
 
-    CompConfig compCfg = {};
+    CompConfig compCfg;
     compCfg.compareVar = localCmpVar;
     compCfg.handleSymlinks = !m_checkBoxSymlinksInclude->GetValue() ? SYMLINK_EXCLUDE : m_radioBtnSymlinksDirect->GetValue() ? SYMLINK_DIRECT : SYMLINK_FOLLOW;
     compCfg.optTimeShiftHours = m_checkBoxTimeShift->GetValue() ? m_spinCtrlTimeShift->GetValue() : 0;
@@ -794,7 +794,7 @@ std::shared_ptr<const SyncConfig> ConfigDialog::getSyncConfig() const
     if (!m_checkBoxUseLocalSyncOptions->GetValue())
         return nullptr;
 
-    SyncConfig syncCfg = {};
+    SyncConfig syncCfg;
     syncCfg.directionCfg           = directionCfg;
     syncCfg.handleDeletion         = handleDeletion;
     syncCfg.versioningFolderPhrase = versioningFolder.getPath();
@@ -962,7 +962,7 @@ MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
 {
     assert(selectedPairIndexToShow == -1);
 
-    MiscSyncConfig miscCfg = {};
+    MiscSyncConfig miscCfg;
     miscCfg.handleError         = onGuiError;
     miscCfg.onCompletionCommand = m_comboBoxOnCompletion->getValue();
     miscCfg.onCompletionHistory = m_comboBoxOnCompletion->getHistory();
@@ -1113,7 +1113,7 @@ ReturnSyncConfig::ButtonPressed zen::showSyncConfigDlg(wxWindow* parent,
 
                                                        size_t onCompletionHistoryMax)
 {
-    GlobalSyncConfig globalCfg = {};
+    GlobalSyncConfig globalCfg;
     globalCfg.cmpConfig = globalCmpConfig;
     globalCfg.syncCfg   = globalSyncCfg;
     globalCfg.filter    = globalFilter;

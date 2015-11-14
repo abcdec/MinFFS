@@ -8,12 +8,12 @@
 #include "basic_math.h"
 #include "i18n.h"
 #include "time.h"
-#include "int64.h"
 #include <cwchar>  //swprintf
 #include <ctime>
 #include <cstdio>
 
 #ifdef ZEN_WIN
+    #include "int64.h"
     #include "win.h" //includes "windows.h"
     #include "win_ver.h"
 
@@ -25,9 +25,18 @@
 using namespace zen;
 
 
+std::wstring zen::formatTwoDigitPrecision(double value)
+{
+    //print two digits: 0,1 | 1,1 | 11
+    if (numeric::abs(value) < 9.95) //9.99 must not be formatted as "10.0"
+        return printNumber<std::wstring>(L"%.1f", value);
+    return numberTo<std::wstring>(numeric::round(value));
+}
+
+
 std::wstring zen::formatThreeDigitPrecision(double value)
 {
-    //print at least three digits: 0,01 | 0,11 | 1,11 | 11,1 | 111
+    //print three digits: 0,01 | 0,11 | 1,11 | 11,1 | 111
     if (numeric::abs(value) < 9.995) //9.999 must not be formatted as "10.00"
         return printNumber<std::wstring>(L"%.2f", value);
     if (numeric::abs(value) < 99.95) //99.99 must not be formatted as "100.0"
@@ -197,7 +206,7 @@ private:
         return inst;
     }
 
-    IntegerFormat() : fmt(), valid_(false)
+    IntegerFormat()
     {
         //all we want is default NUMBERFMT, but set NumDigits to 0
         fmt.NumDigits = 0;
@@ -224,10 +233,10 @@ private:
         }
     }
 
-    NUMBERFMT fmt;
+    NUMBERFMT fmt = {};
     std::wstring thousandSep;
     std::wstring decimalSep;
-    bool valid_;
+    bool valid_ = false;
 };
 }
 #endif

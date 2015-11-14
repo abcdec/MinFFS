@@ -6,9 +6,9 @@
 
 #include "file_traverser.h"
 #include "file_error.h"
-#include "int64.h"
 
 #ifdef ZEN_WIN
+    #include "int64.h"
     #include "long_path_prefix.h"
     #include "file_access.h"
     #include "symlink_target.h"
@@ -68,8 +68,8 @@ void zen::traverseFolder(const Zstring& dirPath,
             //skip "." and ".."
             const wchar_t* const itemNameRaw = findData.cFileName;
 
-            if (itemNameRaw[0] == 0) 
-				throw FileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtPath(dirPath)), L"FindNextFile: Data corruption; item with empty name.");
+            if (itemNameRaw[0] == 0)
+                throw FileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtPath(dirPath)), L"FindNextFile: Data corruption; item with empty name.");
 
             if (itemNameRaw[0] == L'.' &&
                 (itemNameRaw[1] == 0 || (itemNameRaw[1] == L'.' && itemNameRaw[2] == 0)))
@@ -106,15 +106,15 @@ void zen::traverseFolder(const Zstring& dirPath,
         std::vector<char> bufferUtfDecomposed;
 #endif
 
-        DIR* dirObj = ::opendir(dirPath.c_str()); //directory must NOT end with path separator, except "/"
-        if (!dirObj)
+        DIR* folder = ::opendir(dirPath.c_str()); //directory must NOT end with path separator, except "/"
+        if (!folder)
             THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open directory %x."), L"%x", fmtPath(dirPath)), L"opendir");
-        ZEN_ON_SCOPE_EXIT(::closedir(dirObj)); //never close nullptr handles! -> crash
+        ZEN_ON_SCOPE_EXIT(::closedir(folder)); //never close nullptr handles! -> crash
 
         for (;;)
         {
             struct ::dirent* dirEntry = nullptr;
-            if (::readdir_r(dirObj, reinterpret_cast< ::dirent*>(&buffer[0]), &dirEntry) != 0)
+            if (::readdir_r(folder, reinterpret_cast< ::dirent*>(&buffer[0]), &dirEntry) != 0)
                 THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtPath(dirPath)), L"readdir_r");
             //don't retry but restart dir traversal on error! http://blogs.msdn.com/b/oldnewthing/archive/2014/06/12/10533529.aspx
 
@@ -125,7 +125,7 @@ void zen::traverseFolder(const Zstring& dirPath,
             const char* itemNameRaw = dirEntry->d_name;
 
             if (itemNameRaw[0] == 0)
-				throw FileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtPath(dirPath)), L"readdir_r: Data corruption; item with empty name.");
+                throw FileError(replaceCpy(_("Cannot enumerate directory %x."), L"%x", fmtPath(dirPath)), L"readdir_r: Data corruption; item with empty name.");
 
             if (itemNameRaw[0] == '.' &&
                 (itemNameRaw[1] == 0 || (itemNameRaw[1] == '.' && itemNameRaw[2] == 0)))

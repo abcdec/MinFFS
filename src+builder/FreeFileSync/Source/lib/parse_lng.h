@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef PARSE_LNG_HEADER_INCLUDED
-#define PARSE_LNG_HEADER_INCLUDED
+#ifndef PARSE_LNG_H_46794693622675638
+#define PARSE_LNG_H_46794693622675638
 
 #include <algorithm>
 #include <cctype>
@@ -717,4 +717,4 @@ std::string generateLng(const TranslationUnorderedList& in, const TransHeader& h
 }
 }
 
-#endif //PARSE_LNG_HEADER_INCLUDED
+#endif //PARSE_LNG_H_46794693622675638

@@ -7,7 +7,8 @@
 #ifndef RTL_H_0183487180058718273432148
 #define RTL_H_0183487180058718273432148
 
-#include <memory>
+//#include <memory>
+#include <zen/optional.h>
 #include <wx/dcmemory.h>
 #include <wx/dcmirror.h>
 #include <wx/image.h>
@@ -22,18 +23,18 @@ void drawBitmapRtlMirror(wxDC& dc,
                          const wxBitmap& image,
                          const wxRect& rect,
                          int alignment,
-                         std::unique_ptr<wxBitmap>& buffer); //mirror image if layout is RTL + fix some strange wxDC::Blit bug on RTL
+                         Opt<wxBitmap>& buffer); //mirror image if layout is RTL + fix some strange wxDC::Blit bug on RTL
 
 void drawBitmapRtlNoMirror(wxDC& dc,  //wxDC::DrawLabel does already NOT mirror by default (but does a crappy job at it, surprise)
                            const wxBitmap& image,
                            const wxRect& rect,
                            int alignment,
-                           std::unique_ptr<wxBitmap>& buffer);
+                           Opt<wxBitmap>& buffer);
 
 void drawIconRtlNoMirror(wxDC& dc, //wxDC::DrawIcon DOES mirror by default
                          const wxIcon& icon,
                          const wxPoint& pt,
-                         std::unique_ptr<wxBitmap>& buffer);
+                         Opt<wxBitmap>& buffer);
 
 wxBitmap mirrorIfRtl(const wxBitmap& bmp);
 
@@ -50,12 +51,12 @@ wxBitmap mirrorIfRtl(const wxBitmap& bmp);
 namespace
 {
 template <class DrawImageFun>
-void drawRtlImpl(wxDC& dc, const wxRect& rect, std::unique_ptr<wxBitmap>& buffer, bool doMirror, DrawImageFun draw)
+void drawRtlImpl(wxDC& dc, const wxRect& rect, Opt<wxBitmap>& buffer, bool doMirror, DrawImageFun draw)
 {
     if (dc.GetLayoutDirection() == wxLayout_RightToLeft)
     {
         if (!buffer || buffer->GetWidth() != rect.width || buffer->GetHeight() < rect.height) //[!] since we do a mirror, width needs to match exactly!
-            buffer = std::make_unique<wxBitmap>(rect.width, rect.height);
+            buffer = wxBitmap(rect.width, rect.height);
 
         wxMemoryDC memDc(*buffer);
         memDc.Blit(wxPoint(0, 0), rect.GetSize(), &dc, rect.GetTopLeft()); //blit in: background is mirrored due to memDc, dc having different layout direction!
@@ -84,13 +85,13 @@ void drawRtlImpl(wxDC& dc, const wxRect& rect, std::unique_ptr<wxBitmap>& buffer
 
 
 inline
-void drawBitmapRtlMirror(wxDC& dc, const wxBitmap& image, const wxRect& rect, int alignment, std::unique_ptr<wxBitmap>& buffer)
+void drawBitmapRtlMirror(wxDC& dc, const wxBitmap& image, const wxRect& rect, int alignment, Opt<wxBitmap>& buffer)
 {
     return drawRtlImpl(dc, rect, buffer, true, [&](wxDC& dc2, const wxRect& rect2) { dc2.DrawLabel(wxString(), image, rect2, alignment); });
 }
 
 inline
-void drawBitmapRtlNoMirror(wxDC& dc, const wxBitmap& image, const wxRect& rect, int alignment, std::unique_ptr<wxBitmap>& buffer)
+void drawBitmapRtlNoMirror(wxDC& dc, const wxBitmap& image, const wxRect& rect, int alignment, Opt<wxBitmap>& buffer)
 {
     if (dc.GetLayoutDirection() == wxLayout_RightToLeft)
         if ((alignment & wxALIGN_CENTER_HORIZONTAL) == 0) //we still *do* want to mirror alignment!
@@ -100,7 +101,7 @@ void drawBitmapRtlNoMirror(wxDC& dc, const wxBitmap& image, const wxRect& rect, 
 }
 
 inline
-void drawIconRtlNoMirror(wxDC& dc, const wxIcon& icon, const wxPoint& pt, std::unique_ptr<wxBitmap>& buffer)
+void drawIconRtlNoMirror(wxDC& dc, const wxIcon& icon, const wxPoint& pt, Opt<wxBitmap>& buffer)
 {
     wxRect rect(pt.x, pt.y, icon.GetWidth(), icon.GetHeight());
     return drawRtlImpl(dc, rect, buffer, false, [&](wxDC& dc2, const wxRect& rect2) { dc2.DrawIcon(icon, rect2.GetTopLeft()); });

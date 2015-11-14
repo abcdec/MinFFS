@@ -4,10 +4,11 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef CUSTOMTOOLTIP_H_INCLUDED
-#define CUSTOMTOOLTIP_H_INCLUDED
+#ifndef TOOLTIP_H_8912740832170515
+#define TOOLTIP_H_8912740832170515
 
 #include <wx/window.h>
+
 
 namespace zen
 {
@@ -29,4 +30,4 @@ private:
 };
 }
 
-#endif // CUSTOMTOOLTIP_H_INCLUDED
+#endif //TOOLTIP_H_8912740832170515

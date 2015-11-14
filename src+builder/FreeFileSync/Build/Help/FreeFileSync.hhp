@@ -19,7 +19,7 @@ html\external-applications.html
 html\freefilesync.html
 html\macros.html
 html\schedule-a-batch-job.html
-html\synchronize-with-ftp.html
+html\synchronize-with-sftp.html
 html\tips-and-tricks.html
 html\variable-drive-letters.html
 html\versioning.html

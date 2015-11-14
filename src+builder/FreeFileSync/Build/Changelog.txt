@@ -1,3 +1,20 @@
+FreeFileSync 7.6 [2015-11-01]
+-----------------------------
+Create missing synchronization base folders only on demand
+Improved main grid text search performance by 40%
+Restore correct main dialog height after restart (Linux)
+Default to standard main dialog size after unmaximize (Linux)
+Prevent creation of irregular folder names (Windows)
+Support MTP devices over WiFi with null modification times
+Do not apply invalid vertical main dialog positions (OS X)
+Support Yosemite full screen window mode (OS X)
+Use buffered lock file I/O (Windows)
+Correctly setup OpenSSL for multithreaded use
+Added COM initialization for worker threads (Windows)
+Forward focus to sync button after comparison
+Streamlined file system abstraction layer interfaces
+
+
 FreeFileSync 7.5 [2015-10-01]
 -----------------------------
 Detect moved files on source even for targets with no (SFTP) or unstable (FAT) file id support

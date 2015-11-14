@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef SYNCCONFIG_H_INCLUDED_31289470134253425
-#define SYNCCONFIG_H_INCLUDED_31289470134253425
+#ifndef SYNC_CFG_H_31289470134253425
+#define SYNC_CFG_H_31289470134253425
 
 #include <wx/window.h>
 #include "../lib/process_xml.h"
@@ -40,7 +40,7 @@ struct LocalPairConfig
 
 struct MiscSyncConfig
 {
-    xmlAccess::OnGuiError handleError;
+    xmlAccess::OnGuiError handleError = xmlAccess::ON_GUIERROR_POPUP;
     Zstring onCompletionCommand;
     std::vector<Zstring> onCompletionHistory;
 };
@@ -72,4 +72,4 @@ ReturnSyncConfig::ButtonPressed showSyncConfigDlg(wxWindow* parent,
                                                   size_t onCompletionHistoryMax);
 }
 
-#endif //SYNCCONFIG_H_INCLUDED_31289470134253425
+#endif //SYNC_CFG_H_31289470134253425

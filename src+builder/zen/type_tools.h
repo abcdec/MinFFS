@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef TYPE_TOOLS_HEADER_45237590734254545
-#define TYPE_TOOLS_HEADER_45237590734254545
+#ifndef TYPE_TOOLS_H_45237590734254545
+#define TYPE_TOOLS_H_45237590734254545
 
 #include "type_traits.h"
 
@@ -100,4 +100,4 @@ template <class Predicate> inline
 LessDescending<Predicate> makeDescending(Predicate pred) { return pred; }
 }
 
-#endif //TYPE_TOOLS_HEADER_45237590734254545
+#endif //TYPE_TOOLS_H_45237590734254545

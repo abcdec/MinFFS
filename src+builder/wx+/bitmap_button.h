@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef BUTTON_HEADER_83415718945878341563415
-#define BUTTON_HEADER_83415718945878341563415
+#ifndef BITMAP_BUTTON_H_83415718945878341563415
+#define BITMAP_BUTTON_H_83415718945878341563415
 
 #include <wx/bmpbuttn.h>
 #include "image_tools.h"
@@ -85,4 +85,4 @@ void setImage(wxBitmapButton& button, const wxBitmap& bmp)
 }
 }
 
-#endif //BUTTON_HEADER_83415718945878341563415
+#endif //BITMAP_BUTTON_H_83415718945878341563415

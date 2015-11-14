@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef GEN_LOGFILE_H_93172643216748973216458732165415
-#define GEN_LOGFILE_H_93172643216748973216458732165415
+#ifndef GENERATE_LOGFILE_H_931726432167489732164
+#define GENERATE_LOGFILE_H_931726432167489732164
 
 #include <zen/error_log.h>
 #include <zen/serialize.h>
@@ -119,7 +119,7 @@ std::wstring generateLogHeader(const SummaryInfo& s)
 inline
 void saveLogToFile(const SummaryInfo& summary, //throw FileError
                    const ErrorLog& log,
-                   ABF::OutputStream& streamOut,
+                   AFS::OutputStream& streamOut,
                    const std::function<void(std::int64_t bytesDelta)>& onUpdateSaveStatus)
 {
     //write log items in blocks instead of creating one big string: memory allocation might fail; think 1 million entries!
@@ -204,10 +204,10 @@ void saveToLastSyncsLog(const SummaryInfo& summary, //throw FileError
             if (newStream.size() > maxBytesToWrite)
             {
                 //but do not cut in the middle of a row
-                auto iter = std::search(newStream.cbegin() + maxBytesToWrite, newStream.cend(), std::begin(LINE_BREAK), std::end(LINE_BREAK) - 1);
-                if (iter != newStream.cend())
+                auto it = std::search(newStream.cbegin() + maxBytesToWrite, newStream.cend(), std::begin(LINE_BREAK), std::end(LINE_BREAK) - 1);
+                if (it != newStream.cend())
                 {
-                    newStream.resize(iter - newStream.cbegin());
+                    newStream.resize(it - newStream.cbegin());
                     newStream += LINE_BREAK;
 
                     newStream += "[...]";
@@ -221,4 +221,4 @@ void saveToLastSyncsLog(const SummaryInfo& summary, //throw FileError
 }
 }
 
-#endif //GEN_LOGFILE_H_93172643216748973216458732165415
+#endif //GENERATE_LOGFILE_H_931726432167489732164

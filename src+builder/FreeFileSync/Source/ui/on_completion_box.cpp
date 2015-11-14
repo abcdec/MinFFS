@@ -107,10 +107,10 @@ void OnCompletionBox::addItemHistory()
     //do not add built-in commands to history
     for (const auto& item : defaultCommands)
         if (command == utfCvrtTo<Zstring>(item.first) ||
-            ::EqualFilePath()(command, item.second))
+            equalFilePath(command, item.second))
             return;
 
-    erase_if(history_, [&](const Zstring& item) { return ::EqualFilePath()(command, item); });
+    erase_if(history_, [&](const Zstring& item) { return equalFilePath(command, item); });
 
     history_.insert(history_.begin(), command);
 
@@ -228,7 +228,7 @@ void OnCompletionBox::OnKeyEvent(wxKeyEvent& event)
             if (0 <= pos && pos < static_cast<int>(this->GetCount()) &&
                 //what a mess...:
                 (GetValue() != GetString(pos) || //avoid problems when a character shall be deleted instead of list item
-                 GetValue() == wxEmptyString)) //exception: always allow removing empty entry
+                 GetValue().empty())) //exception: always allow removing empty entry
             {
                 const auto selValue = utfCvrtTo<Zstring>(GetString(pos));
 

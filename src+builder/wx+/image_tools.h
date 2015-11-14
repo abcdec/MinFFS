@@ -4,14 +4,15 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef IMAGE_TOOLS_HEADER_45782456427634254
-#define IMAGE_TOOLS_HEADER_45782456427634254
+#ifndef IMAGE_TOOLS_H_45782456427634254
+#define IMAGE_TOOLS_H_45782456427634254
 
 #include <numeric>
 #include <wx/bitmap.h>
 #include <wx/image.h>
 #include <wx/dcmemory.h>
 #include <zen/basic_math.h>
+
 
 namespace zen
 {
@@ -109,8 +110,8 @@ double getAvgBrightness(const wxImage& img)
 
             //calculate average weighted by alpha channel
             double dividend = 0;
-            for (auto iter = pixBegin; iter != pixEnd; ++iter)
-                dividend += *iter * static_cast<double>(alphaFirst[(iter - pixBegin) / 3]);
+            for (auto it = pixBegin; it != pixEnd; ++it)
+                dividend += *it * static_cast<double>(alphaFirst[(it - pixBegin) / 3]);
 
             const double divisor = 3.0 * std::accumulate(alphaFirst, alphaFirst + pixelCount, 0.0);
 
@@ -132,9 +133,9 @@ void brighten(wxImage& img, int level)
     {
         auto pixEnd = pixBegin + 3 * pixelCount; //RGB
         if (level > 0)
-            std::for_each(pixBegin, pixEnd, [&](unsigned char& c) { c = std::min(255, c + level); });
+            std::for_each(pixBegin, pixEnd, [&](unsigned char& c) { c = static_cast<unsigned char>(std::min(255, c + level)); });
         else
-            std::for_each(pixBegin, pixEnd, [&](unsigned char& c) { c = std::max(0, c + level); });
+            std::for_each(pixBegin, pixEnd, [&](unsigned char& c) { c = static_cast<unsigned char>(std::max(0, c + level)); });
     }
 }
 
@@ -171,8 +172,7 @@ bool isEqual(const wxBitmap& lhs, const wxBitmap& rhs)
     if (!lhs.IsOk())
         return true;
 
-    const int pixelCount = lhs.GetWidth() * lhs.GetHeight();
-    if (pixelCount != rhs.GetWidth() * rhs.GetHeight())
+    if (lhs.GetSize() != rhs.GetSize())
         return false;
 
     wxImage imLhs = lhs.ConvertToImage();
@@ -180,6 +180,8 @@ bool isEqual(const wxBitmap& lhs, const wxBitmap& rhs)
 
     if (imLhs.HasAlpha() != imRhs.HasAlpha())
         return false;
+
+    const int pixelCount = lhs.GetWidth() * lhs.GetHeight();
 
     if (!std::equal(imLhs.GetData(), imLhs.GetData() + pixelCount * 3, imRhs.GetData()))
         return false;
@@ -254,4 +256,4 @@ wxColour hsvColor(double h, double s, double v) //h within [0, 360), s, v within
 */
 }
 
-#endif //IMAGE_TOOLS_HEADER_45782456427634254
+#endif //IMAGE_TOOLS_H_45782456427634254

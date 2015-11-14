@@ -20,7 +20,7 @@ void swapGrids(const MainConfiguration& config, FolderComparison& folderCmp);
 std::vector<DirectionConfig> extractDirectionCfg(const MainConfiguration& mainCfg);
 
 void redetermineSyncDirection(const DirectionConfig& directConfig,
-                              BaseDirPair& baseDirectory,
+                              BaseFolderPair& baseFolder,
                               const std::function<void(const std::wstring& msg)>& reportWarning,
                               const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus);
 
@@ -35,8 +35,8 @@ bool allElementsEqual(const FolderComparison& folderCmp);
 
 //filtering
 void applyFiltering  (FolderComparison& folderCmp, const MainConfiguration& mainCfg); //full filter apply
-void addHardFiltering(BaseDirPair& baseDirObj, const Zstring& excludeFilter);     //exclude additional entries only
-void addSoftFiltering(BaseDirPair& baseDirObj, const SoftFilter& timeSizeFilter); //exclude additional entries only
+void addHardFiltering(BaseFolderPair& baseFolder, const Zstring& excludeFilter);     //exclude additional entries only
+void addSoftFiltering(BaseFolderPair& baseFolder, const SoftFilter& timeSizeFilter); //exclude additional entries only
 
 void applyTimeSpanFilter(FolderComparison& folderCmp, std::int64_t timeFrom, std::int64_t timeTo); //overwrite current active/inactive settings
 

@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef FILE_ID_INTERNAL_HEADER_013287632486321493
-#define FILE_ID_INTERNAL_HEADER_013287632486321493
+#ifndef FILE_ID_DEF_H_013287632486321493
+#define FILE_ID_DEF_H_013287632486321493
 
 #include <utility>
 
@@ -66,4 +66,4 @@ FileId extractFileId(const struct ::stat& fileInfo)
 #endif
 }
 
-#endif //FILE_ID_INTERNAL_HEADER_013287632486321493
+#endif //FILE_ID_DEF_H_013287632486321493

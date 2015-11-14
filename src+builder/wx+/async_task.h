@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef ASYNC_JOB_839147839170432143214321
-#define ASYNC_JOB_839147839170432143214321
+#ifndef ASYNC_TASK_H_839147839170432143214321
+#define ASYNC_TASK_H_839147839170432143214321
 
 #include <functional>
 #include <zen/thread.h>
@@ -144,4 +144,4 @@ private:
 
 }
 
-#endif //ASYNC_JOB_839147839170432143214321
+#endif //ASYNC_TASK_H_839147839170432143214321

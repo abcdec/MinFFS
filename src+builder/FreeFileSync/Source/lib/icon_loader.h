@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef ICON_LOADER_1348701985713445
-#define ICON_LOADER_1348701985713445
+#ifndef ICON_LOADER_H_1348701985713445
+#define ICON_LOADER_H_1348701985713445
 
 #include <zen/zstring.h>
 #include "icon_holder.h"
@@ -24,4 +24,4 @@ ImageHolder getFileIcon(const Zstring& filePath, int pixelSize);
 ImageHolder getThumbnailImage(const Zstring& filePath, int pixelSize);
 }
 
-#endif //ICON_LOADER_1348701985713445
+#endif //ICON_LOADER_H_1348701985713445

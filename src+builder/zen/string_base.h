@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef Z_BASE_H_INCLUDED_08321745456
-#define Z_BASE_H_INCLUDED_08321745456
+#ifndef STRING_BASE_H_083217454562342526
+#define STRING_BASE_H_083217454562342526
 
 #include <algorithm>
 #include <cassert>
@@ -249,8 +249,8 @@ public:
     //std::string functions
     size_t length() const;
     size_t size  () const { return length(); }
-    const Char* c_str() const { return rawStr; }; //C-string format with 0-termination
-    const Char* data()  const { return rawStr; }; //internal representation, 0-termination not guaranteed
+    const Char* c_str() const { return rawStr; } //C-string format with 0-termination
+    const Char* data()  const { return rawStr; } //internal representation, 0-termination not guaranteed
     const Char operator[](size_t pos) const;
     bool empty() const { return length() == 0; }
     void clear();
@@ -686,4 +686,4 @@ Zbase<Char, SP, AP>& Zbase<Char, SP, AP>::operator+=(Char ch)
 }
 }
 
-#endif //Z_BASE_H_INCLUDED_08321745456
+#endif //STRING_BASE_H_083217454562342526

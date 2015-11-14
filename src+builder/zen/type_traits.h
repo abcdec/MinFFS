@@ -4,10 +4,11 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef TYPE_TRAITS_HEADER_3425628658765467
-#define TYPE_TRAITS_HEADER_3425628658765467
+#ifndef TYPE_TRAITS_H_3425628658765467
+#define TYPE_TRAITS_H_3425628658765467
 
 #include <type_traits> //all we need is std::is_class!!
+
 
 namespace zen
 {
@@ -21,8 +22,8 @@ struct StaticInt
 template <bool b>
 struct StaticBool : StaticInt<b> {};
 
-typedef StaticBool<true>  TrueType;
-typedef StaticBool<false> FalseType;
+using TrueType  = StaticBool<true>;
+using FalseType = StaticBool<false>;
 
 template <class EnumType, EnumType val>
 struct StaticEnum
@@ -33,15 +34,15 @@ struct StaticEnum
 template <class T>
 struct ResultType
 {
-    typedef T Type;
+    using Type = T;
 };
 
 //Herb Sutter's signedness conversion helpers: http://herbsutter.com/2013/06/13/gotw-93-solution-auto-variables-part-2/
 template<class T> inline
-typename std::make_signed<T>::type makeSigned(T t) { return static_cast<typename std::make_signed<T>::type>(t); }
+typename std::make_signed<T>::type makeSigned(T t) { return static_cast<std::make_signed_t<T>>(t); }
 
 template<class T> inline
-typename std::make_unsigned<T>::type makeUnsigned(T t) { return static_cast<typename std::make_unsigned<T>::type>(t); }
+typename std::make_unsigned<T>::type makeUnsigned(T t) { return static_cast<std::make_unsigned_t<T>>(t); }
 
 //################# Built-in Types  ########################
 //Example: "IsSignedInt<int>::value" evaluates to "true"
@@ -136,8 +137,8 @@ struct IsArithmetic : StaticBool<IsInteger<T>::value || IsFloat<T>::value> {};
     struct HasMemberImpl_##NAME             \
     {                                       \
     private:                                \
-        typedef char Yes[1];                \
-        typedef char No [2];                \
+        using Yes = char[1];                \
+        using No  = char[2];                \
         \
         template <typename U, U t>          \
         class Helper {};                    \
@@ -165,8 +166,8 @@ struct IsArithmetic : StaticBool<IsInteger<T>::value || IsFloat<T>::value> {};
     template<typename U>                            \
     class HasMember_##NAME                          \
     {                                               \
-        typedef char Yes[1];                        \
-        typedef char No [2];                        \
+        using Yes = char[1];                        \
+        using No  = char[2];                        \
         \
         template <typename T, T t> class Helper {}; \
         \
@@ -182,8 +183,8 @@ struct IsArithmetic : StaticBool<IsInteger<T>::value || IsFloat<T>::value> {};
     template<typename T>                        \
     class HasMemberType_##TYPENAME              \
     {                                           \
-        typedef char Yes[1];                    \
-        typedef char No [2];                    \
+        using Yes = char[1];                    \
+        using No  = char[2];                    \
         \
         template <typename U> class Helper {};  \
         \
@@ -194,4 +195,4 @@ struct IsArithmetic : StaticBool<IsInteger<T>::value || IsFloat<T>::value> {};
     };
 }
 
-#endif //TYPE_TRAITS_HEADER_3425628658765467
+#endif //TYPE_TRAITS_H_3425628658765467

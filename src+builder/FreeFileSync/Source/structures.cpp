@@ -89,7 +89,7 @@ bool zen::detectMovedFilesSelectable(const DirectionConfig& cfg)
     const DirectionSet tmp = zen::extractDirections(cfg);
     return (tmp.exLeftSideOnly  == SyncDirection::RIGHT &&
             tmp.exRightSideOnly == SyncDirection::RIGHT) ||
-           (tmp.exLeftSideOnly  == SyncDirection::LEFT&&
+           (tmp.exLeftSideOnly  == SyncDirection::LEFT &&
             tmp.exRightSideOnly == SyncDirection::LEFT);
 }
 

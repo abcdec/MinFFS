@@ -17,9 +17,9 @@ namespace
 {
 struct CompileTimeReminder : public FSObjectVisitor
 {
-    void visit(const FilePair&    fileObj) override {}
-    void visit(const SymlinkPair& linkObj) override {}
-    void visit(const DirPair&     dirObj ) override {}
+    void visit(const FilePair&    file   ) override {}
+    void visit(const SymlinkPair& symlink) override {}
+    void visit(const FolderPair&  folder ) override {}
 } checkDymanicCasts; //just a compile-time reminder to manually check dynamic casts in this file when needed
 }
 
@@ -27,7 +27,7 @@ struct CompileTimeReminder : public FSObjectVisitor
 inline
 bool isDirectoryPair(const FileSystemObject& fsObj)
 {
-    return dynamic_cast<const DirPair*>(&fsObj) != nullptr;
+    return dynamic_cast<const FolderPair*>(&fsObj) != nullptr;
 }
 
 
@@ -65,8 +65,8 @@ bool lessFullPath(const FileSystemObject& a, const FileSystemObject& b)
     else if (b.isEmpty<side>())
         return true;
 
-    return makeSortDirection(LessFilePath(), Int2Type<ascending>())(ABF::getDisplayPath(a.getAbstractPath<side>()),
-                                                                    ABF::getDisplayPath(b.getAbstractPath<side>()));
+    return makeSortDirection(LessFilePath(), Int2Type<ascending>())(AFS::getDisplayPath(a.getAbstractPath<side>()),
+                                                                    AFS::getDisplayPath(b.getAbstractPath<side>()));
 }
 
 
@@ -95,7 +95,7 @@ bool lessRelativeFolder(const FileSystemObject& a, const FileSystemObject& b)
     else if (isDirectoryA)
         return true;
 
-    return LessFilePath()(a.getPairShortName(), b.getPairShortName());
+    return LessFilePath()(a.getPairItemName(), b.getPairItemName());
 }
 
 
@@ -114,17 +114,17 @@ bool lessFilesize(const FileSystemObject& a, const FileSystemObject& b)
     else if (isDirectoryPair(b))
         return true;
 
-    const FilePair* fileObjA = dynamic_cast<const FilePair*>(&a);
-    const FilePair* fileObjB = dynamic_cast<const FilePair*>(&b);
+    const FilePair* fileA = dynamic_cast<const FilePair*>(&a);
+    const FilePair* fileB = dynamic_cast<const FilePair*>(&b);
 
     //then symlinks
-    if (!fileObjA)
+    if (!fileA)
         return false;
-    else if (!fileObjB)
+    else if (!fileB)
         return true;
 
     //return list beginning with largest files first
-    return makeSortDirection(std::less<std::uint64_t>(), Int2Type<ascending>())(fileObjA->getFileSize<side>(), fileObjB->getFileSize<side>());
+    return makeSortDirection(std::less<>(), Int2Type<ascending>())(fileA->getFileSize<side>(), fileB->getFileSize<side>());
 }
 
 
@@ -136,22 +136,22 @@ bool lessFiletime(const FileSystemObject& a, const FileSystemObject& b)
     else if (b.isEmpty<side>())
         return true; //empty rows always last
 
-    const FilePair* fileObjA = dynamic_cast<const FilePair*>(&a);
-    const FilePair* fileObjB = dynamic_cast<const FilePair*>(&b);
+    const FilePair* fileA = dynamic_cast<const FilePair*>(&a);
+    const FilePair* fileB = dynamic_cast<const FilePair*>(&b);
 
-    const SymlinkPair* linkObjA = dynamic_cast<const SymlinkPair*>(&a);
-    const SymlinkPair* linkObjB = dynamic_cast<const SymlinkPair*>(&b);
+    const SymlinkPair* symlinkA = dynamic_cast<const SymlinkPair*>(&a);
+    const SymlinkPair* symlinkB = dynamic_cast<const SymlinkPair*>(&b);
 
-    if (!fileObjA && !linkObjA)
+    if (!fileA && !symlinkA)
         return false; //directories last
-    else if (!fileObjB && !linkObjB)
+    else if (!fileB && !symlinkB)
         return true; //directories last
 
-    const std::int64_t dateA = fileObjA ? fileObjA->getLastWriteTime<side>() : linkObjA->getLastWriteTime<side>();
-    const std::int64_t dateB = fileObjB ? fileObjB->getLastWriteTime<side>() : linkObjB->getLastWriteTime<side>();
+    const std::int64_t dateA = fileA ? fileA->getLastWriteTime<side>() : symlinkA->getLastWriteTime<side>();
+    const std::int64_t dateB = fileB ? fileB->getLastWriteTime<side>() : symlinkB->getLastWriteTime<side>();
 
     //return list beginning with newest files first
-    return makeSortDirection(std::less<std::int64_t>(), Int2Type<ascending>())(dateA, dateB);
+    return makeSortDirection(std::less<>(), Int2Type<ascending>())(dateA, dateB);
 }
 
 
@@ -163,16 +163,14 @@ bool lessExtension(const FileSystemObject& a, const FileSystemObject& b)
     else if (b.isEmpty<side>())
         return true; //empty rows always last
 
-    if (dynamic_cast<const DirPair*>(&a))
+    if (dynamic_cast<const FolderPair*>(&a))
         return false; //directories last
-    else if (dynamic_cast<const DirPair*>(&b))
+    else if (dynamic_cast<const FolderPair*>(&b))
         return true; //directories last
 
-    auto getExtension = [&](const FileSystemObject& fsObj) -> Zstring
+    auto getExtension = [](const FileSystemObject& fsObj)
     {
-        const Zstring& shortName = fsObj.getItemName<side>();
-        const size_t pos = shortName.rfind(Zchar('.'));
-        return pos == Zstring::npos ? Zstring() : Zstring(shortName.begin() + pos + 1, shortName.end());
+        return afterLast(fsObj.getItemName<side>(), Zchar('.'), zen::IF_MISSING_RETURN_NONE);
     };
 
     return makeSortDirection(LessFilePath(), Int2Type<ascending>())(getExtension(a), getExtension(b));
@@ -195,7 +193,7 @@ bool lessCmpResult(const FileSystemObject& a, const FileSystemObject& b)
 template <bool ascending> inline
 bool lessSyncDirection(const FileSystemObject& a, const FileSystemObject& b)
 {
-    return makeSortDirection(std::less<SyncOperation>(), Int2Type<ascending>())(a.getSyncOperation(), b.getSyncOperation());
+    return makeSortDirection(std::less<>(), Int2Type<ascending>())(a.getSyncOperation(), b.getSyncOperation());
 }
 }
 

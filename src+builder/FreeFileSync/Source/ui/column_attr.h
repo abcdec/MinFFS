@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef COL_ATTR_HEADER_189467891346732143214
-#define COL_ATTR_HEADER_189467891346732143214
+#ifndef COLUMN_ATTR_H_189467891346732143213
+#define COLUMN_ATTR_H_189467891346732143213
 
 #include <vector>
 
@@ -107,4 +107,4 @@ std::vector<ColumnAttributeNavi> getDefaultColumnAttributesNavi()
 }
 }
 
-#endif // COL_ATTR_HEADER_189467891346732143214
+#endif //COLUMN_ATTR_H_189467891346732143213

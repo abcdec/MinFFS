@@ -3,8 +3,8 @@
 // * GNU General Public License: http://www.gnu.org/licenses/gpl-3.0        *
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
-#ifndef PREVENTSTANDBY_H_83421759082143245
-#define PREVENTSTANDBY_H_83421759082143245
+#ifndef PROCESS_PRIORITY_H_83421759082143245
+#define PROCESS_PRIORITY_H_83421759082143245
 
 #include <memory>
 #include "file_error.h"
@@ -35,4 +35,4 @@ private:
 };
 }
 
-#endif //PREVENTSTANDBY_H_83421759082143245
+#endif //PROCESS_PRIORITY_H_83421759082143245

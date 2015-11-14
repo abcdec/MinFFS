@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef STL_TOOLS_HEADER_84567184321434
-#define STL_TOOLS_HEADER_84567184321434
+#ifndef STL_TOOLS_H_84567184321434
+#define STL_TOOLS_H_84567184321434
 
 #include <set>
 #include <map>
@@ -14,6 +14,7 @@
 #include <algorithm>
 #include "type_tools.h"
 #include "build_info.h"
+
 
 //enhancements for <algorithm>
 namespace zen
@@ -93,11 +94,11 @@ namespace impl
 template <class S, class Predicate> inline
 void set_or_map_erase_if(S& s, Predicate p)
 {
-    for (auto iter = s.begin(); iter != s.end();)
-        if (p(*iter))
-            s.erase(iter++);
+    for (auto it = s.begin(); it != s.end();)
+        if (p(*it))
+            s.erase(it++);
         else
-            ++iter;
+            ++it;
 }
 }
 
@@ -125,14 +126,14 @@ void append(std::map<KeyType, ValueType, LessType, Alloc>& m, const C& c) { m.in
 template <class M, class K, class V> inline
 V& map_add_or_update(M& map, const K& key, const V& value) //efficient add or update without "default-constructible" requirement (Effective STL, item 24)
 {
-    auto iter = map.lower_bound(key);
-    if (iter != map.end() && !(map.key_comp()(key, iter->first)))
+    auto it = map.lower_bound(key);
+    if (it != map.end() && !(map.key_comp()(key, it->first)))
     {
-        iter->second = value;
-        return iter->second;
+        it->second = value;
+        return it->second;
     }
     else
-        return map.insert(iter, typename M::value_type(key, value))->second;
+        return map.insert(it, typename M::value_type(key, value))->second;
 }
 
 
@@ -158,12 +159,12 @@ ForwardIterator binary_search(ForwardIterator first, ForwardIterator last, const
 template <class BidirectionalIterator, class T> inline
 BidirectionalIterator find_last(const BidirectionalIterator first, const BidirectionalIterator last, const T& value)
 {
-    for (BidirectionalIterator iter = last; iter != first;) //reverse iteration: 1. check 2. decrement 3. evaluate
+    for (BidirectionalIterator it = last; it != first;) //reverse iteration: 1. check 2. decrement 3. evaluate
     {
-        --iter; //
+        --it; //
 
-        if (*iter == value)
-            return iter;
+        if (*it == value)
+            return it;
     }
     return last;
 }
@@ -173,7 +174,7 @@ template <class BidirectionalIterator1, class BidirectionalIterator2> inline
 BidirectionalIterator1 search_last(const BidirectionalIterator1 first1,       BidirectionalIterator1 last1,
                                    const BidirectionalIterator2 first2, const BidirectionalIterator2 last2)
 {
-    const BidirectionalIterator1 iterNotFound = last1;
+    const BidirectionalIterator1 itNotFound = last1;
 
     //reverse iteration: 1. check 2. decrement 3. evaluate
     for (;;)
@@ -184,7 +185,7 @@ BidirectionalIterator1 search_last(const BidirectionalIterator1 first1,       Bi
         for (;;)
         {
             if (it2 == first2) return it1;
-            if (it1 == first1) return iterNotFound;
+            if (it1 == first1) return itNotFound;
 
             --it1;
             --it2;
@@ -231,4 +232,4 @@ size_t hashBytes(const unsigned char* ptr, size_t len)
 }
 }
 
-#endif //STL_TOOLS_HEADER_84567184321434
+#endif //STL_TOOLS_H_84567184321434

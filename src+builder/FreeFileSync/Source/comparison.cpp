@@ -46,20 +46,20 @@ namespace
 {
 struct ResolvedFolderPair
 {
-    ResolvedFolderPair(const std::shared_ptr<ABF>& left,
-                       const std::shared_ptr<ABF>& right) :
-        abfLeft (left),
-        abfRight(right) {}
+    ResolvedFolderPair(const AbstractPath& left,
+                       const AbstractPath& right) :
+        folderPathLeft (left),
+        folderPathRight(right) {}
 
-    std::shared_ptr<ABF> abfLeft;  //always bound
-    std::shared_ptr<ABF> abfRight; //
+    AbstractPath folderPathLeft;
+    AbstractPath folderPathRight;
 };
 
 
 struct ResolvedBaseFolders
 {
     std::vector<ResolvedFolderPair> resolvedPairs;
-    std::set<const ABF*, ABF::LessItemPath> existingBaseFolders; //references "resolvedPairs" variable!!!
+    std::set<AbstractPath, AFS::LessAbstractPath> existingBaseFolders;
 };
 
 
@@ -71,36 +71,36 @@ ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& cfgL
 
     tryReportingError([&]
     {
-        std::set<const ABF*, ABF::LessItemPath> uniqueBaseFolders;
+        std::set<AbstractPath, AFS::LessAbstractPath> uniqueBaseFolders;
 
         //support "retry" for environment variable and and variable driver letter resolution!
         output.resolvedPairs.clear();
         for (const FolderPairCfg& fpCfg : cfgList)
         {
-            std::shared_ptr<ABF> abfLeft  = createAbstractBaseFolder(fpCfg.folderPathPhraseLeft_);
-            std::shared_ptr<ABF> abfRight = createAbstractBaseFolder(fpCfg.folderPathPhraseRight_);
+            AbstractPath folderPathLeft  = createAbstractPath(fpCfg.folderPathPhraseLeft_);
+            AbstractPath folderPathRight = createAbstractPath(fpCfg.folderPathPhraseRight_);
 
-            uniqueBaseFolders.insert(abfLeft .get());
-            uniqueBaseFolders.insert(abfRight.get());
+            uniqueBaseFolders.insert(folderPathLeft);
+            uniqueBaseFolders.insert(folderPathRight);
 
-            output.resolvedPairs.emplace_back(abfLeft, abfRight);
+            output.resolvedPairs.emplace_back(folderPathLeft, folderPathRight);
         }
 
-        const DirectoryStatus status = checkFolderExistenceUpdating(uniqueBaseFolders, allowUserInteraction, callback); //re-check *all* directories on each try!
-        output.existingBaseFolders = status.existingBaseFolder;
+        const FolderStatus status = getFolderStatusNonBlocking(uniqueBaseFolders, allowUserInteraction, callback); //re-check *all* directories on each try!
+        output.existingBaseFolders = status.existing;
 
-        if (!status.missingBaseFolder.empty() || !status.failedChecks.empty())
+        if (!status.missing.empty() || !status.failedChecks.empty())
         {
             std::wstring errorMsg = _("Cannot find the following folders:") + L"\n";
 
-            for (const auto& baseFolder : status.missingBaseFolder)
-                errorMsg += L"\n" + ABF::getDisplayPath(baseFolder->getAbstractPath());
+            for (const AbstractPath& folderPath : status.missing)
+                errorMsg += L"\n" + AFS::getDisplayPath(folderPath);
 
             for (const auto& fc : status.failedChecks)
-                errorMsg += L"\n" + ABF::getDisplayPath(fc.first->getAbstractPath());
+                errorMsg += L"\n" + AFS::getDisplayPath(fc.first);
 
             errorMsg += L"\n\n";
-            errorMsg +=  _("You can ignore this error to consider each folder as empty. The folders then will be created automatically during synchronization.");
+            errorMsg +=  _("If you ignore this error the folders are considered empty. Missing folders are created automatically when needed.");
 
             if (!status.failedChecks.empty())
             {
@@ -123,9 +123,9 @@ void checkForIncompleteInput(const std::vector<ResolvedFolderPair>& folderPairs,
     bool haveFullPair    = false;
 
     for (const ResolvedFolderPair& fp : folderPairs)
-        if (fp.abfLeft->emptyBaseFolderPath() != fp.abfRight->emptyBaseFolderPath())
+        if (AFS::isNullPath(fp.folderPathLeft) != AFS::isNullPath(fp.folderPathRight))
             havePartialPair = true;
-        else if (!fp.abfLeft->emptyBaseFolderPath())
+        else if (!AFS::isNullPath(fp.folderPathLeft))
             haveFullPair = true;
 
     if (havePartialPair == haveFullPair) //error if: all empty or exist both full and partial pairs -> support single-dir scenario
@@ -141,9 +141,9 @@ void checkFolderDependency(const std::vector<ResolvedFolderPair>& folderPairs, b
     std::vector<ResolvedFolderPair> dependentFolderPairs;
 
     for (const ResolvedFolderPair& fp : folderPairs)
-        if (!fp.abfLeft->emptyBaseFolderPath() && !fp.abfRight->emptyBaseFolderPath()) //empty folders names may be accepted by user
+        if (!AFS::isNullPath(fp.folderPathLeft) && !AFS::isNullPath(fp.folderPathRight)) //empty folders names may be accepted by user
             //test wheter leftDirectory begins with rightDirectory or the other way round
-            if (ABF::havePathDependency(*fp.abfLeft, *fp.abfRight))
+            if (AFS::havePathDependency(fp.folderPathLeft, fp.folderPathRight))
                 dependentFolderPairs.push_back(fp);
 
     if (!dependentFolderPairs.empty())
@@ -151,8 +151,8 @@ void checkFolderDependency(const std::vector<ResolvedFolderPair>& folderPairs, b
         std::wstring warningMsg = _("The following folder paths are dependent from each other:");
         for (const ResolvedFolderPair& pair : dependentFolderPairs)
             warningMsg += L"\n\n" +
-                          ABF::getDisplayPath(pair.abfLeft ->getAbstractPath()) + L"\n" +
-                          ABF::getDisplayPath(pair.abfRight->getAbstractPath());
+                          AFS::getDisplayPath(pair.folderPathLeft) + L"\n" +
+                          AFS::getDisplayPath(pair.folderPathRight);
 
         callback.reportWarning(warningMsg, warningDependentFolders);
     }
@@ -165,18 +165,18 @@ class ComparisonBuffer
 public:
     ComparisonBuffer(const std::set<DirectoryKey>& keysToRead, ProcessCallback& callback);
 
-    //create comparison result table and fill category except for files existing on both sides: undefinedFiles and undefinedLinks are appended!
-    std::shared_ptr<BaseDirPair> compareByTimeSize(const ResolvedFolderPair& fp, const FolderPairCfg& fpConfig) const;
-    std::list<std::shared_ptr<BaseDirPair>> compareByContent(const std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>>& workLoad) const;
+    //create comparison result table and fill category except for files existing on both sides: undefinedFiles and undefinedSymlinks are appended!
+    std::shared_ptr<BaseFolderPair> compareByTimeSize(const ResolvedFolderPair& fp, const FolderPairCfg& fpConfig) const;
+    std::list<std::shared_ptr<BaseFolderPair>> compareByContent(const std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>>& workLoad) const;
 
 private:
     ComparisonBuffer           (const ComparisonBuffer&) = delete;
     ComparisonBuffer& operator=(const ComparisonBuffer&) = delete;
 
-    std::shared_ptr<BaseDirPair> performComparison(const ResolvedFolderPair& fp,
-                                                   const FolderPairCfg& fpCfg,
-                                                   std::vector<FilePair*>& undefinedFiles,
-                                                   std::vector<SymlinkPair*>& undefinedLinks) const;
+    std::shared_ptr<BaseFolderPair> performComparison(const ResolvedFolderPair& fp,
+                                                      const FolderPairCfg& fpCfg,
+                                                      std::vector<FilePair*>& undefinedFiles,
+                                                      std::vector<SymlinkPair*>& undefinedSymlinks) const;
 
     std::map<DirectoryKey, DirectoryValue> directoryBuffer; //contains only *existing* directories
     ProcessCallback& callback_;
@@ -243,17 +243,17 @@ std::wstring getConflictInvalidDate(const std::wstring& displayPath, std::int64_
 
 
 //check for changed files with same modification date
-std::wstring getConflictSameDateDiffSize(const FilePair& fileObj)
+std::wstring getConflictSameDateDiffSize(const FilePair& file)
 {
-    return replaceCpy(_("Files %x have the same date but a different size."), L"%x", fmtPath(fileObj.getPairRelativePath())) + L"\n" +
-           L"    " + arrowLeft  + L" " + _("Date:") + L" " + utcToLocalTimeString(fileObj.getLastWriteTime<LEFT_SIDE >()) + L"    " + _("Size:") + L" " + toGuiString(fileObj.getFileSize<LEFT_SIDE>()) + L"\n" +
-           L"    " + arrowRight + L" " + _("Date:") + L" " + utcToLocalTimeString(fileObj.getLastWriteTime<RIGHT_SIDE>()) + L"    " + _("Size:") + L" " + toGuiString(fileObj.getFileSize<RIGHT_SIDE>());
+    return replaceCpy(_("Files %x have the same date but a different size."), L"%x", fmtPath(file.getPairRelativePath())) + L"\n" +
+           L"    " + arrowLeft  + L" " + _("Date:") + L" " + utcToLocalTimeString(file.getLastWriteTime<LEFT_SIDE >()) + L"    " + _("Size:") + L" " + toGuiString(file.getFileSize<LEFT_SIDE>()) + L"\n" +
+           L"    " + arrowRight + L" " + _("Date:") + L" " + utcToLocalTimeString(file.getLastWriteTime<RIGHT_SIDE>()) + L"    " + _("Size:") + L" " + toGuiString(file.getFileSize<RIGHT_SIDE>());
 }
 
 
-std::wstring getConflictSkippedBinaryComparison(const FilePair& fileObj)
+std::wstring getConflictSkippedBinaryComparison(const FilePair& file)
 {
-    return replaceCpy(_("Content comparison was skipped for excluded files %x."), L"%x", fmtPath(fileObj.getPairRelativePath()));
+    return replaceCpy(_("Content comparison was skipped for excluded files %x."), L"%x", fmtPath(file.getPairRelativePath()));
 }
 
 
@@ -266,98 +266,98 @@ std::wstring getDescrDiffMetaShortnameCase(const FileSystemObject& fsObj)
 
 
 template <class FileOrLinkPair>
-std::wstring getDescrDiffMetaDate(const FileOrLinkPair& fileObj)
+std::wstring getDescrDiffMetaDate(const FileOrLinkPair& file)
 {
     return _("Items differ in attributes only") + L"\n" +
-           L"    " + arrowLeft  + L" " + _("Date:") + L" " + utcToLocalTimeString(fileObj.template getLastWriteTime<LEFT_SIDE >()) + L"\n" +
-           L"    " + arrowRight + L" " + _("Date:") + L" " + utcToLocalTimeString(fileObj.template getLastWriteTime<RIGHT_SIDE>());
+           L"    " + arrowLeft  + L" " + _("Date:") + L" " + utcToLocalTimeString(file.template getLastWriteTime<LEFT_SIDE >()) + L"\n" +
+           L"    " + arrowRight + L" " + _("Date:") + L" " + utcToLocalTimeString(file.template getLastWriteTime<RIGHT_SIDE>());
 }
 
 //-----------------------------------------------------------------------------
 
-void categorizeSymlinkByTime(SymlinkPair& linkObj, int fileTimeTolerance, unsigned int optTimeShiftHours)
+void categorizeSymlinkByTime(SymlinkPair& symlink, int fileTimeTolerance, unsigned int optTimeShiftHours)
 {
     //categorize symlinks that exist on both sides
-    switch (compareFileTime(linkObj.getLastWriteTime<LEFT_SIDE>(),
-                            linkObj.getLastWriteTime<RIGHT_SIDE>(), fileTimeTolerance, optTimeShiftHours))
+    switch (compareFileTime(symlink.getLastWriteTime<LEFT_SIDE>(),
+                            symlink.getLastWriteTime<RIGHT_SIDE>(), fileTimeTolerance, optTimeShiftHours))
     {
         case TimeResult::EQUAL:
             //Caveat:
-            //1. SYMLINK_EQUAL may only be set if short names match in case: InSyncDir's mapping tables use short name as a key! see db_file.cpp
+            //1. SYMLINK_EQUAL may only be set if short names match in case: InSyncFolder's mapping tables use short name as a key! see db_file.cpp
             //2. harmonize with "bool stillInSync()" in algorithm.cpp
 
-            if (linkObj.getItemName<LEFT_SIDE>() == linkObj.getItemName<RIGHT_SIDE>())
-                linkObj.setCategory<FILE_EQUAL>();
+            if (symlink.getItemName<LEFT_SIDE>() == symlink.getItemName<RIGHT_SIDE>())
+                symlink.setCategory<FILE_EQUAL>();
             else
-                linkObj.setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(linkObj));
+                symlink.setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(symlink));
             break;
 
         case TimeResult::LEFT_NEWER:
-            linkObj.setCategory<FILE_LEFT_NEWER>();
+            symlink.setCategory<FILE_LEFT_NEWER>();
             break;
 
         case TimeResult::RIGHT_NEWER:
-            linkObj.setCategory<FILE_RIGHT_NEWER>();
+            symlink.setCategory<FILE_RIGHT_NEWER>();
             break;
 
         case TimeResult::LEFT_INVALID:
-            linkObj.setCategoryConflict(getConflictInvalidDate(ABF::getDisplayPath(linkObj.getAbstractPath<LEFT_SIDE>()), linkObj.getLastWriteTime<LEFT_SIDE>()));
+            symlink.setCategoryConflict(getConflictInvalidDate(AFS::getDisplayPath(symlink.getAbstractPath<LEFT_SIDE>()), symlink.getLastWriteTime<LEFT_SIDE>()));
             break;
 
         case TimeResult::RIGHT_INVALID:
-            linkObj.setCategoryConflict(getConflictInvalidDate(ABF::getDisplayPath(linkObj.getAbstractPath<RIGHT_SIDE>()), linkObj.getLastWriteTime<RIGHT_SIDE>()));
+            symlink.setCategoryConflict(getConflictInvalidDate(AFS::getDisplayPath(symlink.getAbstractPath<RIGHT_SIDE>()), symlink.getLastWriteTime<RIGHT_SIDE>()));
             break;
     }
 }
 
 
-std::shared_ptr<BaseDirPair> ComparisonBuffer::compareByTimeSize(const ResolvedFolderPair& fp, const FolderPairCfg& fpConfig) const
+std::shared_ptr<BaseFolderPair> ComparisonBuffer::compareByTimeSize(const ResolvedFolderPair& fp, const FolderPairCfg& fpConfig) const
 {
     //do basis scan and retrieve files existing on both sides as "compareCandidates"
     std::vector<FilePair*> uncategorizedFiles;
     std::vector<SymlinkPair*> uncategorizedLinks;
-    std::shared_ptr<BaseDirPair> output = performComparison(fp, fpConfig, uncategorizedFiles, uncategorizedLinks);
+    std::shared_ptr<BaseFolderPair> output = performComparison(fp, fpConfig, uncategorizedFiles, uncategorizedLinks);
 
     //finish symlink categorization
-    for (SymlinkPair* linkObj : uncategorizedLinks)
-        categorizeSymlinkByTime(*linkObj, fpConfig.fileTimeTolerance, fpConfig.optTimeShiftHours);
+    for (SymlinkPair* symlink : uncategorizedLinks)
+        categorizeSymlinkByTime(*symlink, fpConfig.fileTimeTolerance, fpConfig.optTimeShiftHours);
 
     //categorize files that exist on both sides
-    for (FilePair* fileObj : uncategorizedFiles)
+    for (FilePair* file : uncategorizedFiles)
     {
-        switch (compareFileTime(fileObj->getLastWriteTime<LEFT_SIDE>(),
-                                fileObj->getLastWriteTime<RIGHT_SIDE>(), fpConfig.fileTimeTolerance, fpConfig.optTimeShiftHours))
+        switch (compareFileTime(file->getLastWriteTime<LEFT_SIDE>(),
+                                file->getLastWriteTime<RIGHT_SIDE>(), fpConfig.fileTimeTolerance, fpConfig.optTimeShiftHours))
         {
             case TimeResult::EQUAL:
                 //Caveat:
-                //1. FILE_EQUAL may only be set if short names match in case: InSyncDir's mapping tables use short name as a key! see db_file.cpp
+                //1. FILE_EQUAL may only be set if short names match in case: InSyncFolder's mapping tables use short name as a key! see db_file.cpp
                 //2. FILE_EQUAL is expected to mean identical file sizes! See InSyncFile
                 //3. harmonize with "bool stillInSync()" in algorithm.cpp, FilePair::syncTo() in file_hierarchy.cpp
-                if (fileObj->getFileSize<LEFT_SIDE>() == fileObj->getFileSize<RIGHT_SIDE>())
+                if (file->getFileSize<LEFT_SIDE>() == file->getFileSize<RIGHT_SIDE>())
                 {
-                    if (fileObj->getItemName<LEFT_SIDE>() == fileObj->getItemName<RIGHT_SIDE>())
-                        fileObj->setCategory<FILE_EQUAL>();
+                    if (file->getItemName<LEFT_SIDE>() == file->getItemName<RIGHT_SIDE>())
+                        file->setCategory<FILE_EQUAL>();
                     else
-                        fileObj->setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(*fileObj));
+                        file->setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(*file));
                 }
                 else
-                    fileObj->setCategoryConflict(getConflictSameDateDiffSize(*fileObj)); //same date, different filesize
+                    file->setCategoryConflict(getConflictSameDateDiffSize(*file)); //same date, different filesize
                 break;
 
             case TimeResult::LEFT_NEWER:
-                fileObj->setCategory<FILE_LEFT_NEWER>();
+                file->setCategory<FILE_LEFT_NEWER>();
                 break;
 
             case TimeResult::RIGHT_NEWER:
-                fileObj->setCategory<FILE_RIGHT_NEWER>();
+                file->setCategory<FILE_RIGHT_NEWER>();
                 break;
 
             case TimeResult::LEFT_INVALID:
-                fileObj->setCategoryConflict(getConflictInvalidDate(ABF::getDisplayPath(fileObj->getAbstractPath<LEFT_SIDE>()), fileObj->getLastWriteTime<LEFT_SIDE>()));
+                file->setCategoryConflict(getConflictInvalidDate(AFS::getDisplayPath(file->getAbstractPath<LEFT_SIDE>()), file->getLastWriteTime<LEFT_SIDE>()));
                 break;
 
             case TimeResult::RIGHT_INVALID:
-                fileObj->setCategoryConflict(getConflictInvalidDate(ABF::getDisplayPath(fileObj->getAbstractPath<RIGHT_SIDE>()), fileObj->getLastWriteTime<RIGHT_SIDE>()));
+                file->setCategoryConflict(getConflictInvalidDate(AFS::getDisplayPath(file->getAbstractPath<RIGHT_SIDE>()), file->getLastWriteTime<RIGHT_SIDE>()));
                 break;
         }
     }
@@ -365,55 +365,55 @@ std::shared_ptr<BaseDirPair> ComparisonBuffer::compareByTimeSize(const ResolvedF
 }
 
 
-void categorizeSymlinkByContent(SymlinkPair& linkObj, int fileTimeTolerance, unsigned int optTimeShiftHours, ProcessCallback& callback)
+void categorizeSymlinkByContent(SymlinkPair& symlink, int fileTimeTolerance, unsigned int optTimeShiftHours, ProcessCallback& callback)
 {
     //categorize symlinks that exist on both sides
     Zstring targetPathRawL;
     Zstring targetPathRawR;
     Opt<std::wstring> errMsg = tryReportingError([&]
     {
-        callback.reportStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(ABF::getDisplayPath(linkObj.getAbstractPath<LEFT_SIDE>()))));
+        callback.reportStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(AFS::getDisplayPath(symlink.getAbstractPath<LEFT_SIDE>()))));
 
-        targetPathRawL = ABF::getSymlinkContentBuffer(linkObj.getAbstractPath<LEFT_SIDE>()); //throw FileError
+        targetPathRawL = AFS::getSymlinkContentBuffer(symlink.getAbstractPath<LEFT_SIDE>()); //throw FileError
 
-        callback.reportStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(ABF::getDisplayPath(linkObj.getAbstractPath<RIGHT_SIDE>()))));
-        targetPathRawR = ABF::getSymlinkContentBuffer(linkObj.getAbstractPath<RIGHT_SIDE>()); //throw FileError
+        callback.reportStatus(replaceCpy(_("Resolving symbolic link %x"), L"%x", fmtPath(AFS::getDisplayPath(symlink.getAbstractPath<RIGHT_SIDE>()))));
+        targetPathRawR = AFS::getSymlinkContentBuffer(symlink.getAbstractPath<RIGHT_SIDE>()); //throw FileError
     }, callback); //throw X?
 
     if (errMsg)
-        linkObj.setCategoryConflict(*errMsg);
+        symlink.setCategoryConflict(*errMsg);
     else
     {
         if (targetPathRawL == targetPathRawR
 #ifdef ZEN_WIN //type of symbolic link is relevant for Windows only
             &&
-            ABF::folderExists(linkObj.getAbstractPath<LEFT_SIDE >()) == //check if dir-symlink
-            ABF::folderExists(linkObj.getAbstractPath<RIGHT_SIDE>())    //
+            AFS::folderExists(symlink.getAbstractPath<LEFT_SIDE >()) == //check if dir-symlink
+            AFS::folderExists(symlink.getAbstractPath<RIGHT_SIDE>())    //
 #endif
            )
         {
             //Caveat:
-            //1. SYMLINK_EQUAL may only be set if short names match in case: InSyncDir's mapping tables use short name as a key! see db_file.cpp
+            //1. SYMLINK_EQUAL may only be set if short names match in case: InSyncFolder's mapping tables use short name as a key! see db_file.cpp
             //2. harmonize with "bool stillInSync()" in algorithm.cpp, FilePair::syncTo() in file_hierarchy.cpp
 
             //symlinks have same "content"
-            if (linkObj.getItemName<LEFT_SIDE>() != linkObj.getItemName<RIGHT_SIDE>())
-                linkObj.setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(linkObj));
-            else if (!sameFileTime(linkObj.getLastWriteTime<LEFT_SIDE>(),
-                                   linkObj.getLastWriteTime<RIGHT_SIDE>(), fileTimeTolerance, optTimeShiftHours))
-                linkObj.setCategoryDiffMetadata(getDescrDiffMetaDate(linkObj));
+            if (symlink.getItemName<LEFT_SIDE>() != symlink.getItemName<RIGHT_SIDE>())
+                symlink.setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(symlink));
+            else if (!sameFileTime(symlink.getLastWriteTime<LEFT_SIDE>(),
+                                   symlink.getLastWriteTime<RIGHT_SIDE>(), fileTimeTolerance, optTimeShiftHours))
+                symlink.setCategoryDiffMetadata(getDescrDiffMetaDate(symlink));
             else
-                linkObj.setCategory<FILE_EQUAL>();
+                symlink.setCategory<FILE_EQUAL>();
         }
         else
-            linkObj.setCategory<FILE_DIFFERENT_CONTENT>();
+            symlink.setCategory<FILE_DIFFERENT_CONTENT>();
     }
 }
 
 
-std::list<std::shared_ptr<BaseDirPair>> ComparisonBuffer::compareByContent(const std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>>& workLoad) const
+std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(const std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>>& workLoad) const
 {
-    std::list<std::shared_ptr<BaseDirPair>> output;
+    std::list<std::shared_ptr<BaseFolderPair>> output;
     if (workLoad.empty())
         return output;
 
@@ -431,31 +431,31 @@ std::list<std::shared_ptr<BaseDirPair>> ComparisonBuffer::compareByContent(const
 
         //content comparison of file content happens AFTER finding corresponding files and AFTER filtering
         //in order to separate into two processes (scanning and comparing)
-        for (FilePair* fileObj : undefinedFiles)
+        for (FilePair* file : undefinedFiles)
             //pre-check: files have different content if they have a different filesize (must not be FILE_EQUAL: see InSyncFile)
-            if (fileObj->getFileSize<LEFT_SIDE>() != fileObj->getFileSize<RIGHT_SIDE>())
-                fileObj->setCategory<FILE_DIFFERENT_CONTENT>();
+            if (file->getFileSize<LEFT_SIDE>() != file->getFileSize<RIGHT_SIDE>())
+                file->setCategory<FILE_DIFFERENT_CONTENT>();
             else
             {
                 //perf: skip binary comparison for excluded rows (e.g. via time span and size filter)!
                 //both soft and hard filter were already applied in ComparisonBuffer::performComparison()!
-                if (!fileObj->isActive())
-                    fileObj->setCategoryConflict(getConflictSkippedBinaryComparison(*fileObj));
+                if (!file->isActive())
+                    file->setCategoryConflict(getConflictSkippedBinaryComparison(*file));
                 else
-                    filesToCompareBytewise.push_back(fileObj);
+                    filesToCompareBytewise.push_back(file);
             }
 
         //finish symlink categorization
-        for (SymlinkPair* linkObj : uncategorizedLinks)
-            categorizeSymlinkByContent(*linkObj, w.second.fileTimeTolerance, w.second.optTimeShiftHours, callback_);
+        for (SymlinkPair* symlink : uncategorizedLinks)
+            categorizeSymlinkByContent(*symlink, w.second.fileTimeTolerance, w.second.optTimeShiftHours, callback_);
     }
 
     //finish categorization...
     const size_t objectsTotal = filesToCompareBytewise.size();
 
     std::uint64_t bytesTotal = 0; //left and right filesizes are equal
-    for (FilePair* fileObj : filesToCompareBytewise)
-        bytesTotal += fileObj->getFileSize<LEFT_SIDE>();
+    for (FilePair* file : filesToCompareBytewise)
+        bytesTotal += file->getFileSize<LEFT_SIDE>();
 
     callback_.initNewPhase(static_cast<int>(objectsTotal), //may throw
                            bytesTotal,
@@ -466,46 +466,46 @@ std::list<std::shared_ptr<BaseDirPair>> ComparisonBuffer::compareByContent(const
     //PERF_START;
 
     //compare files (that have same size) bytewise...
-    for (FilePair* fileObj : filesToCompareBytewise)
+    for (FilePair* file : filesToCompareBytewise)
     {
-        callback_.reportStatus(replaceCpy(txtComparingContentOfFiles, L"%x", fmtPath(fileObj->getPairRelativePath())));
+        callback_.reportStatus(replaceCpy(txtComparingContentOfFiles, L"%x", fmtPath(file->getPairRelativePath())));
 
         //check files that exist in left and right model but have different content
 
         bool haveSameContent = false;
         Opt<std::wstring> errMsg = tryReportingError([&]
         {
-            StatisticsReporter statReporter(1, fileObj->getFileSize<LEFT_SIDE>(), callback_);
+            StatisticsReporter statReporter(1, file->getFileSize<LEFT_SIDE>(), callback_);
 
             auto onUpdateStatus = [&](std::int64_t bytesDelta) { statReporter.reportDelta(0, bytesDelta); };
 
-            haveSameContent = filesHaveSameContent(fileObj->getAbstractPath<LEFT_SIDE>(),
-                                                   fileObj->getAbstractPath<RIGHT_SIDE>(), onUpdateStatus); //throw FileError
+            haveSameContent = filesHaveSameContent(file->getAbstractPath<LEFT_SIDE>(),
+                                                   file->getAbstractPath<RIGHT_SIDE>(), onUpdateStatus); //throw FileError
             statReporter.reportDelta(1, 0);
 
             statReporter.reportFinished();
         }, callback_); //throw X?
 
         if (errMsg)
-            fileObj->setCategoryConflict(*errMsg);
+            file->setCategoryConflict(*errMsg);
         else
         {
             if (haveSameContent)
             {
                 //Caveat:
-                //1. FILE_EQUAL may only be set if short names match in case: InSyncDir's mapping tables use short name as a key! see db_file.cpp
+                //1. FILE_EQUAL may only be set if short names match in case: InSyncFolder's mapping tables use short name as a key! see db_file.cpp
                 //2. FILE_EQUAL is expected to mean identical file sizes! See InSyncFile
                 //3. harmonize with "bool stillInSync()" in algorithm.cpp, FilePair::syncTo() in file_hierarchy.cpp
-                if (fileObj->getItemName<LEFT_SIDE>() != fileObj->getItemName<RIGHT_SIDE>())
-                    fileObj->setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(*fileObj));
-                else if (!sameFileTime(fileObj->getLastWriteTime<LEFT_SIDE>(),
-                                       fileObj->getLastWriteTime<RIGHT_SIDE>(), fileObj->root().getFileTimeTolerance(), fileObj->root().getTimeShift()))
-                    fileObj->setCategoryDiffMetadata(getDescrDiffMetaDate(*fileObj));
+                if (file->getItemName<LEFT_SIDE>() != file->getItemName<RIGHT_SIDE>())
+                    file->setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(*file));
+                else if (!sameFileTime(file->getLastWriteTime<LEFT_SIDE>(),
+                                       file->getLastWriteTime<RIGHT_SIDE>(), file->base().getFileTimeTolerance(), file->base().getTimeShift()))
+                    file->setCategoryDiffMetadata(getDescrDiffMetaDate(*file));
                 else
-                    fileObj->setCategory<FILE_EQUAL>();
+                    file->setCategory<FILE_EQUAL>();
             }
             else
-                fileObj->setCategory<FILE_DIFFERENT_CONTENT>();
+                file->setCategory<FILE_DIFFERENT_CONTENT>();
         }
     }
     return output;
@@ -518,31 +518,31 @@ class MergeSides
 public:
     MergeSides(const std::map<Zstring, std::wstring, LessFilePath>& failedItemReads,
                std::vector<FilePair*>& undefinedFilesOut,
-               std::vector<SymlinkPair*>& undefinedLinksOut) :
+               std::vector<SymlinkPair*>& undefinedSymlinksOut) :
         failedItemReads_(failedItemReads),
         undefinedFiles(undefinedFilesOut),
-        undefinedLinks(undefinedLinksOut) {}
+        undefinedSymlinks(undefinedSymlinksOut) {}
 
-    void execute(const DirContainer& leftSide, const DirContainer& rightSide, HierarchyObject& output)
+    void execute(const FolderContainer& lhs, const FolderContainer& rhs, HierarchyObject& output)
     {
         auto it = failedItemReads_.find(Zstring()); //empty path if read-error for whole base directory
 
-        mergeTwoSides(leftSide, rightSide,
+        mergeTwoSides(lhs, rhs,
                       it != failedItemReads_.end() ? &it->second : nullptr,
                       output);
     }
 
 private:
-    void mergeTwoSides(const DirContainer& leftSide, const DirContainer& rightSide, const std::wstring* errorMsg, HierarchyObject& output);
+    void mergeTwoSides(const FolderContainer& lhs, const FolderContainer& rhs, const std::wstring* errorMsg, HierarchyObject& output);
 
     template <SelectedSide side>
-    void fillOneSide(const DirContainer& dirCont, const std::wstring* errorMsg, HierarchyObject& output);
+    void fillOneSide(const FolderContainer& folderCont, const std::wstring* errorMsg, HierarchyObject& output);
 
     const std::wstring* checkFailedRead(FileSystemObject& fsObj, const std::wstring* errorMsg);
 
     const std::map<Zstring, std::wstring, LessFilePath>& failedItemReads_; //base-relative paths or empty if read-error for whole base directory
     std::vector<FilePair*>& undefinedFiles;
-    std::vector<SymlinkPair*>& undefinedLinks;
+    std::vector<SymlinkPair*>& undefinedSymlinks;
 };
 
 
@@ -566,25 +566,25 @@ const std::wstring* MergeSides::checkFailedRead(FileSystemObject& fsObj, const s
 
 
 template <SelectedSide side>
-void MergeSides::fillOneSide(const DirContainer& dirCont, const std::wstring* errorMsg, HierarchyObject& output)
+void MergeSides::fillOneSide(const FolderContainer& folderCont, const std::wstring* errorMsg, HierarchyObject& output)
 {
-    for (const auto& file : dirCont.files)
+    for (const auto& file : folderCont.files)
     {
         FilePair& newItem = output.addSubFile<side>(file.first, file.second);
         checkFailedRead(newItem, errorMsg);
     }
 
-    for (const auto& link : dirCont.links)
+    for (const auto& symlink : folderCont.symlinks)
     {
-        SymlinkPair& newItem = output.addSubLink<side>(link.first, link.second);
+        SymlinkPair& newItem = output.addSubLink<side>(symlink.first, symlink.second);
         checkFailedRead(newItem, errorMsg);
     }
 
-    for (const auto& dir : dirCont.dirs)
+    for (const auto& dir : folderCont.folders)
     {
-        DirPair& newDir = output.addSubDir<side>(dir.first);
-        const std::wstring* errorMsgNew = checkFailedRead(newDir, errorMsg);
-        fillOneSide<side>(dir.second, errorMsgNew, newDir); //recurse
+        FolderPair& newFolder = output.addSubFolder<side>(dir.first);
+        const std::wstring* errorMsgNew = checkFailedRead(newFolder, errorMsg);
+        fillOneSide<side>(dir.second, errorMsgNew, newFolder); //recurse
     }
 }
 
@@ -593,46 +593,46 @@ void MergeSides::fillOneSide(const DirContainer& dirCont, const std::wstring* er
 template <class MapType, class ProcessLeftOnly, class ProcessRightOnly, class ProcessBoth> inline
 void linearMerge(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOnly lo, ProcessRightOnly ro, ProcessBoth bo)
 {
-    const auto lessVal = mapLeft.value_comp();
+    const auto lessKey = typename MapType::key_compare();
 
-    auto iterLeft  = mapLeft .begin();
-    auto iterRight = mapRight.begin();
+    auto itL = mapLeft .begin();
+    auto itR = mapRight.begin();
 
-    auto finishLeft  = [&] { std::for_each(iterLeft,  mapLeft .end(), lo); };
-    auto finishRight = [&] { std::for_each(iterRight, mapRight.end(), ro); };
+    auto finishLeft  = [&] { std::for_each(itL, mapLeft .end(), lo); };
+    auto finishRight = [&] { std::for_each(itR, mapRight.end(), ro); };
 
-    if (iterLeft  == mapLeft .end()) return finishRight();
-    if (iterRight == mapRight.end()) return finishLeft();
+    if (itL == mapLeft .end()) return finishRight();
+    if (itR == mapRight.end()) return finishLeft ();
 
     for (;;)
-        if (lessVal(*iterLeft, *iterRight))
+        if (lessKey(itL->first, itR->first))
         {
-            lo(*iterLeft);
-            if (++iterLeft == mapLeft.end())
+            lo(*itL);
+            if (++itL == mapLeft.end())
                 return finishRight();
         }
-        else if (lessVal(*iterRight, *iterLeft))
+        else if (lessKey(itR->first, itL->first))
         {
-            ro(*iterRight);
-            if (++iterRight == mapRight.end())
+            ro(*itR);
+            if (++itR == mapRight.end())
                 return finishLeft();
         }
         else
         {
-            bo(*iterLeft, *iterRight);
-            ++iterLeft;  //
-            ++iterRight; //increment BOTH before checking for end of range!
-            if (iterLeft  == mapLeft .end()) return finishRight();
-            if (iterRight == mapRight.end()) return finishLeft();
+            bo(*itL, *itR);
+            ++itL; //
+            ++itR; //increment BOTH before checking for end of range!
+            if (itL == mapLeft .end()) return finishRight();
+            if (itR == mapRight.end()) return finishLeft ();
         }
 }
 
 
-void MergeSides::mergeTwoSides(const DirContainer& leftSide, const DirContainer& rightSide, const std::wstring* errorMsg, HierarchyObject& output)
+void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer& rhs, const std::wstring* errorMsg, HierarchyObject& output)
 {
-    typedef const DirContainer::FileList::value_type FileData;
+    typedef const FolderContainer::FileList::value_type FileData;
 
-    linearMerge(leftSide.files, rightSide.files,
+    linearMerge(lhs.files, rhs.files,
     [&](const FileData& fileLeft ) { FilePair& newItem = output.addSubFile<LEFT_SIDE >(fileLeft .first, fileLeft .second); checkFailedRead(newItem, errorMsg); }, //left only
     [&](const FileData& fileRight) { FilePair& newItem = output.addSubFile<RIGHT_SIDE>(fileRight.first, fileRight.second); checkFailedRead(newItem, errorMsg); }, //right only
 
@@ -645,54 +645,54 @@ void MergeSides::mergeTwoSides(const DirContainer& leftSide, const DirContainer&
                                               fileRight.second);
         if (!checkFailedRead(newItem, errorMsg))
             undefinedFiles.push_back(&newItem);
-        static_assert(IsSameType<HierarchyObject::SubFileVec, FixedList<FilePair>>::value, ""); //HierarchyObject::addSubFile() must NOT invalidate references used in "undefinedFiles"!
+        static_assert(IsSameType<HierarchyObject::FileList, FixedList<FilePair>>::value, ""); //HierarchyObject::addSubFile() must NOT invalidate references used in "undefinedFiles"!
     });
 
     //-----------------------------------------------------------------------------------------------
-    typedef const DirContainer::LinkList::value_type LinkData;
+    typedef const FolderContainer::SymlinkList::value_type SymlinkData;
 
-    linearMerge(leftSide.links, rightSide.links,
-    [&](const LinkData& linkLeft)  { SymlinkPair& newItem = output.addSubLink<LEFT_SIDE >(linkLeft .first, linkLeft .second); checkFailedRead(newItem, errorMsg); }, //left only
-    [&](const LinkData& linkRight) { SymlinkPair& newItem = output.addSubLink<RIGHT_SIDE>(linkRight.first, linkRight.second); checkFailedRead(newItem, errorMsg); }, //right only
+    linearMerge(lhs.symlinks, rhs.symlinks,
+    [&](const SymlinkData& symlinkLeft ) { SymlinkPair& newItem = output.addSubLink<LEFT_SIDE >(symlinkLeft .first, symlinkLeft .second); checkFailedRead(newItem, errorMsg); }, //left only
+    [&](const SymlinkData& symlinkRight) { SymlinkPair& newItem = output.addSubLink<RIGHT_SIDE>(symlinkRight.first, symlinkRight.second); checkFailedRead(newItem, errorMsg); }, //right only
 
-    [&](const LinkData& linkLeft, const LinkData& linkRight) //both sides
+    [&](const SymlinkData& symlinkLeft, const SymlinkData& symlinkRight) //both sides
     {
-        SymlinkPair& newItem = output.addSubLink(linkLeft.first,
-                                                 linkLeft.second,
+        SymlinkPair& newItem = output.addSubLink(symlinkLeft.first,
+                                                 symlinkLeft.second,
                                                  SYMLINK_EQUAL, //dummy-value until categorization is finished later
-                                                 linkRight.first,
-                                                 linkRight.second);
+                                                 symlinkRight.first,
+                                                 symlinkRight.second);
         if (!checkFailedRead(newItem, errorMsg))
-            undefinedLinks.push_back(&newItem);
+            undefinedSymlinks.push_back(&newItem);
     });
 
     //-----------------------------------------------------------------------------------------------
-    typedef const DirContainer::DirList::value_type DirData;
+    typedef const FolderContainer::FolderList::value_type FolderData;
 
-    linearMerge(leftSide.dirs, rightSide.dirs,
-                [&](const DirData& dirLeft) //left only
+    linearMerge(lhs.folders, rhs.folders,
+                [&](const FolderData& dirLeft) //left only
     {
-        DirPair& newDir = output.addSubDir<LEFT_SIDE>(dirLeft.first);
-        const std::wstring* errorMsgNew = checkFailedRead(newDir, errorMsg);
-        this->fillOneSide<LEFT_SIDE>(dirLeft.second, errorMsgNew, newDir); //recurse
+        FolderPair& newFolder = output.addSubFolder<LEFT_SIDE>(dirLeft.first);
+        const std::wstring* errorMsgNew = checkFailedRead(newFolder, errorMsg);
+        this->fillOneSide<LEFT_SIDE>(dirLeft.second, errorMsgNew, newFolder); //recurse
     },
-    [&](const DirData& dirRight) //right only
+    [&](const FolderData& dirRight) //right only
     {
-        DirPair& newDir = output.addSubDir<RIGHT_SIDE>(dirRight.first);
-        const std::wstring* errorMsgNew = checkFailedRead(newDir, errorMsg);
-        this->fillOneSide<RIGHT_SIDE>(dirRight.second, errorMsgNew, newDir); //recurse
+        FolderPair& newFolder = output.addSubFolder<RIGHT_SIDE>(dirRight.first);
+        const std::wstring* errorMsgNew = checkFailedRead(newFolder, errorMsg);
+        this->fillOneSide<RIGHT_SIDE>(dirRight.second, errorMsgNew, newFolder); //recurse
     },
 
-    [&](const DirData& dirLeft, const DirData& dirRight) //both sides
+    [&](const FolderData& dirLeft, const FolderData& dirRight) //both sides
     {
-        DirPair& newDir = output.addSubDir(dirLeft.first, dirRight.first, DIR_EQUAL);
-        const std::wstring* errorMsgNew = checkFailedRead(newDir, errorMsg);
+        FolderPair& newFolder = output.addSubFolder(dirLeft.first, dirRight.first, DIR_EQUAL);
+        const std::wstring* errorMsgNew = checkFailedRead(newFolder, errorMsg);
 
         if (!errorMsgNew)
             if (dirLeft.first != dirRight.first)
-                newDir.setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(newDir));
+                newFolder.setCategoryDiffMetadata(getDescrDiffMetaShortnameCase(newFolder));
 
-        mergeTwoSides(dirLeft.second, dirRight.second, errorMsgNew, newDir); //recurse
+        mergeTwoSides(dirLeft.second, dirRight.second, errorMsgNew, newFolder); //recurse
     });
 }
 
@@ -701,54 +701,54 @@ void MergeSides::mergeTwoSides(const DirContainer& leftSide, const DirContainer&
 //mark excluded directories (see fillBuffer()) + remove superfluous excluded subdirectories
 void stripExcludedDirectories(HierarchyObject& hierObj, const HardFilter& filterProc)
 {
-    for (DirPair& dirObj : hierObj.refSubDirs())
-        stripExcludedDirectories(dirObj, filterProc);
+    for (FolderPair& folder : hierObj.refSubFolders())
+        stripExcludedDirectories(folder, filterProc);
 
     //remove superfluous directories:
     //   this does not invalidate "std::vector<FilePair*>& undefinedFiles", since we delete folders only
     //   and there is no side-effect for memory positions of FilePair and SymlinkPair thanks to zen::FixedList!
-    static_assert(IsSameType<FixedList<DirPair>, HierarchyObject::SubDirVec>::value, "");
+    static_assert(IsSameType<FixedList<FolderPair>, HierarchyObject::FolderList>::value, "");
 
-    hierObj.refSubDirs().remove_if([&](DirPair& dirObj)
+    hierObj.refSubFolders().remove_if([&](FolderPair& folder)
     {
-        const bool included = filterProc.passDirFilter(dirObj.getPairRelativePath(), nullptr); //childItemMightMatch is false, child items were already excluded during scanning
+        const bool included = filterProc.passDirFilter(folder.getPairRelativePath(), nullptr); //childItemMightMatch is false, child items were already excluded during scanning
 
         if (!included) //falsify only! (e.g. might already be inactive due to read error!)
-            dirObj.setActive(false);
+            folder.setActive(false);
 
         return !included && //don't check active status, but eval filter directly!
-               dirObj.refSubDirs ().empty() &&
-               dirObj.refSubLinks().empty() &&
-               dirObj.refSubFiles().empty();
+               folder.refSubFolders().empty() &&
+               folder.refSubLinks  ().empty() &&
+               folder.refSubFiles  ().empty();
     });
 }
 
 
-//create comparison result table and fill category except for files existing on both sides: undefinedFiles and undefinedLinks are appended!
-std::shared_ptr<BaseDirPair> ComparisonBuffer::performComparison(const ResolvedFolderPair& fp,
-                                                                 const FolderPairCfg& fpCfg,
-                                                                 std::vector<FilePair*>& undefinedFiles,
-                                                                 std::vector<SymlinkPair*>& undefinedLinks) const
+//create comparison result table and fill category except for files existing on both sides: undefinedFiles and undefinedSymlinks are appended!
+std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const ResolvedFolderPair& fp,
+                                                                    const FolderPairCfg& fpCfg,
+                                                                    std::vector<FilePair*>& undefinedFiles,
+                                                                    std::vector<SymlinkPair*>& undefinedSymlinks) const
 {
     callback_.reportStatus(_("Generating file list..."));
     callback_.forceUiRefresh();
 
-    auto getDirValue = [&](const ABF& baseFolder) -> const DirectoryValue*
+    auto getDirValue = [&](const AbstractPath& folderPath) -> const DirectoryValue*
     {
-        auto it = directoryBuffer.find(DirectoryKey(baseFolder, fpCfg.filter.nameFilter, fpCfg.handleSymlinks));
+        auto it = directoryBuffer.find(DirectoryKey(folderPath, fpCfg.filter.nameFilter, fpCfg.handleSymlinks));
         return it != directoryBuffer.end() ? &it->second : nullptr;
     };
 
-    const DirectoryValue* bufValueLeft  = getDirValue(*fp.abfLeft);
-    const DirectoryValue* bufValueRight = getDirValue(*fp.abfRight);
+    const DirectoryValue* bufValueLeft  = getDirValue(fp.folderPathLeft);
+    const DirectoryValue* bufValueRight = getDirValue(fp.folderPathRight);
 
     std::map<Zstring, std::wstring, LessFilePath> failedReads; //base-relative paths or empty if read-error for whole base directory
     {
-        //mix failedDirReads with failedItemReads:
+        //mix failedFolderReads with failedItemReads:
         //mark directory errors already at directory-level (instead for child items only) to show on GUI! See "MergeSides"
         //=> minor pessimization for "excludefilterFailedRead" which needlessly excludes parent folders, too
-        if (bufValueLeft ) append(failedReads, bufValueLeft ->failedDirReads);
-        if (bufValueRight) append(failedReads, bufValueRight->failedDirReads);
+        if (bufValueLeft ) append(failedReads, bufValueLeft ->failedFolderReads);
+        if (bufValueRight) append(failedReads, bufValueRight->failedFolderReads);
 
         if (bufValueLeft ) append(failedReads, bufValueLeft ->failedItemReads);
         if (bufValueRight) append(failedReads, bufValueRight->failedItemReads);
@@ -761,19 +761,19 @@ std::shared_ptr<BaseDirPair> ComparisonBuffer::performComparison(const ResolvedF
         for (const auto& item : failedReads)
             excludefilterFailedRead += item.first + Zstr("\n"); //exclude item AND (potential) child items!
 
-    std::shared_ptr<BaseDirPair> output = std::make_shared<BaseDirPair>(fp.abfLeft,
-                                                                        bufValueLeft != nullptr, //dir existence must be checked only once: available iff buffer entry exists!
-                                                                        fp.abfRight,
-                                                                        bufValueRight != nullptr,
-                                                                        fpCfg.filter.nameFilter->copyFilterAddingExclusion(excludefilterFailedRead),
-                                                                        fpCfg.compareVar,
-                                                                        fpCfg.fileTimeTolerance,
-                                                                        fpCfg.optTimeShiftHours);
+    std::shared_ptr<BaseFolderPair> output = std::make_shared<BaseFolderPair>(fp.folderPathLeft,
+                                                                              bufValueLeft != nullptr, //dir existence must be checked only once: available iff buffer entry exists!
+                                                                              fp.folderPathRight,
+                                                                              bufValueRight != nullptr,
+                                                                              fpCfg.filter.nameFilter->copyFilterAddingExclusion(excludefilterFailedRead),
+                                                                              fpCfg.compareVar,
+                                                                              fpCfg.fileTimeTolerance,
+                                                                              fpCfg.optTimeShiftHours);
 
     //PERF_START;
-    DirContainer emptyDirCont; //WTF!!! => using a temporary in the ternary conditional would implicitly call the DirContainer copy-constructor!!!!!!
-    MergeSides(failedReads, undefinedFiles, undefinedLinks).execute(bufValueLeft  ? bufValueLeft ->dirCont : emptyDirCont,
-                                                                    bufValueRight ? bufValueRight->dirCont : emptyDirCont, *output);
+    FolderContainer emptyFolderCont; //WTF!!! => using a temporary in the ternary conditional would implicitly call the FolderContainer copy-constructor!!!!!!
+    MergeSides(failedReads, undefinedFiles, undefinedSymlinks).execute(bufValueLeft  ? bufValueLeft ->folderCont : emptyFolderCont,
+                                                                       bufValueRight ? bufValueRight->folderCont : emptyFolderCont, *output);
     //PERF_STOP;
 
     //##################### in/exclude rows according to filtering #####################
@@ -845,7 +845,7 @@ FolderComparison zen::compare(xmlAccess::OptionalDialogs& warnings,
 
     //-------------------end of basic checks------------------------------------------
 
-    auto basefolderExisting = [&](const ABF& baseFolder) { return resInfo.existingBaseFolders.find(&baseFolder) != resInfo.existingBaseFolders.end(); };
+    auto basefolderExisting = [&](const AbstractPath& folderPath) { return resInfo.existingBaseFolders.find(folderPath) != resInfo.existingBaseFolders.end(); };
 
     std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>> totalWorkLoad;
     for (size_t i = 0; i < cfgList.size(); ++i)
@@ -855,9 +855,9 @@ FolderComparison zen::compare(xmlAccess::OptionalDialogs& warnings,
     if (createDirLocks)
     {
         std::set<Zstring, LessFilePath> dirPathsExisting;
-        for (const ABF* baseFolder : resInfo.existingBaseFolders)
-            if (Opt<Zstring> folderPath = ABF::getNativeItemPath(baseFolder->getAbstractPath())) //restrict directory locking to native paths until further
-                dirPathsExisting.insert(*folderPath);
+        for (const AbstractPath& folderPath : resInfo.existingBaseFolders)
+            if (Opt<Zstring> nativePath = AFS::getNativeItemPath(folderPath)) //restrict directory locking to native paths until further
+                dirPathsExisting.insert(*nativePath);
 
         dirLocks = std::make_unique<LockHolder>(dirPathsExisting, warnings.warningDirectoryLockFailed, callback);
     }
@@ -869,15 +869,15 @@ FolderComparison zen::compare(xmlAccess::OptionalDialogs& warnings,
 
         for (const auto& w : totalWorkLoad)
         {
-            if (basefolderExisting(*w.first.abfLeft)) //only traverse *currently existing* directories: at this point user is aware that non-ex + empty string are seen as empty folder!
-                dirsToRead.emplace(*w.first.abfLeft,  w.second.filter.nameFilter, w.second.handleSymlinks);
-            if (basefolderExisting(*w.first.abfRight))
-                dirsToRead.emplace(*w.first.abfRight, w.second.filter.nameFilter, w.second.handleSymlinks);
+            if (basefolderExisting(w.first.folderPathLeft)) //only traverse *currently existing* directories: at this point user is aware that non-ex + empty string are seen as empty folder!
+                dirsToRead.emplace(w.first.folderPathLeft,  w.second.filter.nameFilter, w.second.handleSymlinks);
+            if (basefolderExisting(w.first.folderPathRight))
+                dirsToRead.emplace(w.first.folderPathRight, w.second.filter.nameFilter, w.second.handleSymlinks);
         }
 
         FolderComparison output;
 
-        //reduce peak memory by restricting lifetime of ComparisonBuffer to have ended when loading potentially huge InSyncDir instance in redetermineSyncDirection()
+        //reduce peak memory by restricting lifetime of ComparisonBuffer to have ended when loading potentially huge InSyncFolder instance in redetermineSyncDirection()
         {
             //------------ traverse/read folders -----------------------------------------------------
             //PERF_START;
@@ -895,7 +895,7 @@ FolderComparison zen::compare(xmlAccess::OptionalDialogs& warnings,
                         workLoadByContent.push_back(w);
                         break;
                 }
-            std::list<std::shared_ptr<BaseDirPair>> outputByContent = cmpBuff.compareByContent(workLoadByContent);
+            std::list<std::shared_ptr<BaseFolderPair>> outputByContent = cmpBuff.compareByContent(workLoadByContent);
 
             //write output in expected order
             for (const auto& w : totalWorkLoad)

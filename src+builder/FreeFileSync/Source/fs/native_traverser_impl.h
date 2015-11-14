@@ -20,7 +20,6 @@
 
 #include <zen/sys_error.h>
 #include <zen/symlink_target.h>
-#include <zen/int64.h>
 
 #include <cstddef> //offsetof
 #include <sys/stat.h>
@@ -31,16 +30,16 @@
 namespace
 {
 using namespace zen;
-using ABF = AbstractBaseFolder;
+using AFS = AbstractFileSystem;
 
 
 inline
-ABF::FileId convertToAbstractFileId(const zen::FileId& fid)
+AFS::FileId convertToAbstractFileId(const zen::FileId& fid)
 {
     if (fid == zen::FileId())
-        return ABF::FileId();
+        return AFS::FileId();
 
-    ABF::FileId out(reinterpret_cast<const char*>(&fid.first), sizeof(fid.first));
+    AFS::FileId out(reinterpret_cast<const char*>(&fid.first), sizeof(fid.first));
     out.append(reinterpret_cast<const char*>(&fid.second), sizeof(fid.second));
     return out;
 }
@@ -49,13 +48,13 @@ ABF::FileId convertToAbstractFileId(const zen::FileId& fid)
 class DirTraverser
 {
 public:
-    static void execute(const Zstring& baseDirectory, ABF::TraverserCallback& sink)
+    static void execute(const Zstring& baseDirectory, AFS::TraverserCallback& sink)
     {
         DirTraverser(baseDirectory, sink);
     }
 
 private:
-    DirTraverser(const Zstring& baseDirectory, ABF::TraverserCallback& sink)
+    DirTraverser(const Zstring& baseDirectory, AFS::TraverserCallback& sink)
     {
 #ifdef MinFFS_PATCH
 		// MinFFS: MinGW does not have pathconf and _PC_NAME_MAX. So
@@ -81,7 +80,7 @@ private:
     DirTraverser           (const DirTraverser&) = delete;
     DirTraverser& operator=(const DirTraverser&) = delete;
 
-    void traverse(const Zstring& dirPath, ABF::TraverserCallback& sink)
+    void traverse(const Zstring& dirPath, AFS::TraverserCallback& sink)
     {
         tryReportingDirError([&]
         {
@@ -89,7 +88,7 @@ private:
         }, sink);
     }
 
-    void traverseWithException(const Zstring& dirPath, ABF::TraverserCallback& sink) //throw FileError
+    void traverseWithException(const Zstring& dirPath, AFS::TraverserCallback& sink) //throw FileError
     {
 #ifdef MinFFS_PATCH
 	HANDLE dirHandle, fileHandle;
@@ -132,7 +131,11 @@ private:
 	    
 	    if (fileAttr_.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) //a directory
 	    {
+#ifdef MinFFS_PATCH
+		if (std::unique_ptr<AFS::TraverserCallback> trav = sink.onDir({ shortName.c_str() }))
+#else
 		if (std::unique_ptr<ABF::TraverserCallback> trav = sink.onDir({ shortName.c_str() }))
+#endif
 		{
 		    traverse(itempath, *trav);
 		}
@@ -155,7 +158,11 @@ private:
 		// convert to Linux epoch which is number of seconds since Jan. 1st 1970 UTC
 		std::int64_t lastWriteTimeLinuxEpoc = (lastWriteWinFileTime / 10000000LL) - 11644473600LL;
 		
-                ABF::TraverserCallback::FileInfo fi = {
+#ifdef MinFFS_PATCH
+		AFS::TraverserCallback::FileInfo fi = {
+#else
+		ABF::TraverserCallback::FileInfo fi = {
+#endif
 		    shortName.c_str(),                                       // const Zchar*
 		    makeUnsigned(fileSize),                                  // std::uint64_t  unit: bytes
 		    lastWriteTimeLinuxEpoc,                                  // std::int64_t   number of seconds since Jan. 1st 1970 UTC
@@ -211,11 +218,11 @@ private:
 
             if (S_ISLNK(statData.st_mode)) //on Linux there is no distinction between file and directory symlinks!
             {
-                const ABF::TraverserCallback::SymlinkInfo linkInfo = { itemName, statData.st_mtime };
+                const AFS::TraverserCallback::SymlinkInfo linkInfo = { itemName, statData.st_mtime };
 
                 switch (sink.onSymlink(linkInfo))
                 {
-                    case ABF::TraverserCallback::LINK_FOLLOW:
+                    case AFS::TraverserCallback::LINK_FOLLOW:
                     {
                         //try to resolve symlink (and report error on failure!!!)
                         struct ::stat statDataTrg = {};
@@ -230,12 +237,12 @@ private:
                         {
                             if (S_ISDIR(statDataTrg.st_mode)) //a directory
                             {
-                                if (std::unique_ptr<ABF::TraverserCallback> trav = sink.onDir({ itemName }))
+                                if (std::unique_ptr<AFS::TraverserCallback> trav = sink.onDir({ itemName }))
                                     traverse(itemPath, *trav);
                             }
                             else //a file or named pipe, ect.
                             {
-                                ABF::TraverserCallback::FileInfo fi = { itemName, makeUnsigned(statDataTrg.st_size), statDataTrg.st_mtime, convertToAbstractFileId(extractFileId(statDataTrg)), &linkInfo };
+                                AFS::TraverserCallback::FileInfo fi = { itemName, makeUnsigned(statDataTrg.st_size), statDataTrg.st_mtime, convertToAbstractFileId(extractFileId(statDataTrg)), &linkInfo };
                                 sink.onFile(fi);
                             }
                         }
@@ -243,18 +250,18 @@ private:
                     }
                     break;
 
-                    case ABF::TraverserCallback::LINK_SKIP:
+                    case AFS::TraverserCallback::LINK_SKIP:
                         break;
                 }
             }
             else if (S_ISDIR(statData.st_mode)) //a directory
             {
-                if (std::unique_ptr<ABF::TraverserCallback> trav = sink.onDir({ itemName }))
+                if (std::unique_ptr<AFS::TraverserCallback> trav = sink.onDir({ itemName }))
                     traverse(itemPath, *trav);
             }
             else //a file or named pipe, ect.
             {
-                ABF::TraverserCallback::FileInfo fi = { itemName, makeUnsigned(statData.st_size), statData.st_mtime, convertToAbstractFileId(extractFileId(statData)), nullptr /*symlinkInfo*/ };
+                AFS::TraverserCallback::FileInfo fi = { itemName, makeUnsigned(statData.st_size), statData.st_mtime, convertToAbstractFileId(extractFileId(statData)), nullptr /*symlinkInfo*/ };
                 sink.onFile(fi);
             }
             /*

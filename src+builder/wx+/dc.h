@@ -4,10 +4,11 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef DC_3813704987123956832143243214
-#define DC_3813704987123956832143243214
+#ifndef DC_H_4987123956832143243214
+#define DC_H_4987123956832143243214
 
 #include <unordered_map>
+#include <zen/optional.h>
 #include <wx/dcbuffer.h> //for macro: wxALWAYS_NATIVE_DOUBLE_BUFFER
 
 namespace zen
@@ -48,7 +49,7 @@ public:
         auto it = refDcToAreaMap().find(&dc);
         if (it != refDcToAreaMap().end())
         {
-            oldRect = std::make_unique<wxRect>(it->second);
+            oldRect = it->second;
 
             wxRect tmp = r;
             tmp.Intersect(*oldRect);    //better safe than sorry
@@ -65,7 +66,7 @@ public:
     ~RecursiveDcClipper()
     {
         dc_.DestroyClippingRegion();
-        if (oldRect.get() != nullptr)
+        if (oldRect)
         {
             dc_.SetClippingRegion(*oldRect);
             refDcToAreaMap()[&dc_] = *oldRect;
@@ -78,7 +79,7 @@ private:
     //associate "active" clipping area with each DC
     static std::unordered_map<wxDC*, wxRect>& refDcToAreaMap() { static std::unordered_map<wxDC*, wxRect> clippingAreas; return clippingAreas; }
 
-    std::unique_ptr<wxRect> oldRect;
+    Opt<wxRect> oldRect;
     wxDC& dc_;
 };
 
@@ -88,17 +89,17 @@ private:
 #endif
 
 #if wxALWAYS_NATIVE_DOUBLE_BUFFER
-struct BufferedPaintDC : public wxPaintDC { BufferedPaintDC(wxWindow& wnd, std::unique_ptr<wxBitmap>& buffer) : wxPaintDC(&wnd) {} };
+struct BufferedPaintDC : public wxPaintDC { BufferedPaintDC(wxWindow& wnd, Opt<wxBitmap>& buffer) : wxPaintDC(&wnd) {} };
 
 #else
 class BufferedPaintDC : public wxMemoryDC
 {
 public:
-    BufferedPaintDC(wxWindow& wnd, std::unique_ptr<wxBitmap>& buffer) : buffer_(buffer), paintDc(&wnd)
+    BufferedPaintDC(wxWindow& wnd, Opt<wxBitmap>& buffer) : buffer_(buffer), paintDc(&wnd)
     {
         const wxSize clientSize = wnd.GetClientSize();
         if (!buffer_ || clientSize != wxSize(buffer->GetWidth(), buffer->GetHeight()))
-            buffer = std::make_unique<wxBitmap>(clientSize.GetWidth(), clientSize.GetHeight());
+            buffer = wxBitmap(clientSize.GetWidth(), clientSize.GetHeight());
 
         SelectObject(*buffer);
 
@@ -119,10 +120,10 @@ public:
     }
 
 private:
-    std::unique_ptr<wxBitmap>& buffer_;
+    Opt<wxBitmap>& buffer_;
     wxPaintDC paintDc;
 };
 #endif
 }
 
-#endif //DC_3813704987123956832143243214
+#endif //DC_H_4987123956832143243214

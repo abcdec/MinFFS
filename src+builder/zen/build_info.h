@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef BUILDINFO_H_5928539285603428657
-#define BUILDINFO_H_5928539285603428657
+#ifndef BUILD_INFO_H_5928539285603428657
+#define BUILD_INFO_H_5928539285603428657
 
 namespace zen
 {
@@ -35,4 +35,4 @@ namespace zen
 #endif
 }
 
-#endif //BUILDINFO_H_5928539285603428657
+#endif //BUILD_INFO_H_5928539285603428657

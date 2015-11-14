@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef SERIALIZE_H_INCLUDED_83940578357
-#define SERIALIZE_H_INCLUDED_83940578357
+#ifndef SERIALIZE_H_839405783574356
+#define SERIALIZE_H_839405783574356
 
 #include <functional>
 #include <cstdint>
@@ -250,4 +250,4 @@ C readContainer(BinInputStream& stream) //throw UnexpectedEndOfStreamError
 }
 }
 
-#endif //SERIALIZE_H_INCLUDED_83940578357
+#endif //SERIALIZE_H_839405783574356

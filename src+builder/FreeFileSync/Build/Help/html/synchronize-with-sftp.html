@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<link rel="stylesheet" type="text/css" href="base.css" >
+	<title>Synchronize with SFTP</title>
+</head>
+
+<body>
+	<h1>Synchronize with SFTP <span style="font-weight: normal">(Windows)</span></h1>
+
+	<p>
+		FreeFileSync supports synchronization with SFTP natively. Just enter your SFTP login information into the dialog shown during folder selection:<br>
+		<br>
+		<img src="../images/sftp-login.png" alt="Enter SFTP login data">
+	</p>
+	
+	<div class="box-outer"><div class="bluebox"><div class="box-inner">
+		<b>Note</b><br>In case the SFTP server sets file modification times to the current time 
+		you can do a <a href="expert-settings.html">Compare by File Size</a> as a workaround.
+	</div></div></div>	
+	<br>
+	<br>
+
+	<h1>Synchronize with SFTP <span style="font-weight: normal">(Linux)</span></h1>
+
+	<p>An SFTP share can be easily mapped onto a local folder for use with FreeFileSync:</p>
+
+	<div class="box-outer"><div class="greybox"><div class="box-inner">
+		<ul style="margin: 0">
+			<li>Install:
+				<div class="command-line">sudo apt-get install sshfs</div><br>
+			
+			<li>Mount SFTP share:
+				<div class="command-line">sshfs ssh-account@ssh-server:&lt;path&gt; mountpoint</div><br>
+			
+			<li>Unmount:<br>
+				<div class="command-line">fusermount -u mountpoint</div>
+		</ul>
+	</div></div></div>
+</body>
+</html>

@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef PROCESSXML_H_INCLUDED_28345825704254262435
-#define PROCESSXML_H_INCLUDED_28345825704254262435
+#ifndef PROCESS_XML_H_28345825704254262435
+#define PROCESS_XML_H_28345825704254262435
 
 #include <zen/xml_io.h>
 #include <wx/gdicmn.h>
@@ -13,6 +13,7 @@
 #include "../structures.h"
 #include "../ui/column_attr.h"
 #include "../ui/folder_history_types.h"
+
 
 namespace xmlAccess
 {
@@ -166,8 +167,8 @@ struct XmlGlobalSettings
 #endif
         }
 
-        wxPoint dlgPos { wxDefaultCoord, wxDefaultCoord };
-        wxSize dlgSize { wxDefaultCoord, wxDefaultCoord };
+        wxPoint dlgPos;
+        wxSize dlgSize;
         bool isMaximized = false;
         int sashOffset = 0;
 
@@ -224,11 +225,8 @@ struct XmlGlobalSettings
 
         bool manualDeletionUseRecycler = true;
 
-#if defined ZEN_WIN || defined ZEN_MAC
-        bool textSearchRespectCase = false;
-#elif defined ZEN_LINUX
-        bool textSearchRespectCase = true;
-#endif
+        bool textSearchRespectCase = false; //good default for Linux, too!
+
         bool showIcons = true;
         FileIconSize iconSize = ICON_SIZE_SMALL;
 
@@ -262,4 +260,4 @@ XmlBatchConfig convertGuiToBatch(const XmlGuiConfig&   guiCfg, const XmlBatchCon
 std::wstring extractJobName(const Zstring& configFilename);
 }
 
-#endif //PROCESSXML_H_INCLUDED_28345825704254262435
+#endif //PROCESS_XML_H_28345825704254262435

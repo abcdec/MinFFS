@@ -18,8 +18,8 @@
 // * General Public License for more details.                               *
 // **************************************************************************
 
-#ifndef SYMLINK_80178347019835748321473214
-#define SYMLINK_80178347019835748321473214
+#ifndef SYMLINK_TARGET_H_801783470198357483
+#define SYMLINK_TARGET_H_801783470198357483
 
 #include "scope_guard.h"
 #include "file_error.h"
@@ -258,4 +258,4 @@ bool isSymlink(const WIN32_FIND_DATA& data)
 #endif
 }
 
-#endif //SYMLINK_80178347019835748321473214
+#endif //SYMLINK_TARGET_H_801783470198357483

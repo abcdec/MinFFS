@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef EXECUTE_HEADER_23482134578134134
-#define EXECUTE_HEADER_23482134578134134
+#ifndef SHELL_EXECUTE_H_23482134578134134
+#define SHELL_EXECUTE_H_23482134578134134
 
 #include "file_error.h"
 
@@ -94,9 +94,9 @@ void shellExecute(const Zstring& command, ExecutionType type) //throw FileError
     if (!argv.empty())
     {
         filepath = argv[0];
-        for (auto iter = argv.begin() + 1; iter != argv.end(); ++iter)
-            arguments += (iter != argv.begin() ? L" " : L"") +
-                         (iter->empty() || std::any_of(iter->begin(), iter->end(), &isWhiteSpace<wchar_t>) ? L"\"" + *iter + L"\"" : *iter);
+        for (auto it = argv.begin() + 1; it != argv.end(); ++it)
+            arguments += (it != argv.begin() ? L" " : L"") +
+                         (it->empty() || std::any_of(it->begin(), it->end(), &isWhiteSpace<wchar_t>) ? L"\"" + *it + L"\"" : *it);
     }
 
     auto fillExecInfo = [&](SHELLEXECUTEINFO& execInfo)
@@ -130,4 +130,4 @@ void shellExecute(const Zstring& command, ExecutionType type) //throw FileError
 }
 }
 
-#endif //EXECUTE_HEADER_23482134578134134
+#endif //SHELL_EXECUTE_H_23482134578134134

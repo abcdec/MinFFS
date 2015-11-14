@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef DIR_NAME_H_24857842375234523463425
-#define DIR_NAME_H_24857842375234523463425
+#ifndef FOLDER_SELECTOR_H_24857842375234523463425
+#define FOLDER_SELECTOR_H_24857842375234523463425
 
 #include <zen/zstring.h>
 #include <wx/stattext.h>
@@ -47,7 +47,7 @@ public:
     void setPath(const Zstring& folderPathPhrase);
 
 private:
-    virtual bool canSetDroppedShellPaths(const std::vector<Zstring>& shellItemPaths) { return true; }; //return true if drop should be processed
+    virtual bool canSetDroppedShellPaths(const std::vector<Zstring>& shellItemPaths) { return true; } //return true if drop should be processed
 
     void onMouseWheel     (wxMouseEvent&   event);
     void onFilesDropped   (FileDropEvent& event);
@@ -65,4 +65,4 @@ private:
 };
 }
 
-#endif //DIR_NAME_H_24857842375234523463425
+#endif //FOLDER_SELECTOR_H_24857842375234523463425

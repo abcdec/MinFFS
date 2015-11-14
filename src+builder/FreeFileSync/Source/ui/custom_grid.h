@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef CUSTOMGRID_H_INCLUDED
-#define CUSTOMGRID_H_INCLUDED
+#ifndef CUSTOM_GRID_H_8405817408327894
+#define CUSTOM_GRID_H_8405817408327894
 
 #include <wx+/grid.h>
 #include "grid_view.h"
@@ -79,4 +79,4 @@ typedef void (wxEvtHandler::*SyncDirectionEventFunction)(SyncDirectionEvent&);
     (wxObjectEventFunction)(wxEventFunction)wxStaticCastEvent(SyncDirectionEventFunction, &func)
 }
 
-#endif // CUSTOMGRID_H_INCLUDED
+#endif //CUSTOM_GRID_H_8405817408327894

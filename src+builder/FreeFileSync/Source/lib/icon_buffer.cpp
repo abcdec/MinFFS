@@ -18,7 +18,7 @@
 #endif
 
 using namespace zen;
-using ABF = AbstractBaseFolder;
+using AFS = AbstractFileSystem;
 
 
 namespace
@@ -45,8 +45,7 @@ wxBitmap extractWxBitmap(ImageHolder&& ih)
     if (!ih.getRgb())
         return wxNullBitmap;
 
-    //let wxImage take ownership:
-    wxImage img(ih.getWidth(), ih.getHeight(), ih.releaseRgb(), false /*static_data*/);
+    wxImage img(ih.getWidth(), ih.getHeight(), ih.releaseRgb(), false /*static_data*/); //pass ownership
     if (ih.getAlpha())
         img.SetAlpha(ih.releaseAlpha(), false);
     return wxBitmap(img);
@@ -54,27 +53,18 @@ wxBitmap extractWxBitmap(ImageHolder&& ih)
 
 
 #ifdef ZEN_WIN
-std::set<Zstring, LessFilePath> customIconExt //function-scope statics are not (yet) thread-safe in VC12
-{
-    L"ani",
-    L"cur",
-    L"exe",
-    L"ico",
-    L"msc",
-    L"scr"
-};
-std::set<Zstring, LessFilePath> linkExt
-{
-    L"lnk",
-    L"pif",
-    L"url",
-    L"website"
-};
+const std::set<Zstring, LessFilePath> linkExt { L"lnk", L"pif", L"url", L"website" };
+
 
 //test for extension for non-thumbnail icons that can have a stock icon which does not have to be physically read from disc
 inline
 bool hasStandardIconExtension(const Zstring& filePath)
 {
+    static const std::set<Zstring, LessFilePath> customIconExt { L"ani", L"cur", L"exe", L"ico", L"msc", L"scr" }; //function-scope statics are not (yet) thread-safe in VC12
+#if defined _MSC_VER && _MSC_VER < 1900
+#error function scope static initialization is not yet thread-safe!
+#endif
+
     const Zstring extension(getFileExtension(filePath));
 
     return customIconExt.find(extension) == customIconExt.end() &&
@@ -85,7 +75,7 @@ bool hasStandardIconExtension(const Zstring& filePath)
 
 //################################################################################################################################################
 
-ImageHolder getDisplayIcon(const ABF::IconLoader& iconLoader, const Zstring& templateName, IconBuffer::IconSize sz)
+ImageHolder getDisplayIcon(const AbstractPath& itemPath, IconBuffer::IconSize sz)
 {
     //1. try to load thumbnails
     switch (sz)
@@ -94,21 +84,21 @@ ImageHolder getDisplayIcon(const ABF::IconLoader& iconLoader, const Zstring& tem
             break;
         case IconBuffer::SIZE_MEDIUM:
         case IconBuffer::SIZE_LARGE:
-            if (iconLoader.getThumbnailImage)
-                if (ImageHolder img = iconLoader.getThumbnailImage(IconBuffer::getSize(sz)))
-                    return img;
+            if (ImageHolder img = AFS::getThumbnailImage(itemPath, IconBuffer::getSize(sz)))
+                return img;
             //else: fallback to non-thumbnail icon
             break;
     }
 
+    const Zstring& templateName = AFS::getFileShortName(itemPath);
+
     //2. retrieve file icons
 #ifdef ZEN_WIN
-    //result will be buffered under full filepath, not extension; this is okay: failure to load thumbnail is independent from extension in general!
-    if (!hasStandardIconExtension(templateName)) //"pricey" extensions are stored with full path and are read from disk, while cheap ones require just the extension
+    //result will be buffered with full path, not extension; this is okay: failure to load thumbnail is independent from extension in general!
+    if (!hasStandardIconExtension(templateName)) //perf: no need for physical disk access for standard icons
 #endif
-        if (iconLoader.getFileIcon)
-            if (ImageHolder ih = iconLoader.getFileIcon(IconBuffer::getSize(sz)))
-                return ih;
+        if (ImageHolder ih = AFS::getFileIcon(itemPath, IconBuffer::getSize(sz)))
+            return ih;
 
     //3. fallbacks
     if (ImageHolder ih = getIconByTemplatePath(templateName, IconBuffer::getSize(sz)))
@@ -120,65 +110,51 @@ ImageHolder getDisplayIcon(const ABF::IconLoader& iconLoader, const Zstring& tem
 //################################################################################################################################################
 
 //---------------------- Shared Data -------------------------
-struct WorkItem
-{
-    WorkItem(const AbstractPathRef::ItemId& id, const ABF::IconLoader& iconLoader, const Zstring& fileName) : id_(id), iconLoader_(iconLoader), fileName_(fileName) {}
-
-    AbstractPathRef::ItemId id_; //async icon loading => avoid any dangling references!!!
-    ABF::IconLoader iconLoader_; //THREAD-SAFETY: thread-safe like an int!
-    Zstring fileName_;           //template name for use as fallback icon
-};
-
-
 class WorkLoad
 {
 public:
     //context of worker thread, blocking:
-    WorkItem extractNextFile() //throw ThreadInterruption
+    AbstractPath extractNextFile() //throw ThreadInterruption
     {
         assert(std::this_thread::get_id() != mainThreadId);
         std::unique_lock<std::mutex> dummy(lockFiles);
 
         interruptibleWait(conditionNewWork, dummy, [this] { return !workLoad.empty(); }); //throw ThreadInterruption
 
-        WorkItem workItem = workLoad.back(); //
-        workLoad.pop_back();                 //yes, not std::bad_alloc exception-safe, but bad_alloc is not relevant for us
-        return workItem;                     //
+        AbstractPath filePath = workLoad.back(); //
+        workLoad.pop_back();                     //yes, no strong exception guarantee (std::bad_alloc)
+        return filePath;                         //
     }
 
-    void setWorkload(const std::vector<AbstractPathRef>& newLoad) //context of main thread
+    void setWorkload(const std::vector<AbstractPath>& newLoad) //context of main thread
     {
         assert(std::this_thread::get_id() == mainThreadId);
         {
             std::lock_guard<std::mutex> dummy(lockFiles);
 
             workLoad.clear();
-            for (const AbstractPathRef& filePath : newLoad)
-                workLoad.emplace_back(filePath.getUniqueId(),
-                                      ABF::getAsyncIconLoader(filePath), //noexcept!
-                                      ABF::getFileShortName(filePath));  //
+            for (const AbstractPath& filePath : newLoad)
+                workLoad.emplace_back(filePath);
         }
         conditionNewWork.notify_all(); //instead of notify_one(); workaround bug: https://svn.boost.org/trac/boost/ticket/7796
         //condition handling, see: http://www.boost.org/doc/libs/1_43_0/doc/html/thread/synchronization.html#thread.synchronization.condvar_ref
     }
 
-    void addToWorkload(const AbstractPathRef& filePath) //context of main thread
+    void addToWorkload(const AbstractPath& filePath) //context of main thread
     {
         assert(std::this_thread::get_id() == mainThreadId);
         {
             std::lock_guard<std::mutex> dummy(lockFiles);
-
-            workLoad.emplace_back(filePath.getUniqueId(), //set as next item to retrieve
-                                  ABF::getAsyncIconLoader(filePath), //noexcept!
-                                  ABF::getFileShortName(filePath));  //
+            workLoad.emplace_back(filePath); //set as next item to retrieve
         }
         conditionNewWork.notify_all();
     }
 
 private:
-    std::vector<WorkItem>   workLoad; //processes last elements of vector first!
-    std::mutex              lockFiles;
-    std::condition_variable conditionNewWork; //signal event: data for processing available
+    //AbstractPath is thread-safe like an int!
+    std::vector<AbstractPath> workLoad; //processes last elements of vector first!
+    std::mutex                lockFiles;
+    std::condition_variable   conditionNewWork; //signal event: data for processing available
 };
 
 
@@ -188,19 +164,19 @@ public:
     Buffer() : firstInsertPos(iconList.end()), lastInsertPos(iconList.end()) {}
 
     //called by main and worker thread:
-    bool hasIcon(const AbstractPathRef::ItemId& id) const
+    bool hasIcon(const AbstractPath& filePath) const
     {
         std::lock_guard<std::mutex> dummy(lockIconList);
-        return iconList.find(id) != iconList.end();
+        return iconList.find(filePath) != iconList.end();
     }
 
     //must be called by main thread only! => wxBitmap is NOT thread-safe like an int (non-atomic ref-count!!!)
-    Opt<wxBitmap> retrieve(const AbstractPathRef::ItemId& id)
+    Opt<wxBitmap> retrieve(const AbstractPath& filePath)
     {
         assert(std::this_thread::get_id() == mainThreadId);
         std::lock_guard<std::mutex> dummy(lockIconList);
 
-        auto it = iconList.find(id);
+        auto it = iconList.find(filePath);
         if (it == iconList.end())
             return NoValue();
 
@@ -216,12 +192,12 @@ public:
     }
 
     //called by main and worker thread:
-    void insert(const AbstractPathRef::ItemId& id, ImageHolder&& icon)
+    void insert(const AbstractPath& filePath, ImageHolder&& icon)
     {
         std::lock_guard<std::mutex> dummy(lockIconList);
 
         //thread safety: moving ImageHolder is free from side effects, but ~wxBitmap() is NOT! => do NOT delete items from iconList here!
-        auto rc = iconList.emplace(id, makeValueObject());
+        auto rc = iconList.emplace(filePath, makeValueObject());
         assert(rc.second); //insertion took place
         if (rc.second)
         {
@@ -249,11 +225,11 @@ private:
     struct IconData;
 
 #ifdef __clang__ //workaround libc++ limitation for incomplete types: http://llvm.org/bugs/show_bug.cgi?id=17701
-    typedef std::map<AbstractPathRef::ItemId, std::unique_ptr<IconData>> FileIconMap;
+    typedef std::map<AbstractPath, std::unique_ptr<IconData>, AFS::LessAbstractPath> FileIconMap;
     static IconData& refData(FileIconMap::iterator it) { return *(it->second); }
     static std::unique_ptr<IconData> makeValueObject() { return std::make_unique<IconData>(); }
 #else
-    typedef std::map<AbstractPathRef::ItemId, IconData> FileIconMap;
+    typedef std::map<AbstractPath, IconData, AFS::LessAbstractPath> FileIconMap;
     IconData& refData(FileIconMap::iterator it) { return it->second; }
     static IconData makeValueObject() { return IconData(); }
 #endif
@@ -385,6 +361,8 @@ public:
 void WorkerThread::operator()() const //thread entry
 {
 #ifdef ZEN_WIN
+    setCurrentThreadName("Icon Buffer Worker");
+
     try
     {
 #ifdef TODO_MinFFS_ComInit
@@ -398,10 +376,10 @@ void WorkerThread::operator()() const //thread entry
             interruptionPoint(); //throw ThreadInterruption
 
             //start work: blocks until next icon to load is retrieved:
-            const WorkItem workItem = workload_->extractNextFile(); //throw ThreadInterruption
+            const AbstractPath itemPath = workload_->extractNextFile(); //throw ThreadInterruption
 
-            if (!buffer_->hasIcon(workItem.id_)) //perf: workload may contain duplicate entries?
-                buffer_->insert(workItem.id_, getDisplayIcon(workItem.iconLoader_, workItem.fileName_, iconSizeType));
+            if (!buffer_->hasIcon(itemPath)) //perf: workload may contain duplicate entries?
+                buffer_->insert(itemPath, getDisplayIcon(itemPath, iconSizeType));
         }
 
 #ifdef ZEN_WIN
@@ -414,14 +392,13 @@ void WorkerThread::operator()() const //thread entry
 
 struct IconBuffer::Pimpl
 {
-    Pimpl() :
-        workload(std::make_shared<WorkLoad>()),
-        buffer  (std::make_shared<Buffer>()) {}
-
-    std::shared_ptr<WorkLoad> workload;
-    std::shared_ptr<Buffer> buffer;
+    std::shared_ptr<WorkLoad> workload = std::make_shared<WorkLoad>();
+    std::shared_ptr<Buffer>   buffer   = std::make_shared<Buffer>();
 
     InterruptibleThread worker;
+
+    //-------------------------
+    std::map<Zstring, wxBitmap, LessFilePath> extensionIcons;
 };
 
 
@@ -464,28 +441,28 @@ int IconBuffer::getSize(IconSize sz)
 }
 
 
-bool IconBuffer::readyForRetrieval(const AbstractPathRef& filePath)
+bool IconBuffer::readyForRetrieval(const AbstractPath& filePath)
 {
 #ifdef ZEN_WIN
     if (iconSizeType == IconBuffer::SIZE_SMALL)
-        if (hasStandardIconExtension(ABF::getFileShortName(filePath)))
+        if (hasStandardIconExtension(AFS::getFileShortName(filePath)))
             return true;
 #endif
-    return pimpl->buffer->hasIcon(filePath.getUniqueId());
+    return pimpl->buffer->hasIcon(filePath);
 }
 
 
-Opt<wxBitmap> IconBuffer::retrieveFileIcon(const AbstractPathRef& filePath)
+Opt<wxBitmap> IconBuffer::retrieveFileIcon(const AbstractPath& filePath)
 {
 #ifdef ZEN_WIN
     //perf: let's read icons which don't need file access right away! No async delay justified!
-    const Zstring fileName = ABF::getFileShortName(filePath);
+    const Zstring fileName = AFS::getFileShortName(filePath);
     if (iconSizeType == IconBuffer::SIZE_SMALL) //non-thumbnail view, we need file type icons only!
         if (hasStandardIconExtension(fileName))
             return this->getIconByExtension(fileName); //buffered!!!
 #endif
 
-    if (Opt<wxBitmap> ico = pimpl->buffer->retrieve(filePath.getUniqueId()))
+    if (Opt<wxBitmap> ico = pimpl->buffer->retrieve(filePath))
         return ico;
 
     //since this icon seems important right now, we don't want to wait until next setWorkload() to start retrieving
@@ -495,7 +472,7 @@ Opt<wxBitmap> IconBuffer::retrieveFileIcon(const AbstractPathRef& filePath)
 }
 
 
-void IconBuffer::setWorkload(const std::vector<AbstractPathRef>& load)
+void IconBuffer::setWorkload(const std::vector<AbstractPath>& load)
 {
     assert(load.size() < BUFFER_SIZE_MAX / 2);
 
@@ -506,26 +483,20 @@ void IconBuffer::setWorkload(const std::vector<AbstractPathRef>& load)
 
 wxBitmap IconBuffer::getIconByExtension(const Zstring& filePath)
 {
-    //comparison of ItemIds is currently case-sensitive:
-#if defined ZEN_WIN || defined ZEN_MAC
-    const Zstring& extension = makeUpperCopy(getFileExtension(filePath));
-#elif defined ZEN_LINUX
-    const Zstring& extension =               getFileExtension(filePath);
-#endif
+    const Zstring& extension = getFileExtension(filePath);
 
-    const AbstractPathRef::ItemId extId(nullptr, extension);
+    assert(std::this_thread::get_id() == mainThreadId);
 
-    if (Opt<wxBitmap> ico = pimpl->buffer->retrieve(extId))
-        return *ico;
-
-    const Zstring& templateName(extension.empty() ? Zstr("file") : Zstr("file.") + extension);
-    //don't pass actual file name to getIconByTemplatePath(), e.g. "AUTHORS" has own mime type on Linux!!!
-    //=> we want to buffer by extension only to minimize buffer-misses!
-    pimpl->buffer->insert(extId, getIconByTemplatePath(templateName, IconBuffer::getSize(iconSizeType)));
-
-    Opt<wxBitmap> ico = pimpl->buffer->retrieve(extId);
-    assert(ico);
-    return *ico;
+    auto it = pimpl->extensionIcons.find(extension);
+    if (it == pimpl->extensionIcons.end())
+    {
+        const Zstring& templateName(extension.empty() ? Zstr("file") : Zstr("file.") + extension);
+        //don't pass actual file name to getIconByTemplatePath(), e.g. "AUTHORS" has own mime type on Linux!!!
+        //=> we want to buffer by extension only to minimize buffer-misses!
+        it = pimpl->extensionIcons.emplace(extension, extractWxBitmap(getIconByTemplatePath(templateName, IconBuffer::getSize(iconSizeType)))).first;
+    }
+    //need buffer size limit???
+    return it->second;
 }
 
 

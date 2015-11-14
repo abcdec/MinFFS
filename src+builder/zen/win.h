@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef YAWFWH_YET_ANOTHER_WRAPPER_FOR_WINDOWS_H
-#define YAWFWH_YET_ANOTHER_WRAPPER_FOR_WINDOWS_H
+#ifndef WIN_H_8701570183560183247891346363457
+#define WIN_H_8701570183560183247891346363457
 
 #ifndef _WINSOCKAPI_ //prevent inclusion of winsock.h in windows.h: obsoleted by and conflicting with winsock2.h
     #define _WINSOCKAPI_
@@ -30,4 +30,4 @@
 #endif
 //------------------------------------------------------
 
-#endif //YAWFWH_YET_ANOTHER_WRAPPER_FOR_WINDOWS_H
+#endif //WIN_H_8701570183560183247891346363457

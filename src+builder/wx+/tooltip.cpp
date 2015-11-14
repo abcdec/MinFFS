@@ -21,7 +21,7 @@ class Tooltip::TooltipDialogGenerated : public wxDialog
 public:
     TooltipDialogGenerated(wxWindow* parent,
                            wxWindowID id = wxID_ANY,
-                           const wxString& title = wxEmptyString,
+                           const wxString& title = {},
                            const wxPoint& pos = wxDefaultPosition,
                            const wxSize& size = wxDefaultSize,
                            long style = 0) : wxDialog(parent, id, title, pos, size, style)
@@ -36,7 +36,7 @@ public:
         m_bitmapLeft = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0);
         bSizer158->Add(m_bitmapLeft, 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
 
-        m_staticTextMain = new wxStaticText(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0);
+        m_staticTextMain = new wxStaticText(this, wxID_ANY, wxString(), wxDefaultPosition, wxDefaultSize, 0);
         bSizer158->Add(m_staticTextMain, 0, wxALL | wxALIGN_CENTER_HORIZONTAL | wxALIGN_CENTER_VERTICAL, 5);
 
         this->SetSizer(bSizer158);

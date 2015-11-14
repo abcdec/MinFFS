@@ -114,7 +114,7 @@ Zstring zen::getConfigDir()
 
 
 //this function is called by RealtimeSync!!!
-Zstring zen::getFreeFileSyncLauncher()
+Zstring zen::getFreeFileSyncLauncherPath()
 {
 #ifdef ZEN_WIN
     return getInstallDir() + Zstr("FreeFileSync.exe");

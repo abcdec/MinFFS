@@ -4,11 +4,12 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef RESOLVE_PATH_H_INCLUDED_817402834713454
-#define RESOLVE_PATH_H_INCLUDED_817402834713454
+#ifndef RESOLVE_PATH_H_817402834713454
+#define RESOLVE_PATH_H_817402834713454
 
 #include <vector>
 #include <zen/zstring.h>
+
 
 namespace zen
 {
@@ -34,4 +35,4 @@ std::vector<Zstring> getDirectoryAliases(const Zstring& folderPathPhrase); //may
 #endif
 }
 
-#endif //RESOLVE_PATH_H_INCLUDED_817402834713454
+#endif //RESOLVE_PATH_H_817402834713454

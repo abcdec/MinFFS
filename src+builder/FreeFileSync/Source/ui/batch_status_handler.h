@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef BATCH_STATUS_HANDLER_857390451451234566
-#define BATCH_STATUS_HANDLER_857390451451234566
+#ifndef BATCH_STATUS_HANDLER_H_857390451451234566
+#define BATCH_STATUS_HANDLER_H_857390451451234566
 
 #include <zen/error_log.h>
 #include <zen/time.h>
@@ -74,4 +74,4 @@ private:
     const Zstring logFolderPathPhrase_;
 };
 
-#endif //BATCH_STATUS_HANDLER_857390451451234566
+#endif //BATCH_STATUS_HANDLER_H_857390451451234566

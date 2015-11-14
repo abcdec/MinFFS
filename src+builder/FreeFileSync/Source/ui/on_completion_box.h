@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef EXEC_FINISHED_BOX_18947773210473214
-#define EXEC_FINISHED_BOX_18947773210473214
+#ifndef ON_COMPLETION_BOX_H_18947773210473214
+#define ON_COMPLETION_BOX_H_18947773210473214
 
 #include <vector>
 #include <string>
@@ -25,7 +25,7 @@ class OnCompletionBox : public wxComboBox
 public:
     OnCompletionBox(wxWindow* parent,
                     wxWindowID id,
-                    const wxString& value = wxEmptyString,
+                    const wxString& value = {},
                     const wxPoint& pos = wxDefaultPosition,
                     const wxSize& size = wxDefaultSize,
                     int n = 0,
@@ -59,4 +59,4 @@ private:
 };
 
 
-#endif //EXEC_FINISHED_BOX_18947773210473214
+#endif //ON_COMPLETION_BOX_H_18947773210473214

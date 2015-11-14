@@ -217,7 +217,7 @@ public:
 
     void setIconManager(const std::shared_ptr<IconManager>& iconMgr) { iconMgr_ = iconMgr; }
 
-    void updateNewAndGetUnbufferedIcons(std::vector<AbstractPathRef>& newLoad) //loads all not yet drawn icons
+    void updateNewAndGetUnbufferedIcons(std::vector<AbstractPath>& newLoad) //loads all not yet drawn icons
     {
         if (iconMgr_)
         {
@@ -250,7 +250,7 @@ public:
         }
     }
 
-    void getUnbufferedIconsForPreload(std::vector<std::pair<ptrdiff_t, AbstractPathRef>>& newLoad) //return (priority, filepath) list
+    void getUnbufferedIconsForPreload(std::vector<std::pair<ptrdiff_t, AbstractPath>>& newLoad) //return (priority, filepath) list
     {
         if (iconMgr_)
         {
@@ -370,12 +370,12 @@ private:
         {
             GetRowType(DisplayType& result) : result_(result) {}
 
-            void visit(const FilePair&    fileObj) override {}
-            void visit(const SymlinkPair& linkObj) override
+            void visit(const FilePair&    file) override {}
+            void visit(const SymlinkPair& symlink) override
             {
                 result_ = DISP_TYPE_SYMLINK;
             }
-            void visit(const DirPair& dirObj) override
+            void visit(const FolderPair& folder) override
             {
                 result_ = DISP_TYPE_FOLDER;
             }
@@ -386,83 +386,83 @@ private:
         return output;
     }
 
-    wxString getValue(size_t row, ColumnType colType) const override
+    std::wstring getValue(size_t row, ColumnType colType) const override
     {
         if (const FileSystemObject* fsObj = getRawData(row))
         {
             struct GetTextValue : public FSObjectVisitor
             {
-                GetTextValue(ColumnTypeRim colType) : colType_(colType)  {}
+                GetTextValue(ColumnTypeRim ctr) : colType_(ctr)  {}
 
-                void visit(const FilePair& fileObj) override
+                void visit(const FilePair& file) override
                 {
                     value = [&]
                     {
                         switch (colType_)
                         {
                             case COL_TYPE_FULL_PATH:
-                                return fileObj.isEmpty<side>() ? std::wstring() : ABF::getDisplayPath(fileObj.getAbstractPath<side>());
+                                return file.isEmpty<side>() ? std::wstring() : AFS::getDisplayPath(file.getAbstractPath<side>());
                             case COL_TYPE_FILENAME:
-                                return utfCvrtTo<std::wstring>(fileObj.getItemName<side>());
+                                return utfCvrtTo<std::wstring>(file.getItemName<side>());
                             case COL_TYPE_REL_FOLDER:
-                                return utfCvrtTo<std::wstring>(beforeLast(fileObj.getPairRelativePath(), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
+                                return utfCvrtTo<std::wstring>(beforeLast(file.getPairRelativePath(), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
                             case COL_TYPE_BASE_DIRECTORY:
-                                return ABF::getDisplayPath(fileObj.getABF<side>().getAbstractPath());
+                                return AFS::getDisplayPath(file.base().getAbstractPath<side>());
                             case COL_TYPE_SIZE:
-                                //return fileObj.isEmpty<side>() ? std::wstring() : utfCvrtTo<std::wstring>(fileObj.getFileId<side>()); // -> test file id
-                                return fileObj.isEmpty<side>() ? std::wstring() : toGuiString(fileObj.getFileSize<side>());
+                                //return file.isEmpty<side>() ? std::wstring() : utfCvrtTo<std::wstring>(file.getFileId<side>()); // -> test file id
+                                return file.isEmpty<side>() ? std::wstring() : toGuiString(file.getFileSize<side>());
                             case COL_TYPE_DATE:
-                                return fileObj.isEmpty<side>() ? std::wstring() : utcToLocalTimeString(fileObj.getLastWriteTime<side>());
+                                return file.isEmpty<side>() ? std::wstring() : utcToLocalTimeString(file.getLastWriteTime<side>());
                             case COL_TYPE_EXTENSION:
-                                return utfCvrtTo<std::wstring>(getFileExtension(fileObj.getItemName<side>()));
+                                return utfCvrtTo<std::wstring>(getFileExtension(file.getItemName<side>()));
                         }
                         assert(false);
                         return std::wstring();
                     }();
                 }
 
-                void visit(const SymlinkPair& linkObj) override
+                void visit(const SymlinkPair& symlink) override
                 {
                     value = [&]
                     {
                         switch (colType_)
                         {
                             case COL_TYPE_FULL_PATH:
-                                return linkObj.isEmpty<side>() ? std::wstring() : ABF::getDisplayPath(linkObj.getAbstractPath<side>());
+                                return symlink.isEmpty<side>() ? std::wstring() : AFS::getDisplayPath(symlink.getAbstractPath<side>());
                             case COL_TYPE_FILENAME:
-                                return utfCvrtTo<std::wstring>(linkObj.getItemName<side>());
+                                return utfCvrtTo<std::wstring>(symlink.getItemName<side>());
                             case COL_TYPE_REL_FOLDER:
-                                return utfCvrtTo<std::wstring>(beforeLast(linkObj.getPairRelativePath(), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
+                                return utfCvrtTo<std::wstring>(beforeLast(symlink.getPairRelativePath(), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
                             case COL_TYPE_BASE_DIRECTORY:
-                                return ABF::getDisplayPath(linkObj.getABF<side>().getAbstractPath());
+                                return AFS::getDisplayPath(symlink.base().getAbstractPath<side>());
                             case COL_TYPE_SIZE:
-                                return linkObj.isEmpty<side>() ? std::wstring() : L"<" + _("Symlink") + L">";
+                                return symlink.isEmpty<side>() ? std::wstring() : L"<" + _("Symlink") + L">";
                             case COL_TYPE_DATE:
-                                return linkObj.isEmpty<side>() ? std::wstring() : utcToLocalTimeString(linkObj.getLastWriteTime<side>());
+                                return symlink.isEmpty<side>() ? std::wstring() : utcToLocalTimeString(symlink.getLastWriteTime<side>());
                             case COL_TYPE_EXTENSION:
-                                return utfCvrtTo<std::wstring>(getFileExtension(linkObj.getItemName<side>()));
+                                return utfCvrtTo<std::wstring>(getFileExtension(symlink.getItemName<side>()));
                         }
                         assert(false);
                         return std::wstring();
                     }();
                 }
 
-                void visit(const DirPair& dirObj) override
+                void visit(const FolderPair& folder) override
                 {
                     value = [&]
                     {
                         switch (colType_)
                         {
                             case COL_TYPE_FULL_PATH:
-                                return dirObj.isEmpty<side>() ? std::wstring() : ABF::getDisplayPath(dirObj.getAbstractPath<side>());
+                                return folder.isEmpty<side>() ? std::wstring() : AFS::getDisplayPath(folder.getAbstractPath<side>());
                             case COL_TYPE_FILENAME:
-                                return utfCvrtTo<std::wstring>(dirObj.getItemName<side>());
+                                return utfCvrtTo<std::wstring>(folder.getItemName<side>());
                             case COL_TYPE_REL_FOLDER:
-                                return utfCvrtTo<std::wstring>(beforeLast(dirObj.getPairRelativePath(), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
+                                return utfCvrtTo<std::wstring>(beforeLast(folder.getPairRelativePath(), FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE));
                             case COL_TYPE_BASE_DIRECTORY:
-                                return ABF::getDisplayPath(dirObj.getABF<side>().getAbstractPath());
+                                return AFS::getDisplayPath(folder.base().getAbstractPath<side>());
                             case COL_TYPE_SIZE:
-                                return dirObj.isEmpty<side>() ? std::wstring() : L"<" + _("Folder") + L">";
+                                return folder.isEmpty<side>() ? std::wstring() : L"<" + _("Folder") + L">";
                             case COL_TYPE_DATE:
                                 return std::wstring();
                             case COL_TYPE_EXTENSION:
@@ -479,7 +479,7 @@ private:
             return getVal.value;
         }
         //if data is not found:
-        return wxString();
+        return std::wstring();
     }
 
     static const int GAP_SIZE = 2;
@@ -488,7 +488,7 @@ private:
     {
         wxRect rectTmp = rect;
 
-        const bool isActive = [&]() -> bool
+        const bool isActive = [&]
         {
             if (const FileSystemObject* fsObj = this->getRawData(row))
                 return fsObj->isActive();
@@ -601,7 +601,7 @@ private:
         return bestSize; // + 1 pix for cell border line -> not used anymore!
     }
 
-    wxString getColumnLabel(ColumnType colType) const override
+    std::wstring getColumnLabel(ColumnType colType) const override
     {
         switch (static_cast<ColumnTypeRim>(colType))
         {
@@ -620,7 +620,7 @@ private:
             case COL_TYPE_EXTENSION:
                 return _("Extension");
         }
-        return wxEmptyString;
+        return std::wstring();
     }
 
     void renderColumnLabel(Grid& tree, wxDC& dc, const wxRect& rect, ColumnType colType, bool highlighted) override
@@ -652,18 +652,18 @@ private:
     {
         enum IconType
         {
-            EMPTY = 0, //= default value!
+            EMPTY,
             FOLDER,
             ICON_PATH,
         };
-        IconType type;
-        const FileSystemObject* fsObj; //only set if type != EMPTY
-        bool drawAsLink;
+        IconType type = EMPTY;
+        const FileSystemObject* fsObj = nullptr; //only set if type != EMPTY
+        bool drawAsLink = false;
     };
 
     IconInfo getIconInfo(size_t row) const //return ICON_FILE_FOLDER if row points to a folder
     {
-        IconInfo out = {};
+        IconInfo out;
 
         const FileSystemObject* fsObj = getRawData(row);
         if (fsObj && !fsObj->isEmpty<side>())
@@ -674,17 +674,17 @@ private:
             {
                 GetIcon(IconInfo& ii) : ii_(ii) {}
 
-                void visit(const FilePair& fileObj) override
+                void visit(const FilePair& file) override
                 {
                     ii_.type       = IconInfo::ICON_PATH;
-                    ii_.drawAsLink = fileObj.isFollowedSymlink<side>() || hasLinkExtension(fileObj.getItemName<side>());
+                    ii_.drawAsLink = file.isFollowedSymlink<side>() || hasLinkExtension(file.getItemName<side>());
                 }
-                void visit(const SymlinkPair& linkObj) override
+                void visit(const SymlinkPair& symlink) override
                 {
                     ii_.type       = IconInfo::ICON_PATH;
                     ii_.drawAsLink = true;
                 }
-                void visit(const DirPair& dirObj) override
+                void visit(const FolderPair& folder) override
                 {
                     ii_.type = IconInfo::FOLDER;
                     //todo: if ("is followed symlink") ii_.drawAsLink = true;
@@ -697,7 +697,7 @@ private:
         return out;
     }
 
-    wxString getToolTip(size_t row, ColumnType colType) const override
+    std::wstring getToolTip(size_t row, ColumnType colType) const override
     {
         std::wstring toolTip;
 
@@ -705,27 +705,27 @@ private:
             if (!fsObj->isEmpty<side>())
             {
                 toolTip = getGridDataView() && getGridDataView()->getFolderPairCount() > 1 ?
-                          ABF::getDisplayPath(fsObj->getAbstractPath<side>()) :
+                          AFS::getDisplayPath(fsObj->getAbstractPath<side>()) :
                           utfCvrtTo<std::wstring>(fsObj->getRelativePath<side>());
 
                 struct AssembleTooltip : public FSObjectVisitor
                 {
                     AssembleTooltip(std::wstring& tipMsg) : tipMsg_(tipMsg) {}
 
-                    void visit(const FilePair& fileObj) override
+                    void visit(const FilePair& file) override
                     {
                         tipMsg_ += L"\n" +
-                                   _("Size:") + L" " + zen::filesizeToShortString(fileObj.getFileSize<side>()) + L"\n" +
-                                   _("Date:") + L" " + zen::utcToLocalTimeString(fileObj.getLastWriteTime<side>());
+                                   _("Size:") + L" " + zen::filesizeToShortString(file.getFileSize<side>()) + L"\n" +
+                                   _("Date:") + L" " + zen::utcToLocalTimeString(file.getLastWriteTime<side>());
                     }
 
-                    void visit(const SymlinkPair& linkObj) override
+                    void visit(const SymlinkPair& symlink) override
                     {
                         tipMsg_ += L"\n" +
-                                   _("Date:") + L" " + zen::utcToLocalTimeString(linkObj.getLastWriteTime<side>());
+                                   _("Date:") + L" " + zen::utcToLocalTimeString(symlink.getLastWriteTime<side>());
                     }
 
-                    void visit(const DirPair& dirObj) override {}
+                    void visit(const FolderPair& folder) override {}
 
                     std::wstring& tipMsg_;
                 } assembler(toolTip);
@@ -738,7 +738,7 @@ private:
 
 
     std::vector<char> failedLoads; //effectively a vector<bool> of size "number of rows"
-    std::unique_ptr<wxBitmap> buffer; //avoid costs of recreating this temporal variable
+    Opt<wxBitmap> buffer; //avoid costs of recreating this temporal variable
 };
 
 
@@ -762,16 +762,16 @@ private:
         //mark rows selected on navigation grid:
         if (enabled && !selected)
         {
-            const bool markRow = [&]() -> bool
+            const bool markRow = [&]
             {
                 if (const FileSystemObject* fsObj = getRawData(row))
                 {
                     if (markedFilesAndLinks_.find(fsObj) != markedFilesAndLinks_.end()) //mark files/links directly
                         return true;
 
-                    if (auto dirObj = dynamic_cast<const DirPair*>(fsObj))
+                    if (auto folder = dynamic_cast<const FolderPair*>(fsObj))
                     {
-                        if (markedContainer_.find(dirObj) != markedContainer_.end()) //mark directories which *are* the given HierarchyObject*
+                        if (markedContainer_.find(folder) != markedContainer_.end()) //mark directories which *are* the given HierarchyObject*
                             return true;
                     }
 
@@ -782,8 +782,8 @@ private:
                         if (markedContainer_.find(parent) != markedContainer_.end())
                             return true;
 
-                        if (auto dirObj = dynamic_cast<const DirPair*>(parent))
-                            parent = &(dirObj->parent());
+                        if (auto folder = dynamic_cast<const FolderPair*>(parent))
+                            parent = &(folder->parent());
                         else
                             break;
                     }
@@ -935,7 +935,7 @@ public:
     void highlightSyncAction(bool value) { highlightSyncAction_ = value; }
 
 private:
-    wxString getValue(size_t row, ColumnType colType) const override
+    std::wstring getValue(size_t row, ColumnType colType) const override
     {
         if (const FileSystemObject* fsObj = getRawData(row))
             switch (static_cast<ColumnTypeMiddle>(colType))
@@ -947,7 +947,7 @@ private:
                 case COL_TYPE_SYNC_ACTION:
                     return getSymbol(fsObj->getSyncOperation());
             }
-        return wxString();
+        return std::wstring();
     }
 
     void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected) override
@@ -1058,7 +1058,7 @@ private:
         }
     }
 
-    wxString getColumnLabel(ColumnType colType) const override
+    std::wstring getColumnLabel(ColumnType colType) const override
     {
         switch (static_cast<ColumnTypeMiddle>(colType))
         {
@@ -1069,10 +1069,10 @@ private:
             case COL_TYPE_SYNC_ACTION:
                 return _("Action")   + L" (F10)";
         }
-        return wxEmptyString;
+        return std::wstring();
     }
 
-    wxString getToolTip(ColumnType colType) const override { return getColumnLabel(colType); }
+    std::wstring getToolTip(ColumnType colType) const override { return getColumnLabel(colType); }
 
     void renderColumnLabel(Grid& tree, wxDC& dc, const wxRect& rect, ColumnType colType, bool highlighted) override
     {
@@ -1320,7 +1320,7 @@ private:
     };
     std::unique_ptr<MouseHighlight> highlight; //current mouse highlight
     std::unique_ptr<std::pair<size_t, BlockPosition>> dragSelection; //(row, block); area clicked when beginning selection
-    std::unique_ptr<wxBitmap> buffer; //avoid costs of recreating this temporal variable
+    Opt<wxBitmap> buffer; //avoid costs of recreating this temporal variable
     Tooltip toolTip;
     wxImage notch;
 };
@@ -1693,16 +1693,16 @@ private:
 
     void loadIconsAsynchronously(wxEvent& event) //loads all (not yet) drawn icons
     {
-        std::vector<std::pair<ptrdiff_t, AbstractPathRef>> prefetchLoad;
+        std::vector<std::pair<ptrdiff_t, AbstractPath>> prefetchLoad;
         provLeft_ .getUnbufferedIconsForPreload(prefetchLoad);
         provRight_.getUnbufferedIconsForPreload(prefetchLoad);
 
         //make sure least-important prefetch rows are inserted first into workload (=> processed last)
-        using Pft = decltype(prefetchLoad)::value_type; //priority index nicely considers both grids at the same time!
-        std::sort(prefetchLoad.begin(), prefetchLoad.end(), [](const Pft& lhs, const Pft& rhs) { return lhs.first < rhs.first; });
+        //priority index nicely considers both grids at the same time!
+        std::sort(prefetchLoad.begin(), prefetchLoad.end(), [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
 
         //last inserted items are processed first in icon buffer:
-        std::vector<AbstractPathRef> newLoad;
+        std::vector<AbstractPath> newLoad;
         for (const auto& item : prefetchLoad)
             newLoad.push_back(item.second);
 
@@ -1711,7 +1711,7 @@ private:
 
         iconBuffer_.setWorkload(newLoad);
 
-        if (newLoad.empty()) //let's only pay for iconupdater when needed
+        if (newLoad.empty()) //let's only pay for IconUpdater when needed
             stop();
     }
 

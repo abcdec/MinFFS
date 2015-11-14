@@ -439,10 +439,10 @@ public:
 
     struct LogEntryView
     {
-        time_t      time;
-        MessageType type;
+        time_t      time = 0;
+        MessageType type = TYPE_INFO;
         MsgString   messageLine;
-        bool firstLine; //if LogEntry::message spans multiple rows
+        bool firstLine = false; //if LogEntry::message spans multiple rows
     };
 
     Opt<LogEntryView> getEntry(size_t row) const
@@ -451,7 +451,7 @@ public:
         {
             const Line& line = viewRef[row];
 
-            LogEntryView output = {};
+            LogEntryView output;
             output.time = line.logIt_->time;
             output.type = line.logIt_->type;
             output.messageLine = extractLine(line.logIt_->message, line.rowNumber_);
@@ -492,20 +492,20 @@ public:
 private:
     static MsgString extractLine(const MsgString& message, size_t textRow)
     {
-        auto iter1 = message.begin();
+        auto it1 = message.begin();
         for (;;)
         {
-            auto iter2 = std::find_if(iter1, message.end(), [](wchar_t c) { return c == L'\n'; });
+            auto it2 = std::find_if(it1, message.end(), [](wchar_t c) { return c == L'\n'; });
             if (textRow == 0)
-                return iter1 == message.end() ? MsgString() : MsgString(&*iter1, iter2 - iter1); //must not dereference iterator pointing to "end"!
+                return it1 == message.end() ? MsgString() : MsgString(&*it1, it2 - it1); //must not dereference iterator pointing to "end"!
 
-            if (iter2 == message.end())
+            if (it2 == message.end())
             {
                 assert(false);
                 return MsgString();
             }
 
-            iter1 = iter2 + 1; //skip newline
+            it1 = it2 + 1; //skip newline
             --textRow;
         }
     }
@@ -513,6 +513,7 @@ private:
     struct Line
     {
         Line(ErrorLog::const_iterator logIt, size_t rowNumber) : logIt_(logIt), rowNumber_(rowNumber) {}
+
         ErrorLog::const_iterator logIt_; //always bound!
         size_t rowNumber_; //LogEntry::message may span multiple rows
     };
@@ -541,7 +542,7 @@ public:
 
     size_t getRowCount() const override { return msgView_ ? msgView_->rowsOnView() : 0; }
 
-    wxString getValue(size_t row, ColumnType colType) const override
+    std::wstring getValue(size_t row, ColumnType colType) const override
     {
         if (msgView_)
             if (Opt<MessageView::LogEntryView> entry = msgView_->getEntry(row))
@@ -549,7 +550,7 @@ public:
                 {
                     case COL_TYPE_MSG_TIME:
                         if (entry->firstLine)
-                            return formatTime<wxString>(FORMAT_TIME, localTime(entry->time));
+                            return formatTime<std::wstring>(FORMAT_TIME, localTime(entry->time));
                         break;
 
                     case COL_TYPE_MSG_CATEGORY:
@@ -568,9 +569,9 @@ public:
                         break;
 
                     case COL_TYPE_MSG_TEXT:
-                        return copyStringTo<wxString>(entry->messageLine);
+                        return copyStringTo<std::wstring>(entry->messageLine);
                 }
-        return wxEmptyString;
+        return std::wstring();
     }
 
     void renderCell(wxDC& dc, const wxRect& rect, size_t row, ColumnType colType, bool enabled, bool selected) override
@@ -581,7 +582,7 @@ public:
         const wxColor colorGridLine = wxColour(192, 192, 192); //light grey
 
         wxDCPenChanger dummy2(dc, wxPen(colorGridLine, 1, wxSOLID));
-        const bool drawBottomLine = [&]() -> bool //don't separate multi-line messages
+        const bool drawBottomLine = [&] //don't separate multi-line messages
         {
             if (msgView_)
                 if (Opt<MessageView::LogEntryView> nextEntry = msgView_->getEntry(row + 1))
@@ -667,7 +668,7 @@ public:
         return std::max(getResourceImage(L"msg_info_small").GetHeight(), grid.getMainWin().GetCharHeight() + 2) + 1; //+ some space + bottom border
     }
 
-    wxString getToolTip(size_t row, ColumnType colType) const override
+    std::wstring getToolTip(size_t row, ColumnType colType) const override
     {
         switch (static_cast<ColumnTypeMsg>(colType))
         {
@@ -678,10 +679,10 @@ public:
             case COL_TYPE_MSG_CATEGORY:
                 return getValue(row, colType);
         }
-        return wxEmptyString;
+        return std::wstring();
     }
 
-    wxString getColumnLabel(ColumnType colType) const override { return wxEmptyString; }
+    std::wstring getColumnLabel(ColumnType colType) const override { return std::wstring(); }
 
 private:
     const std::shared_ptr<MessageView> msgView_;
@@ -692,8 +693,7 @@ private:
 class LogPanel : public LogPanelGenerated
 {
 public:
-    LogPanel(wxWindow* parent, const ErrorLog& log) : LogPanelGenerated(parent),
-        msgView(std::make_shared<MessageView>(log)), processingKeyEventHandler(false)
+    LogPanel(wxWindow* parent, const ErrorLog& log) : LogPanelGenerated(parent), msgView(std::make_shared<MessageView>(log))
     {
         const int errorCount   = log.getItemCount(TYPE_ERROR | TYPE_FATAL_ERROR);
         const int warningCount = log.getItemCount(TYPE_WARNING);
@@ -920,7 +920,7 @@ private:
     }
 
     std::shared_ptr<MessageView> msgView; //bound!
-    bool processingKeyEventHandler;
+    bool processingKeyEventHandler = false;
 };
 
 //########################################################################################
@@ -1064,7 +1064,7 @@ struct LabelFormatterBytes : public LabelFormatter
         return e * numeric::nearMatch(a, std::begin(steps), std::end(steps));
     }
 
-    wxString formatText(double value, double optimalBlockSize) const override { return filesizeToShortString(static_cast<std::int64_t>(value)); };
+    wxString formatText(double value, double optimalBlockSize) const override { return filesizeToShortString(static_cast<std::int64_t>(value)); }
 };
 
 
@@ -1083,7 +1083,7 @@ struct LabelFormatterItemCount : public LabelFormatter
     wxString formatText(double value, double optimalBlockSize) const override
     {
         return toGuiString(numeric::round(value)); //not enough room for a "%x items" representation
-    };
+    }
 };
 
 
@@ -1120,7 +1120,7 @@ struct LabelFormatterTimeElapsed : public LabelFormatter
     }
 
 private:
-    bool drawLabel_;
+    const bool drawLabel_;
 };
 }
 

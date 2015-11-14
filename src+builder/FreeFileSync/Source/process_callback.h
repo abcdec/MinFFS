@@ -4,11 +4,12 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef PROC_HEADER_48257827842345454545
-#define PROC_HEADER_48257827842345454545
+#ifndef PROCESS_CALLBACK_H_48257827842345454545
+#define PROCESS_CALLBACK_H_48257827842345454545
 
 #include <string>
 #include <cstdint>
+
 
 //interface for comparison and synchronization process status updates (used by GUI or Batch mode)
 const int UI_UPDATE_INTERVAL = 100; //unit: [ms]; perform ui updates not more often than necessary,
@@ -73,4 +74,4 @@ struct ProcessCallback
     virtual void abortProcessNow() = 0; //will throw an exception => don't call while in a C GUI callstack
 };
 
-#endif //PROC_HEADER_48257827842345454545
+#endif //PROCESS_CALLBACK_H_48257827842345454545

@@ -20,6 +20,11 @@
 using namespace zen;
 
 
+namespace
+{
+const int WIDTH_PERCENTAGE_BAR = 60;
+}
+
 inline
 void TreeView::compressNode(Container& cont) //remove single-element sub-trees -> gain clarity + usability (call *after* inclusion check!!!)
 {
@@ -40,57 +45,57 @@ void TreeView::extractVisibleSubtree(HierarchyObject& hierObj,  //in
                                      TreeView::Container& cont, //out
                                      Function pred)
 {
-    auto getBytes = [](const FilePair& fileObj) //MSVC screws up miserably if we put this lambda into std::for_each
+    auto getBytes = [](const FilePair& file) //MSVC screws up miserably if we put this lambda into std::for_each
     {
         ////give accumulated bytes the semantics of a sync preview!
-        //if (fileObj.isActive())
-        //    switch (fileObj.getSyncDir())
+        //if (file.isActive())
+        //    switch (file.getSyncDir())
         //    {
         //        case SyncDirection::LEFT:
-        //            return fileObj.getFileSize<RIGHT_SIDE>();
+        //            return file.getFileSize<RIGHT_SIDE>();
         //        case SyncDirection::RIGHT:
-        //            return fileObj.getFileSize<LEFT_SIDE>();
+        //            return file.getFileSize<LEFT_SIDE>();
         //        case SyncDirection::NONE:
         //            break;
         //    }
 
         //prefer file-browser semantics over sync preview (=> always show useful numbers, even for SyncDirection::NONE)
         //discussion: https://sourceforge.net/p/freefilesync/discussion/open-discussion/thread/ba6b6a33
-        return std::max(fileObj.getFileSize<LEFT_SIDE>(), fileObj.getFileSize<RIGHT_SIDE>());
+        return std::max(file.getFileSize<LEFT_SIDE>(), file.getFileSize<RIGHT_SIDE>());
     };
 
     cont.firstFileId = nullptr;
-    for (FilePair& fileObj : hierObj.refSubFiles())
-        if (pred(fileObj))
+    for (FilePair& file : hierObj.refSubFiles())
+        if (pred(file))
         {
-            cont.bytesNet += getBytes(fileObj);
+            cont.bytesNet += getBytes(file);
             ++cont.itemCountNet;
 
             if (!cont.firstFileId)
-                cont.firstFileId = fileObj.getId();
+                cont.firstFileId = file.getId();
         }
 
-    for (SymlinkPair& linkObj : hierObj.refSubLinks())
-        if (pred(linkObj))
+    for (SymlinkPair& symlink : hierObj.refSubLinks())
+        if (pred(symlink))
         {
             ++cont.itemCountNet;
 
             if (!cont.firstFileId)
-                cont.firstFileId = linkObj.getId();
+                cont.firstFileId = symlink.getId();
         }
 
     cont.bytesGross     += cont.bytesNet;
     cont.itemCountGross += cont.itemCountNet;
 
-    cont.subDirs.reserve(hierObj.refSubDirs().size()); //avoid expensive reallocations!
+    cont.subDirs.reserve(hierObj.refSubFolders().size()); //avoid expensive reallocations!
 
-    for (DirPair& subDirObj : hierObj.refSubDirs())
+    for (FolderPair& folder : hierObj.refSubFolders())
     {
-        const bool included = pred(subDirObj);
+        const bool included = pred(folder);
 
         cont.subDirs.emplace_back(); //
         auto& subDirCont = cont.subDirs.back();
-        TreeView::extractVisibleSubtree(subDirObj, subDirCont, pred);
+        TreeView::extractVisibleSubtree(folder, subDirCont, pred);
         if (included)
             ++subDirCont.itemCountGross;
 
@@ -101,7 +106,7 @@ void TreeView::extractVisibleSubtree(HierarchyObject& hierObj,  //in
             cont.subDirs.pop_back();
         else
         {
-            subDirCont.objId = subDirObj.getId();
+            subDirCont.objId = folder.getId();
             compressNode(subDirCont);
         }
     }
@@ -151,8 +156,12 @@ void calcPercentage(std::vector<std::pair<std::uint64_t, int*>>& workList)
 std::wstring zen::getShortDisplayNameForFolderPair(const std::wstring& displayPathLeft, const std::wstring& displayPathRight)
 {
     const wchar_t sep = L'/';
-    std::wstring fmtPathL = replaceCpy(displayPathLeft,  L'\\', sep); //treat slash, backslash the same
-    std::wstring fmtPathR = replaceCpy(displayPathRight, L'\\', sep); //
+    std::wstring fmtPathL = displayPathLeft;
+    std::wstring fmtPathR = displayPathRight;
+#ifdef ZEN_WIN
+    replace(fmtPathL, L'\\', sep); //treat slash, backslash the same
+    replace(fmtPathR, L'\\', sep); //
+#endif
     if (!startsWith(fmtPathL, sep)) fmtPathL = sep + fmtPathL;
     if (!startsWith(fmtPathR, sep)) fmtPathR = sep + fmtPathR;
 
@@ -183,8 +192,11 @@ std::wstring zen::getShortDisplayNameForFolderPair(const std::wstring& displayPa
 
     auto getLastComponent = [sep](const std::wstring& displayPath) -> std::wstring
     {
+#ifdef ZEN_WIN
         const std::wstring fmtPath = replaceCpy(displayPath, L'\\', sep);
-
+#else
+        const std::wstring fmtPath = displayPath;
+#endif
         auto itEnd = fmtPath.end();
         if (endsWith(fmtPath, sep)) //preserve trailing separator, support "C:\"
             --itEnd;
@@ -228,15 +240,15 @@ struct TreeView::LessShortName
 
             case TreeView::TYPE_DIRECTORY:
             {
-                const auto* dirObjL = dynamic_cast<const DirPair*>(FileSystemObject::retrieve(static_cast<const DirNodeImpl*>(lhs.node_)->objId));
-                const auto* dirObjR = dynamic_cast<const DirPair*>(FileSystemObject::retrieve(static_cast<const DirNodeImpl*>(rhs.node_)->objId));
+                const auto* folderL = dynamic_cast<const FolderPair*>(FileSystemObject::retrieve(static_cast<const DirNodeImpl*>(lhs.node_)->objId));
+                const auto* folderR = dynamic_cast<const FolderPair*>(FileSystemObject::retrieve(static_cast<const DirNodeImpl*>(rhs.node_)->objId));
 
-                if (!dirObjL)  //might be pathologic, but it's covered
+                if (!folderL)  //might be pathologic, but it's covered
                     return false;
-                else if (!dirObjR)
+                else if (!folderR)
                     return true;
 
-                return makeSortDirection(LessFilePath(), Int2Type<ascending>())(dirObjL->getPairShortName(), dirObjR->getPairShortName());
+                return makeSortDirection(LessFilePath(), Int2Type<ascending>())(folderL->getPairItemName(), folderR->getPairItemName());
             }
 
             case TreeView::TYPE_FILES:
@@ -334,11 +346,11 @@ void TreeView::applySubView(std::vector<RootNodeImpl>&& newView)
         switch (tl.type_)
         {
             case TreeView::TYPE_ROOT:
-                return static_cast<const RootNodeImpl*>(tl.node_)->baseDirObj.get();
+                return static_cast<const RootNodeImpl*>(tl.node_)->baseFolder.get();
 
             case TreeView::TYPE_DIRECTORY:
-                if (auto dirObj = dynamic_cast<const DirPair*>(FileSystemObject::retrieve(static_cast<const DirNodeImpl*>(tl.node_)->objId)))
-                    return dirObj;
+                if (auto folder = dynamic_cast<const FolderPair*>(FileSystemObject::retrieve(static_cast<const DirNodeImpl*>(tl.node_)->objId)))
+                    return folder;
                 break;
 
             case TreeView::TYPE_FILES:
@@ -414,7 +426,7 @@ void TreeView::updateView(Predicate pred)
     std::vector<RootNodeImpl> newView;
     newView.reserve(folderCmp.size()); //avoid expensive reallocations!
 
-    for (const std::shared_ptr<BaseDirPair>& baseObj : folderCmp)
+    for (const std::shared_ptr<BaseFolderPair>& baseObj : folderCmp)
     {
         newView.emplace_back();
         RootNodeImpl& root = newView.back();
@@ -426,9 +438,9 @@ void TreeView::updateView(Predicate pred)
             newView.pop_back();
         else
         {
-            root.baseDirObj = baseObj;
-            root.displayName = getShortDisplayNameForFolderPair(ABF::getDisplayPath(baseObj->getABF<LEFT_SIDE >().getAbstractPath()),
-                                                                ABF::getDisplayPath(baseObj->getABF<RIGHT_SIDE>().getAbstractPath()));
+            root.baseFolder = baseObj;
+            root.displayName = getShortDisplayNameForFolderPair(AFS::getDisplayPath(baseObj->getAbstractPath<LEFT_SIDE >()),
+                                                                AFS::getDisplayPath(baseObj->getAbstractPath<RIGHT_SIDE>()));
 
             this->compressNode(root); //"this->" required by two-pass lookup as enforced by GCC 4.7
         }
@@ -661,10 +673,10 @@ void TreeView::setData(FolderComparison& newData)
     folderCmp = newData;
 
     //remove truly empty folder pairs as early as this: we want to distinguish single/multiple folder pair cases by looking at "folderCmp"
-    erase_if(folderCmp, [](const std::shared_ptr<BaseDirPair>& baseObj)
+    erase_if(folderCmp, [](const std::shared_ptr<BaseFolderPair>& baseObj)
     {
-        return baseObj->getABF<LEFT_SIDE >().emptyBaseFolderPath() &&
-               baseObj->getABF<RIGHT_SIDE>().emptyBaseFolderPath();
+        return AFS::isNullPath(baseObj->getAbstractPath<LEFT_SIDE >()) &&
+               AFS::isNullPath(baseObj->getAbstractPath<RIGHT_SIDE>());
     });
 }
 
@@ -681,15 +693,15 @@ std::unique_ptr<TreeView::Node> TreeView::getLine(size_t row) const
             case TreeView::TYPE_ROOT:
             {
                 const auto& root = *static_cast<const TreeView::RootNodeImpl*>(flatTree[row].node_);
-                return std::make_unique<TreeView::RootNode>(percent, root.bytesGross, root.itemCountGross, getStatus(row), *root.baseDirObj, root.displayName);
+                return std::make_unique<TreeView::RootNode>(percent, root.bytesGross, root.itemCountGross, getStatus(row), *root.baseFolder, root.displayName);
             }
             break;
 
             case TreeView::TYPE_DIRECTORY:
             {
                 const auto* dir = static_cast<const TreeView::DirNodeImpl*>(flatTree[row].node_);
-                if (auto dirObj = dynamic_cast<DirPair*>(FileSystemObject::retrieve(dir->objId)))
-                    return std::make_unique<TreeView::DirNode>(percent, dir->bytesGross, dir->itemCountGross, level, getStatus(row), *dirObj);
+                if (auto folder = dynamic_cast<FolderPair*>(FileSystemObject::retrieve(dir->objId)))
+                    return std::make_unique<TreeView::DirNode>(percent, dir->bytesGross, dir->itemCountGross, level, getStatus(row), *folder);
             }
             break;
 
@@ -753,14 +765,11 @@ class GridDataNavi : private wxEvtHandler, public GridData
 {
 public:
     GridDataNavi(Grid& grid, const std::shared_ptr<TreeView>& treeDataView) : treeDataView_(treeDataView),
-        fileIcon(IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL)),
-        dirIcon (IconBuffer::genericDirIcon (IconBuffer::SIZE_SMALL)),
         rootBmp(getResourceImage(L"rootFolder").ConvertToImage().Scale(iconSizeSmall, iconSizeSmall, wxIMAGE_QUALITY_HIGH)),
         widthNodeIcon(iconSizeSmall),
         widthLevelStep(widthNodeIcon),
         widthNodeStatus(getResourceImage(L"nodeExpanded").GetWidth()),
-        grid_(grid),
-        showPercentBar(true)
+        grid_(grid)
     {
         grid.getMainWin().Connect(wxEVT_KEY_DOWN, wxKeyEventHandler(GridDataNavi::onKeyDown), nullptr, this);
         grid.Connect(EVENT_GRID_MOUSE_LEFT_DOWN,       GridClickEventHandler(GridDataNavi::onMouseLeft          ), nullptr, this);
@@ -775,7 +784,7 @@ public:
 private:
     size_t getRowCount() const override { return treeDataView_ ? treeDataView_->linesTotal() : 0; }
 
-    wxString getToolTip(size_t row, ColumnType colType) const override
+    std::wstring getToolTip(size_t row, ColumnType colType) const override
     {
         switch (static_cast<ColumnTypeNavi>(colType))
         {
@@ -788,8 +797,8 @@ private:
                     if (std::unique_ptr<TreeView::Node> node = treeDataView_->getLine(row))
                         if (const TreeView::RootNode* root = dynamic_cast<const TreeView::RootNode*>(node.get()))
                         {
-                            const wxString& dirLeft  = ABF::getDisplayPath(root->baseDirObj_.getABF<LEFT_SIDE >().getAbstractPath());
-                            const wxString& dirRight = ABF::getDisplayPath(root->baseDirObj_.getABF<RIGHT_SIDE>().getAbstractPath());
+                            const std::wstring& dirLeft  = AFS::getDisplayPath(root->baseFolder_.getAbstractPath<LEFT_SIDE >());
+                            const std::wstring& dirRight = AFS::getDisplayPath(root->baseFolder_.getAbstractPath<RIGHT_SIDE>());
                             if (dirLeft.empty())
                                 return dirRight;
                             else if (dirRight.empty())
@@ -798,10 +807,10 @@ private:
                         }
                 break;
         }
-        return wxString();
+        return std::wstring();
     }
 
-    wxString getValue(size_t row, ColumnType colType) const override
+    std::wstring getValue(size_t row, ColumnType colType) const override
     {
         if (treeDataView_)
         {
@@ -813,9 +822,9 @@ private:
 
                     case COL_TYPE_NAVI_DIRECTORY:
                         if (const TreeView::RootNode* root = dynamic_cast<const TreeView::RootNode*>(node.get()))
-                            return utfCvrtTo<wxString>(root->displayName_);
+                            return root->displayName_;
                         else if (const TreeView::DirNode* dir = dynamic_cast<const TreeView::DirNode*>(node.get()))
-                            return utfCvrtTo<wxString>(dir->dirObj_.getPairShortName());
+                            return utfCvrtTo<std::wstring>(dir->folder_.getPairItemName());
                         else if (dynamic_cast<const TreeView::FilesNode*>(node.get()))
                             return _("Files");
                         break;
@@ -824,7 +833,7 @@ private:
                         return toGuiString(node->itemCount_);
                 }
         }
-        return wxString();
+        return std::wstring();
     }
 
     void renderColumnLabel(Grid& tree, wxDC& dc, const wxRect& rect, ColumnType colType, bool highlighted) override
@@ -882,7 +891,7 @@ private:
                 ////clear first secion:
                 //clearArea(dc, wxRect(rect.GetTopLeft(), wxSize(
                 //                         node->level_ * widthLevelStep + GAP_SIZE + //width
-                //                         (showPercentBar ? widthPercentBar + 2 * GAP_SIZE : 0) + //
+                //                         (showPercentBar ? WIDTH_PERCENTAGE_BAR + 2 * GAP_SIZE : 0) + //
                 //                         widthNodeStatus + GAP_SIZE + widthNodeIcon + GAP_SIZE, //
                 //                         rect.height)), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
@@ -929,7 +938,7 @@ private:
                             }
                         }();
 
-                        const wxRect areaPerc(rectTmp.x, rectTmp.y + 2, widthPercentBar, rectTmp.height - 4);
+                        const wxRect areaPerc(rectTmp.x, rectTmp.y + 2, WIDTH_PERCENTAGE_BAR, rectTmp.height - 4);
                         {
                             //clear background
                             wxDCPenChanger   dummy (dc, COLOR_PERCENTAGE_BORDER);
@@ -949,8 +958,8 @@ private:
                         wxDCTextColourChanger dummy3(dc, *wxBLACK); //accessibility: always set both foreground AND background colors!
                         dc.DrawLabel(numberTo<wxString>(node->percent_) + L"%", areaPerc, wxALIGN_CENTER);
 
-                        rectTmp.x     += widthPercentBar + 2 * GAP_SIZE;
-                        rectTmp.width -= widthPercentBar + 2 * GAP_SIZE;
+                        rectTmp.x     += WIDTH_PERCENTAGE_BAR + 2 * GAP_SIZE;
+                        rectTmp.width -= WIDTH_PERCENTAGE_BAR + 2 * GAP_SIZE;
                     }
                     if (rectTmp.width > 0)
                     {
@@ -991,7 +1000,7 @@ private:
                             else if (auto dir = dynamic_cast<const TreeView::DirNode*>(node.get()))
                             {
                                 nodeIcon = dirIcon;
-                                isActive = dir->dirObj_.isActive();
+                                isActive = dir->folder_.isActive();
                             }
                             else if (dynamic_cast<const TreeView::FilesNode*>(node.get()))
                                 nodeIcon = fileIcon;
@@ -1041,7 +1050,7 @@ private:
         if (static_cast<ColumnTypeNavi>(colType) == COL_TYPE_NAVI_DIRECTORY && treeDataView_)
         {
             if (std::unique_ptr<TreeView::Node> node = treeDataView_->getLine(row))
-                return node->level_ * widthLevelStep + GAP_SIZE + (showPercentBar ? widthPercentBar + 2 * GAP_SIZE : 0) + widthNodeStatus + GAP_SIZE
+                return node->level_ * widthLevelStep + GAP_SIZE + (showPercentBar ? WIDTH_PERCENTAGE_BAR + 2 * GAP_SIZE : 0) + widthNodeStatus + GAP_SIZE
                        + widthNodeIcon + GAP_SIZE + dc.GetTextExtent(getValue(row, colType)).GetWidth() +
                        GAP_SIZE; //additional gap from right
             else
@@ -1052,7 +1061,7 @@ private:
                    2 * GAP_SIZE; //include gap from right!
     }
 
-    wxString getColumnLabel(ColumnType colType) const override
+    std::wstring getColumnLabel(ColumnType colType) const override
     {
         switch (static_cast<ColumnTypeNavi>(colType))
         {
@@ -1063,7 +1072,7 @@ private:
             case COL_TYPE_NAVI_ITEM_COUNT:
                 return _("Items");
         }
-        return wxEmptyString;
+        return std::wstring();
     }
 
     void onMouseLeft(GridClickEvent& event)
@@ -1079,7 +1088,7 @@ private:
                     if (cellArea.width > 0 && cellArea.height > 0)
                     {
                         const int tolerance = 1;
-                        const int xNodeStatusFirst = -tolerance + cellArea.x + static_cast<int>(node->level_) * widthLevelStep + GAP_SIZE + (showPercentBar ? widthPercentBar + 2 * GAP_SIZE : 0);
+                        const int xNodeStatusFirst = -tolerance + cellArea.x + static_cast<int>(node->level_) * widthLevelStep + GAP_SIZE + (showPercentBar ? WIDTH_PERCENTAGE_BAR + 2 * GAP_SIZE : 0);
                         const int xNodeStatusLast  = (xNodeStatusFirst + tolerance) + widthNodeStatus + tolerance;
                         // -> synchronize renderCell() <-> getBestSize() <-> onMouseLeft()
 
@@ -1255,16 +1264,16 @@ private:
     }
 
     std::shared_ptr<TreeView> treeDataView_;
-    const wxBitmap fileIcon;
-    const wxBitmap dirIcon;
+    const wxBitmap fileIcon = IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL);
+    const wxBitmap dirIcon  = IconBuffer::genericDirIcon (IconBuffer::SIZE_SMALL);
+
     const wxBitmap rootBmp;
-    std::unique_ptr<wxBitmap> buffer; //avoid costs of recreating this temporal variable
+    Opt<wxBitmap> buffer; //avoid costs of recreating this temporal variable
     const int widthNodeIcon;
     const int widthLevelStep;
     const int widthNodeStatus;
-    static const int widthPercentBar = 60;
     Grid& grid_;
-    bool showPercentBar;
+    bool showPercentBar = true;
 };
 }
 

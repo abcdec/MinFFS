@@ -30,11 +30,6 @@ PreventStandby::~PreventStandby()
 }
 
 
-#ifndef PROCESS_MODE_BACKGROUND_BEGIN
-    #define PROCESS_MODE_BACKGROUND_BEGIN     0x00100000 // Windows Server 2003 and Windows XP/2000:  This value is not supported!
-    #define PROCESS_MODE_BACKGROUND_END       0x00200000 //
-#endif
-
 struct ScheduleForBackgroundProcessing::Pimpl {};
 
 

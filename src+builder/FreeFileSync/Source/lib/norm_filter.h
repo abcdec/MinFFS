@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef NORM_FILTER_H_INCLUDED
-#define NORM_FILTER_H_INCLUDED
+#ifndef NORM_FILTER_H_974896787346251
+#define NORM_FILTER_H_974896787346251
 
 #include "hard_filter.h"
 #include "soft_filter.h"
@@ -66,4 +66,4 @@ NormalizedFilter normalizeFilters(const FilterConfig& global, const FilterConfig
 }
 }
 
-#endif //NORM_FILTER_H_INCLUDED
+#endif //NORM_FILTER_H_974896787346251

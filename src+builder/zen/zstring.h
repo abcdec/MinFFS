@@ -4,14 +4,10 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef ZSTRING_H_INCLUDED_73425873425789
-#define ZSTRING_H_INCLUDED_73425873425789
+#ifndef ZSTRING_H_73425873425789
+#define ZSTRING_H_73425873425789
 
 #include "string_base.h"
-
-#ifdef ZEN_LINUX
-    #include <cstring> //strncmp
-#endif
 
 
 #ifdef ZEN_WIN //Windows encodes Unicode as UTF-16 wchar_t
@@ -30,33 +26,33 @@
 typedef zen::Zbase<Zchar, zen::StorageRefCountThreadSafe, zen::AllocatorOptimalSpeed> Zstring;
 
 
+int cmpStringNoCase(const wchar_t* lhs, size_t lhsLen, const wchar_t* rhs, size_t rhsLen);
+#if defined ZEN_LINUX || defined ZEN_MAC
+    int cmpStringNoCase(const char*    lhs, size_t lhsLen, const char*    rhs, size_t rhsLen);
+#endif
 
-//Compare filepaths: Windows does NOT distinguish between upper/lower-case, while Linux DOES
+template <class S, class T> inline
+bool equalNoCase(const S& lhs, const T& rhs) { using namespace zen; return cmpStringNoCase(strBegin(lhs), strLength(lhs), strBegin(rhs), strLength(rhs)) == 0;  }
+
+template <class S>
+S makeUpperCopy(S str);
+
+
+//Compare filepaths: Windows/OS X does NOT distinguish between upper/lower-case, while Linux DOES
 int cmpFilePath(const wchar_t* lhs, size_t lhsLen, const wchar_t* rhs, size_t rhsLen);
-
 #if defined ZEN_LINUX || defined ZEN_MAC
     int cmpFilePath(const char* lhs, size_t lhsLen, const char* rhs, size_t rhsLen);
 #endif
 
+template <class S, class T> inline
+bool equalFilePath(const S& lhs, const T& rhs) { using namespace zen; return cmpFilePath(strBegin(lhs), strLength(lhs), strBegin(rhs), strLength(rhs)) == 0;  }
 
-
-
-struct LessFilePath //case-insensitive on Windows, case-sensitive on Linux
+struct LessFilePath
 {
     template <class S, class T>
     bool operator()(const S& lhs, const T& rhs) const { using namespace zen; return cmpFilePath(strBegin(lhs), strLength(lhs), strBegin(rhs), strLength(rhs)) < 0; }
 };
 
-struct EqualFilePath //case-insensitive on Windows, case-sensitive on Linux
-{
-    template <class S, class T>
-    bool operator()(const S& lhs, const T& rhs) const { using namespace zen; return cmpFilePath(strBegin(lhs), strLength(lhs), strBegin(rhs), strLength(rhs)) == 0; }
-};
-
-
-#if defined ZEN_WIN || defined ZEN_MAC
-    Zstring makeUpperCopy(const Zstring& str);
-#endif
 
 
 inline
@@ -103,38 +99,98 @@ bool pathEndsWith(const S& str, const T& postfix)
 
 
 //################################# inline implementation ########################################
+#ifdef ZEN_WIN
+void makeUpperInPlace(wchar_t* str, size_t strLen);
 
-#if defined ZEN_LINUX || defined ZEN_MAC
+#elif defined ZEN_LINUX || defined ZEN_MAC
 inline
-int cmpFilePath(const char* lhs, size_t lhsLen, const char* rhs, size_t rhsLen)
+void makeUpperInPlace(wchar_t* str, size_t strLen)
+{
+    std::for_each(str, str + strLen, [](wchar_t& c) { c = std::towupper(c); }); //locale-dependent!
+}
+
+
+inline
+void makeUpperInPlace(char* str, size_t strLen)
+{
+    std::for_each(str, str + strLen, [](char& c) { c = std::toupper(static_cast<unsigned char>(c)); }); //locale-dependent!
+    //result of toupper() is an unsigned char mapped to int range, so the char representation is in the last 8 bits and we need not care about signedness!
+    //this should work for UTF-8, too: all chars >= 128 are mapped upon themselves!
+}
+
+
+inline
+int cmpStringNoCase(const wchar_t* lhs, size_t lhsLen, const wchar_t* rhs, size_t rhsLen)
 {
     assert(std::find(lhs, lhs + lhsLen, 0) == lhs + lhsLen); //don't expect embedded nulls!
     assert(std::find(rhs, rhs + rhsLen, 0) == rhs + rhsLen); //
 
-#if defined ZEN_LINUX
-    const int rv = std::strncmp(lhs, rhs, std::min(lhsLen, rhsLen));
-#elif defined ZEN_MAC
-    const int rv = ::strncasecmp(lhs, rhs, std::min(lhsLen, rhsLen)); //locale-dependent!
-#endif
+    const int rv = ::wcsncasecmp(lhs, rhs, std::min(lhsLen, rhsLen)); //locale-dependent!
     if (rv != 0)
         return rv;
     return static_cast<int>(lhsLen) - static_cast<int>(rhsLen);
 }
 
+
 inline
-int cmpFilePath(const wchar_t* lhs, size_t lhsLen, const wchar_t* rhs, size_t rhsLen)
+int cmpStringNoCase(const char* lhs, size_t lhsLen, const char* rhs, size_t rhsLen)
 {
     assert(std::find(lhs, lhs + lhsLen, 0) == lhs + lhsLen); //don't expect embedded nulls!
     assert(std::find(rhs, rhs + rhsLen, 0) == rhs + rhsLen); //
 
-#if defined ZEN_LINUX
-    const int rv = std::wcsncmp(lhs, rhs, std::min(lhsLen, rhsLen));
-#elif defined ZEN_MAC
-    const int rv = ::wcsncasecmp(lhs, rhs, std::min(lhsLen, rhsLen)); //locale-dependent!
-#endif
+    const int rv = ::strncasecmp(lhs, rhs, std::min(lhsLen, rhsLen)); //locale-dependent!
     if (rv != 0)
         return rv;
     return static_cast<int>(lhsLen) - static_cast<int>(rhsLen);
+}
+#endif
+
+
+template <class S> inline
+S makeUpperCopy(S str)
+{
+    const size_t len = str.length(); //we assert S is a string type!
+    if (len > 0)
+        makeUpperInPlace(&*str.begin(), len);
+
+    return std::move(str); //"str" is an l-value parameter => no copy elision!
+}
+
+
+inline
+int cmpFilePath(const wchar_t* lhs, size_t lhsLen, const wchar_t* rhs, size_t rhsLen)
+{
+#if defined ZEN_WIN || defined ZEN_MAC
+    return cmpStringNoCase(lhs, lhsLen, rhs, rhsLen);
+
+#elif defined ZEN_LINUX
+    assert(std::find(lhs, lhs + lhsLen, 0) == lhs + lhsLen); //don't expect embedded nulls!
+    assert(std::find(rhs, rhs + rhsLen, 0) == rhs + rhsLen); //
+
+    const int rv = std::wcsncmp(lhs, rhs, std::min(lhsLen, rhsLen));
+    if (rv != 0)
+        return rv;
+    return static_cast<int>(lhsLen) - static_cast<int>(rhsLen);
+#endif
+}
+
+
+#if defined ZEN_LINUX || defined ZEN_MAC
+inline
+int cmpFilePath(const char* lhs, size_t lhsLen, const char* rhs, size_t rhsLen)
+{
+#if defined ZEN_MAC
+    return cmpStringNoCase(lhs, lhsLen, rhs, rhsLen);
+
+#elif defined ZEN_LINUX
+    assert(std::find(lhs, lhs + lhsLen, 0) == lhs + lhsLen); //don't expect embedded nulls!
+    assert(std::find(rhs, rhs + rhsLen, 0) == rhs + rhsLen); //
+
+    const int rv = std::strncmp(lhs, rhs, std::min(lhsLen, rhsLen));
+    if (rv != 0)
+        return rv;
+    return static_cast<int>(lhsLen) - static_cast<int>(rhsLen);
+#endif
 }
 #endif
 
@@ -172,4 +228,4 @@ int cmpFilePath(const wchar_t* lhs, size_t lhsLen, const wchar_t* rhs, size_t rh
     #error no target platform defined
 #endif
 
-#endif //ZSTRING_H_INCLUDED_73425873425789
+#endif //ZSTRING_H_73425873425789

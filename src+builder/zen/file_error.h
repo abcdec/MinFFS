@@ -18,8 +18,8 @@
 // * General Public License for more details.                               *
 // **************************************************************************
 
-#ifndef FILEERROR_H_INCLUDED_839567308565656789
-#define FILEERROR_H_INCLUDED_839567308565656789
+#ifndef FILE_ERROR_H_839567308565656789
+#define FILE_ERROR_H_839567308565656789
 
 #include <string>
 #include "zstring.h"
@@ -63,7 +63,7 @@ DEFINE_NEW_FILE_ERROR(ErrorDifferentVolume);
         __pragma(warning(suppress: 4127)) /*"conditional expression is constant"*/ \
     } while (false)
 
-#else //variant witout "__pragma":
+#else //same thing witout "__pragma":
 #define THROW_LAST_FILE_ERROR(msg, functionName)                           \
     do { const ErrorCode ecInternal = getLastError(); throw FileError(msg, formatSystemError(functionName, ecInternal)); } while (false)
 #endif
@@ -80,4 +80,4 @@ inline std::wstring fmtPath(const Zstring& displayPath) { return fmtPath(utfCvrt
 inline std::wstring fmtPath(const wchar_t* displayPath) { return fmtPath(std::wstring(displayPath)); }
 }
 
-#endif //FILEERROR_H_INCLUDED_839567308565656789
+#endif //FILE_ERROR_H_839567308565656789

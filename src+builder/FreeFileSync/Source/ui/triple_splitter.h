@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef TRIPPLE_SPLIT_HEADER_8257804292846842573942534254
-#define TRIPPLE_SPLIT_HEADER_8257804292846842573942534254
+#ifndef TRIPLE_SPLITTER_H_8257804292846842573942534254
+#define TRIPLE_SPLITTER_H_8257804292846842573942534254
 
 #include <cassert>
 #include <memory>
@@ -86,4 +86,4 @@ private:
 };
 }
 
-#endif //TRIPPLE_SPLIT_HEADER_8257804292846842573942534254
+#endif //TRIPLE_SPLITTER_H_8257804292846842573942534254

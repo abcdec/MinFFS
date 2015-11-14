@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef BATCHCONFIG_H_INCLUDED
-#define BATCHCONFIG_H_INCLUDED
+#ifndef BATCH_CONFIG_H_3921674832168945
+#define BATCH_CONFIG_H_3921674832168945
 
 #include <wx/window.h>
 #include "../lib/process_xml.h"
@@ -30,4 +30,4 @@ ReturnBatchConfig::ButtonPressed customizeBatchConfig(wxWindow* parent,
                                                       size_t onCompletionHistoryMax);
 }
 
-#endif // BATCHCONFIG_H_INCLUDED
+#endif //BATCH_CONFIG_H_3921674832168945

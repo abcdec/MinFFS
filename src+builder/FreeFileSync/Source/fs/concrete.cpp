@@ -12,24 +12,23 @@
 #endif
 
 using namespace zen;
-using ABF = AbstractBaseFolder;
 
 
-std::unique_ptr<AbstractBaseFolder> zen::createAbstractBaseFolder(const Zstring& folderPathPhrase) //noexcept
+AbstractPath zen::createAbstractPath(const Zstring& itemPathPhrase) //noexcept
 {
     //greedy: try native evaluation first
-    if (acceptsFolderPathPhraseNative(folderPathPhrase)) //noexcept
-        return createBaseFolderNative(folderPathPhrase); //noexcept
+    if (acceptsItemPathPhraseNative(itemPathPhrase)) //noexcept
+        return createItemPathNative(itemPathPhrase); //noexcept
 
     //then the rest:
 #ifdef ZEN_WIN_VISTA_AND_LATER
-    if (acceptsFolderPathPhraseMtp(folderPathPhrase)) //noexcept
-        return createBaseFolderMtp(folderPathPhrase); //noexcept
+    if (acceptsItemPathPhraseMtp(itemPathPhrase)) //noexcept
+        return createItemPathMtp(itemPathPhrase); //noexcept
 
-    if (acceptsFolderPathPhraseSftp(folderPathPhrase)) //noexcept
-        return createBaseFolderSftp(folderPathPhrase); //noexcept
+    if (acceptsItemPathPhraseSftp(itemPathPhrase)) //noexcept
+        return createItemPathSftp(itemPathPhrase); //noexcept
 #endif
 
     //no idea? => native!
-    return createBaseFolderNative(folderPathPhrase);
+    return createItemPathNative(itemPathPhrase);
 }

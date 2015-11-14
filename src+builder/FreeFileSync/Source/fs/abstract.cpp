@@ -7,15 +7,15 @@
 #include "abstract.h"
 
 using namespace zen;
-using ABF = AbstractBaseFolder;
+using AFS = AbstractFileSystem;
 
-const Zchar* ABF::TEMP_FILE_ENDING = Zstr(".ffs_tmp");
+const Zchar* AFS::TEMP_FILE_ENDING = Zstr(".ffs_tmp");
 
 
-ABF::FileAttribAfterCopy ABF::copyFileAsStream(const AbstractPathRef& apSource, const AbstractPathRef& apTarget, //throw FileError, ErrorTargetExisting, ErrorFileLocked
-                                               const std::function<void(std::int64_t bytesDelta)>& onNotifyCopyStatus)
+AFS::FileAttribAfterCopy AFS::copyFileAsStream(const Zstring& itemPathImplSource, const AbstractPath& apTarget, //throw FileError, ErrorTargetExisting, ErrorFileLocked
+                                               const std::function<void(std::int64_t bytesDelta)>& onNotifyCopyStatus) const
 {
-    auto streamIn = getInputStream(apSource); //throw FileError, ErrorFileLocked
+    auto streamIn = getInputStream(itemPathImplSource); //throw FileError, ErrorFileLocked
     if (onNotifyCopyStatus) onNotifyCopyStatus(0); //throw X!
 
     std::uint64_t      bytesWritten = 0;
@@ -46,46 +46,47 @@ ABF::FileAttribAfterCopy ABF::copyFileAsStream(const AbstractPathRef& apSource, 
 
     //important check: catches corrupt sftp download with libssh2!
     if (bytesWritten != fileSizeExpected)
-        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(ABF::getDisplayPath(apSource))),
-                        replaceCpy(replaceCpy(_("Unexpected size of data stream.\nExpected: %x bytes\nActual: %y bytes"), L"%x", numberTo<std::wstring>(fileSizeExpected)), L"%y", numberTo<std::wstring>(bytesWritten)));
+        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getDisplayPath(itemPathImplSource))),
+                        replaceCpy(replaceCpy(_("Unexpected size of data stream.\nExpected: %x bytes\nActual: %y bytes"),
+                                              L"%x", numberTo<std::wstring>(fileSizeExpected)),
+                                   L"%y", numberTo<std::wstring>(bytesWritten)));
 
     //modification time should be set here!
     targetFileId = streamOut->finalize([&] { if (onNotifyCopyStatus) onNotifyCopyStatus(0); /*throw X*/ }); //throw FileError
 
-    ABF::FileAttribAfterCopy attr = {};
+    AFS::FileAttribAfterCopy attr;
     attr.fileSize         = bytesWritten;
     attr.modificationTime = modificationTime;
     attr.sourceFileId     = sourceFileId;
     attr.targetFileId     = targetFileId;
-
     return attr;
 }
 
 
-ABF::FileAttribAfterCopy ABF::copyFileTransactional(const AbstractPathRef& apSource, const AbstractPathRef& apTarget, //throw FileError, ErrorFileLocked
+AFS::FileAttribAfterCopy AFS::copyFileTransactional(const AbstractPath& apSource, const AbstractPath& apTarget, //throw FileError, ErrorFileLocked
                                                     bool copyFilePermissions,
                                                     bool transactionalCopy,
                                                     const std::function<void()>& onDeleteTargetFile,
                                                     const std::function<void(std::int64_t bytesDelta)>& onNotifyCopyStatus)
 {
-    auto copyFileBestEffort = [&](const AbstractPathRef& apTargetTmp)
+    auto copyFileBestEffort = [&](const AbstractPath& apTargetTmp)
     {
         //caveat: typeid returns static type for pointers, dynamic type for references!!!
-        if (typeid(*apSource.abf) == typeid(*apTarget.abf))
-            return apSource.abf->copyFileForSameAbfType(apSource.itemPathImpl, apTargetTmp, copyFilePermissions, onNotifyCopyStatus); //throw FileError, ErrorTargetExisting, ErrorFileLocked
+        if (typeid(*apSource.afs) == typeid(*apTarget.afs))
+            return apSource.afs->copyFileForSameAfsType(apSource.itemPathImpl, apTargetTmp, copyFilePermissions, onNotifyCopyStatus); //throw FileError, ErrorTargetExisting, ErrorFileLocked
 
         //fall back to stream-based file copy:
         if (copyFilePermissions)
-            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(ABF::getDisplayPath(apTargetTmp))),
+            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTargetTmp))),
                             _("Operation not supported for different base folder types."));
 
-        return copyFileAsStream(apSource, apTargetTmp, onNotifyCopyStatus); //throw FileError, ErrorTargetExisting, ErrorFileLocked
+        return AFS::copyFileAsStream(apSource, apTargetTmp, onNotifyCopyStatus); //throw FileError, ErrorTargetExisting, ErrorFileLocked
     };
 
     if (transactionalCopy)
     {
-        AbstractPathRef apTargetTmp(*apTarget.abf, apTarget.itemPathImpl + TEMP_FILE_ENDING);
-        ABF::FileAttribAfterCopy attr = {};
+        AbstractPath apTargetTmp(apTarget.afs, apTarget.itemPathImpl + TEMP_FILE_ENDING);
+        AFS::FileAttribAfterCopy attr;
 
         for (int i = 0;; ++i)
             try
@@ -100,7 +101,8 @@ ABF::FileAttribAfterCopy ABF::copyFileTransactional(const AbstractPathRef& apSou
             }
 
         //transactional behavior: ensure cleanup; not needed before copyFileBestEffort() which is already transactional
-        zen::ScopeGuard guardTempFile = zen::makeGuard([&] { try { ABF::removeFile(apTargetTmp); } catch (FileError&) {} });
+        ZEN_ON_SCOPE_FAIL( try { AFS::removeFile(apTargetTmp); }
+        catch (FileError&) {} );
 
         //have target file deleted (after read access on source and target has been confirmed) => allow for almost transactional overwrite
         if (onDeleteTargetFile)
@@ -116,8 +118,6 @@ ABF::FileAttribAfterCopy ABF::copyFileTransactional(const AbstractPathRef& apSou
         http://blogs.msdn.com/b/oldnewthing/archive/2005/07/15/439261.aspx
         http://support.microsoft.com/kb/172190/en-us
         */
-
-        guardTempFile.dismiss();
         return attr;
     }
     else
@@ -137,22 +137,22 @@ ABF::FileAttribAfterCopy ABF::copyFileTransactional(const AbstractPathRef& apSou
 }
 
 
-void ABF::createFolderRecursively(const AbstractPathRef& ap) //throw FileError
+void AFS::createFolderRecursively(const AbstractPath& ap) //throw FileError
 {
     try
     {
-        AbstractBaseFolder::createFolderSimple(ap); //throw FileError, ErrorTargetExisting, ErrorTargetPathMissing
+        AFS::createFolderSimple(ap); //throw FileError, ErrorTargetExisting, ErrorTargetPathMissing
     }
     catch (ErrorTargetExisting&) {}
     catch (ErrorTargetPathMissing&)
     {
-        if (std::unique_ptr<AbstractPathRef> parentPath = ABF::getParentFolderPath(ap))
+        if (Opt<AbstractPath> parentPath = AFS::getParentFolderPath(ap))
         {
             //recurse...
             createFolderRecursively(*parentPath); //throw FileError
 
             //now try again...
-            ABF::createFolderSimple(ap); //throw FileError, (ErrorTargetExisting), (ErrorTargetPathMissing)
+            AFS::createFolderSimple(ap); //throw FileError, (ErrorTargetExisting), (ErrorTargetPathMissing)
             return;
         }
         throw;
@@ -162,15 +162,15 @@ void ABF::createFolderRecursively(const AbstractPathRef& ap) //throw FileError
 
 namespace
 {
-struct FlatTraverserCallback: public ABF::TraverserCallback
+struct FlatTraverserCallback: public AFS::TraverserCallback
 {
-    FlatTraverserCallback(const AbstractPathRef& folderPath) : folderPath_(folderPath) {}
+    FlatTraverserCallback(const AbstractPath& folderPath) : folderPath_(folderPath) {}
 
     void                               onFile   (const FileInfo&    fi) override { fileNames_  .push_back(fi.itemName); }
     std::unique_ptr<TraverserCallback> onDir    (const DirInfo&     di) override { folderNames_.push_back(di.itemName); return nullptr; }
     HandleLink                         onSymlink(const SymlinkInfo& si) override
     {
-        if (ABF::folderExists(ABF::appendRelPath(folderPath_, si.itemName))) //dir symlink
+        if (AFS::folderExists(AFS::appendRelPath(folderPath_, si.itemName))) //dir symlink
             folderLinkNames_.push_back(si.itemName);
         else //file symlink, broken symlink
             fileNames_.push_back(si.itemName);
@@ -184,68 +184,68 @@ struct FlatTraverserCallback: public ABF::TraverserCallback
     const std::vector<Zstring>& refFolderLinkNames() const { return folderLinkNames_; }
 
 private:
-    const AbstractPathRef folderPath_;
+    const AbstractPath folderPath_;
     std::vector<Zstring> fileNames_;
     std::vector<Zstring> folderNames_;
     std::vector<Zstring> folderLinkNames_;
 };
 
 
-void removeFolderRecursivelyImpl(const AbstractPathRef& folderPath, //throw FileError
+void removeFolderRecursivelyImpl(const AbstractPath& folderPath, //throw FileError
                                  const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion, //optional
                                  const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) //one call for each *existing* object!
 {
-    assert(!ABF::symlinkExists(folderPath)); //[!] no symlinks in this context!!!
-    assert(ABF::folderExists(folderPath));   //Do NOT traverse into it deleting contained files!!!
+    assert(!AFS::symlinkExists(folderPath)); //[!] no symlinks in this context!!!
+    assert(AFS::folderExists(folderPath));   //Do NOT traverse into it deleting contained files!!!
 
     FlatTraverserCallback ft(folderPath); //deferred recursion => save stack space and allow deletion of extremely deep hierarchies!
-    ABF::traverseFolder(folderPath, ft); //throw FileError
+    AFS::traverseFolder(folderPath, ft); //throw FileError
 
     for (const Zstring& fileName : ft.refFileNames())
     {
-        const AbstractPathRef filePath = ABF::appendRelPath(folderPath, fileName);
+        const AbstractPath filePath = AFS::appendRelPath(folderPath, fileName);
         if (onBeforeFileDeletion)
-            onBeforeFileDeletion(ABF::getDisplayPath(filePath));
+            onBeforeFileDeletion(AFS::getDisplayPath(filePath));
 
-        ABF::removeFile(filePath); //throw FileError
+        AFS::removeFile(filePath); //throw FileError
     }
 
     for (const Zstring& folderLinkName : ft.refFolderLinkNames())
     {
-        const AbstractPathRef linkPath = ABF::appendRelPath(folderPath, folderLinkName);
+        const AbstractPath linkPath = AFS::appendRelPath(folderPath, folderLinkName);
         if (onBeforeFolderDeletion)
-            onBeforeFolderDeletion(ABF::getDisplayPath(linkPath));
+            onBeforeFolderDeletion(AFS::getDisplayPath(linkPath));
 
-        ABF::removeFolderSimple(linkPath); //throw FileError
+        AFS::removeFolderSimple(linkPath); //throw FileError
     }
 
     for (const Zstring& folderName : ft.refFolderNames())
-        removeFolderRecursivelyImpl(ABF::appendRelPath(folderPath, folderName), //throw FileError
+        removeFolderRecursivelyImpl(AFS::appendRelPath(folderPath, folderName), //throw FileError
                                     onBeforeFileDeletion, onBeforeFolderDeletion);
 
     if (onBeforeFolderDeletion)
-        onBeforeFolderDeletion(ABF::getDisplayPath(folderPath));
+        onBeforeFolderDeletion(AFS::getDisplayPath(folderPath));
 
-    ABF::removeFolderSimple(folderPath); //throw FileError
+    AFS::removeFolderSimple(folderPath); //throw FileError
 }
 }
 
 
-void ABF::removeFolderRecursively(const AbstractPathRef& ap, //throw FileError
+void AFS::removeFolderRecursively(const AbstractPath& ap, //throw FileError
                                   const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion, //optional
                                   const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) //one call for each *existing* object!
 {
-    if (ABF::symlinkExists(ap))
+    if (AFS::symlinkExists(ap))
     {
         if (onBeforeFolderDeletion)
-            onBeforeFolderDeletion(ABF::getDisplayPath(ap));
+            onBeforeFolderDeletion(AFS::getDisplayPath(ap));
 
-        ABF::removeFolderSimple(ap); //throw FileError
+        AFS::removeFolderSimple(ap); //throw FileError
     }
     else
     {
         //no error situation if directory is not existing! manual deletion relies on it!
-        if (ABF::somethingExists(ap))
+        if (AFS::somethingExists(ap))
             removeFolderRecursivelyImpl(ap, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError
     }
 }

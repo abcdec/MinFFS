@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef DIR_EXIST_HEADER_08173281673432158067342132467183267
-#define DIR_EXIST_HEADER_08173281673432158067342132467183267
+#ifndef DIR_EXIST_ASYNC_H_0817328167343215806734213
+#define DIR_EXIST_ASYNC_H_0817328167343215806734213
 
 #include <list>
 #include <zen/thread.h>
@@ -22,47 +22,38 @@ namespace
 //- check existence of all directories in parallel! (avoid adding up search times if multiple network drives are not reachable)
 //- add reasonable time-out time!
 //- avoid checking duplicate entries by design: std::set
-struct DirectoryStatus
+struct FolderStatus
 {
-    std::set<const ABF*, ABF::LessItemPath> existingBaseFolder;
-    std::set<const ABF*, ABF::LessItemPath> missingBaseFolder;
-    std::map<const ABF*, FileError, ABF::LessItemPath> failedChecks;
+    std::set<AbstractPath, AFS::LessAbstractPath> existing;
+    std::set<AbstractPath, AFS::LessAbstractPath> missing;
+    std::map<AbstractPath, FileError, AFS::LessAbstractPath> failedChecks;
 };
 
-
-DirectoryStatus checkFolderExistenceUpdating(const std::set<const ABF*, ABF::LessItemPath>& baseFolders, bool allowUserInteraction, ProcessCallback& procCallback)
+FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath, AFS::LessAbstractPath>& folderPaths, bool allowUserInteraction, ProcessCallback& procCallback)
 {
     using namespace zen;
 
-    DirectoryStatus output;
+    FolderStatus output;
 
-    std::list<std::pair<const ABF*, std::future<bool>>> futureInfo;
+    std::list<std::pair<AbstractPath, std::future<bool>>> futureInfo;
 
-    for (const ABF* baseFolder : baseFolders)
-        if (!baseFolder->emptyBaseFolderPath()) //skip empty dirs
+    for (const AbstractPath& folderPath : folderPaths)
+        if (!AFS::isNullPath(folderPath)) //skip empty dirs
+            futureInfo.emplace_back(folderPath, runAsync([folderPath, allowUserInteraction] //AbstractPath is thread-safe like an int! :)
         {
-            AbstractPathRef folderPath = baseFolder->getAbstractPath();
+            //1. login to network share, open FTP connection, ect.
+            AFS::connectNetworkFolder(folderPath, allowUserInteraction); //throw FileError
 
-            std::function<void()> connectFolder /*throw FileError*/ = baseFolder->getAsyncConnectFolder(allowUserInteraction); //noexcept
-            std::function<bool()> dirExists     /*throw FileError*/ = ABF::getAsyncCheckFolderExists(folderPath); //noexcept
+            //2. check dir existence
+            return AFS::folderExistsThrowing(folderPath); //throw FileError
+        }));
 
-            futureInfo.emplace_back(baseFolder, runAsync([connectFolder, dirExists]
-            {
-                //1. login to network share, open FTP connection, ect.
-                if (connectFolder)
-                    connectFolder(); //throw FileError
-
-                //2. check dir existence
-                return dirExists(); //throw FileError
-            }));
-        }
-
-    //don't wait (almost) endlessly like win32 would on non-existing network shares:
-    std::chrono::steady_clock::time_point endTime = std::chrono::steady_clock::now() + std::chrono::seconds(20); //consider CD-rom insert or hard disk spin up time from sleep
+    //don't wait (almost) endlessly like Win32 would on non-existing network shares:
+    std::chrono::steady_clock::time_point endTime = std::chrono::steady_clock::now() + std::chrono::seconds(20); //consider CD-ROM insert or hard disk spin up time from sleep
 
     for (auto& fi : futureInfo)
     {
-        const std::wstring& displayPathFmt = fmtPath(ABF::getDisplayPath(fi.first->getAbstractPath()));
+        const std::wstring& displayPathFmt = fmtPath(AFS::getDisplayPath(fi.first));
 
         procCallback.reportStatus(replaceCpy(_("Searching for folder %x..."), L"%x", displayPathFmt)); //may throw!
 
@@ -76,9 +67,9 @@ DirectoryStatus checkFolderExistenceUpdating(const std::set<const ABF*, ABF::Les
             {
                 //call future::get() only *once*! otherwise: undefined behavior!
                 if (fi.second.get()) //throw FileError
-                    output.existingBaseFolder.insert(fi.first);
+                    output.existing.insert(fi.first);
                 else
-                    output.missingBaseFolder.insert(fi.first);
+                    output.missing.insert(fi.first);
             }
             catch (const FileError& e) { output.failedChecks.emplace(fi.first, e); }
         }
@@ -90,13 +81,13 @@ DirectoryStatus checkFolderExistenceUpdating(const std::set<const ABF*, ABF::Les
 }
 }
 
-inline //also silences Clang "unused function" for compilation units depending from getExistingDirsUpdating() only
-bool folderExistsUpdating(const ABF& baseFolder, bool allowUserInteraction, ProcessCallback& procCallback)
+inline //also silences Clang "unused function"
+bool folderExistsNonBlocking(const AbstractPath& folderPath, bool allowUserInteraction, ProcessCallback& procCallback)
 {
-    std::set<const ABF*, ABF::LessItemPath> baseFolders{ &baseFolder };
-    const DirectoryStatus status = checkFolderExistenceUpdating(baseFolders, allowUserInteraction, procCallback);
-    return status.existingBaseFolder.find(&baseFolder) != status.existingBaseFolder.end();
+    std::set<AbstractPath, AFS::LessAbstractPath> folderPaths{ folderPath};
+    const FolderStatus status = getFolderStatusNonBlocking(folderPaths, allowUserInteraction, procCallback);
+    return status.existing.find(folderPath) != status.existing.end();
 }
 }
 
-#endif //DIR_EXIST_HEADER_08173281673432158067342132467183267
+#endif //DIR_EXIST_ASYNC_H_0817328167343215806734213

@@ -4,11 +4,12 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef FIXED_LIST_01238467085684139453534
-#define FIXED_LIST_01238467085684139453534
+#ifndef FIXED_LIST_H_01238467085684139453534
+#define FIXED_LIST_H_01238467085684139453534
 
 #include <cassert>
 #include <iterator>
+
 
 namespace zen
 {
@@ -20,9 +21,9 @@ class FixedList
     struct Node
     {
         template <class... Args>
-        Node(Args&& ... args) : next(nullptr), val(std::forward<Args>(args)...) {}
+        Node(Args&& ... args) : val(std::forward<Args>(args)...) {}
 
-        Node* next; //singly linked list is sufficient
+        Node* next = nullptr; //singly linked list is sufficient
         T val;
     };
 
@@ -35,14 +36,14 @@ public:
     class ListIterator : public std::iterator<std::forward_iterator_tag, U>
     {
     public:
-        ListIterator(NodeT* it = nullptr) : iter(it) {}
-        ListIterator& operator++() { iter = iter->next; return *this; }
-        inline friend bool operator==(const ListIterator& lhs, const ListIterator& rhs) { return lhs.iter == rhs.iter; }
+        ListIterator(NodeT* it = nullptr) : it_(it) {}
+        ListIterator& operator++() { it_ = it_->next; return *this; }
+        inline friend bool operator==(const ListIterator& lhs, const ListIterator& rhs) { return lhs.it_ == rhs.it_; }
         inline friend bool operator!=(const ListIterator& lhs, const ListIterator& rhs) { return !(lhs == rhs); }
-        U& operator* () const { return  iter->val; }
-        U* operator->() const { return &iter->val; }
+        U& operator* () const { return  it_->val; }
+        U* operator->() const { return &it_->val; }
     private:
-        NodeT* iter;
+        NodeT* it_;
     };
 
     typedef T value_type;
@@ -154,4 +155,4 @@ private:
 };
 }
 
-#endif //FIXED_LIST_01238467085684139453534
+#endif //FIXED_LIST_H_01238467085684139453534

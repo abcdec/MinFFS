@@ -4,13 +4,14 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef STATUSHANDLER_H_INCLUDED
-#define STATUSHANDLER_H_INCLUDED
+#ifndef STATUS_HANDLER_H_81704805908341534
+#define STATUS_HANDLER_H_81704805908341534
 
 #include "../process_callback.h"
 #include <vector>
 #include <string>
 #include <zen/i18n.h>
+
 
 namespace zen
 {
@@ -140,4 +141,4 @@ private:
 };
 }
 
-#endif // STATUSHANDLER_H_INCLUDED
+#endif //STATUS_HANDLER_H_81704805908341534

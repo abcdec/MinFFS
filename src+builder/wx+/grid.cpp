@@ -126,12 +126,12 @@ namespace
 const wchar_t ELLIPSIS = L'\u2026'; //...
 
 template <class Function> inline
-wxString getTruncatedText(const wxString& text, Function textFits)
+std::wstring getTruncatedText(const std::wstring& text, Function textFits)
 {
     if (textFits(text))
         return text;
 
-    //unlike Windows 7 Explorer, we truncate UTF-16 correctly: e.g. CJK-Ideogramm encodes to TWO wchar_t: utfCvrtTo<wxString>("\xf0\xa4\xbd\x9c");
+    //unlike Windows 7 Explorer, we truncate UTF-16 correctly: e.g. CJK-Ideogramm encodes to TWO wchar_t: utfCvrtTo<std::wstring>("\xf0\xa4\xbd\x9c");
     size_t low  = 0; //number of unicode chars!
     size_t high = unicodeLength(text); //
 
@@ -139,7 +139,7 @@ wxString getTruncatedText(const wxString& text, Function textFits)
     {
         const size_t middle = (low + high) / 2;
 
-        wxString candidate(strBegin(text), findUnicodePos(text, middle));
+        std::wstring candidate(strBegin(text), findUnicodePos(text, middle));
         candidate += ELLIPSIS;
 
         if (high - low <= 1)
@@ -152,7 +152,8 @@ wxString getTruncatedText(const wxString& text, Function textFits)
     }
 }
 
-void drawTextLabelFitting(wxDC& dc, const wxString& text, const wxRect& rect, int alignment)
+
+void drawTextLabelFitting(wxDC& dc, const std::wstring& text, const wxRect& rect, int alignment)
 {
     RecursiveDcClipper clip(dc, rect); //wxDC::DrawLabel doesn't care about width, WTF?
 
@@ -169,13 +170,13 @@ void drawTextLabelFitting(wxDC& dc, const wxString& text, const wxRect& rect, in
     */
 
     //truncate large texts and add ellipsis
-    auto textFits = [&](const wxString& phrase) { return dc.GetTextExtent(phrase).GetWidth() <= rect.GetWidth(); };
+    auto textFits = [&](const std::wstring& phrase) { return dc.GetTextExtent(phrase).GetWidth() <= rect.GetWidth(); };
     dc.DrawLabel(getTruncatedText(text, textFits), rect, alignment);
 }
 }
 
 
-void GridData::drawCellText(wxDC& dc, const wxRect& rect, const wxString& text, bool enabled, int alignment)
+void GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& text, bool enabled, int alignment)
 {
     wxDCTextColourChanger dummy(dc, enabled ? dc.GetTextForeground() : wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT));
     drawTextLabelFitting(dc, text, rect, alignment);
@@ -221,7 +222,7 @@ void GridData::drawColumnLabelBackground(wxDC& dc, const wxRect& rect, bool high
 }
 
 
-void GridData::drawColumnLabelText(wxDC& dc, const wxRect& rect, const wxString& text)
+void GridData::drawColumnLabelText(wxDC& dc, const wxRect& rect, const std::wstring& text)
 {
     wxDCTextColourChanger dummy(dc, getColorLabelText()); //accessibility: always set both foreground AND background colors!
     drawTextLabelFitting(dc, text, rect, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
@@ -283,14 +284,14 @@ public:
     }
 
 protected:
-    void setToolTip(const wxString& text) //proper fix for wxWindow
+    void setToolTip(const std::wstring& text) //proper fix for wxWindow
     {
         wxToolTip* tt = GetToolTip();
 
         const wxString oldText = tt ? tt->GetTip() : wxString();
         if (text != oldText)
         {
-            if (text.IsEmpty())
+            if (text.empty())
                 SetToolTip(nullptr); //wxGTK doesn't allow wxToolTip with empty text!
             else
             {
@@ -368,7 +369,7 @@ private:
     void onEraseBackGround(wxEraseEvent& event) {}
 
     Grid& parent_;
-    std::unique_ptr<wxBitmap> doubleBuffer;
+    Opt<wxBitmap> doubleBuffer;
 };
 
 //----------------------------------------------------------------------------------------------------------------
@@ -466,7 +467,7 @@ public:
     }
 
 private:
-    static wxString formatRow(size_t row) { return toGuiString(row + 1); } //convert number to std::wstring including thousands separator
+    static std::wstring formatRow(size_t row) { return toGuiString(row + 1); } //convert number to std::wstring including thousands separator
 
     bool AcceptsFocus() const override { return false; }
 
@@ -791,7 +792,7 @@ private:
         {
             if (const Opt<ColAction> action = refParent().clientPosToColumnAction(event.GetPosition()))
             {
-                highlightCol = std::make_unique<size_t>(action->col);
+                highlightCol = action->col;
 
                 if (action->wantResize)
                     SetCursor(wxCURSOR_SIZEWE); //set window-local only! :)
@@ -800,19 +801,19 @@ private:
             }
             else
             {
-                highlightCol.reset();
+                highlightCol = NoValue();
                 SetCursor(*wxSTANDARD_CURSOR);
             }
         }
 
         //update tooltip
-        const wxString toolTip = [&]() -> wxString
+        const std::wstring toolTip = [&]
         {
             const wxPoint absPos = refParent().CalcUnscrolledPosition(event.GetPosition());
             if (const Opt<ColumnType> ct = refParent().getColumnAtPos(absPos.x))
                 if (auto prov = refParent().getDataProvider())
                     return prov->getToolTip(*ct);
-            return wxString();
+            return std::wstring();
         }();
         setToolTip(toolTip);
 
@@ -822,7 +823,7 @@ private:
 
     void onLeaveWindow(wxMouseEvent& event) override
     {
-        highlightCol.reset(); //wxEVT_LEAVE_WINDOW does not respect mouse capture! -> however highlight is drawn unconditionally during move/resize!
+        highlightCol = NoValue(); //wxEVT_LEAVE_WINDOW does not respect mouse capture! -> however highlight is drawn unconditionally during move/resize!
         Refresh();
         event.Skip();
     }
@@ -845,7 +846,7 @@ private:
 
     std::unique_ptr<ColumnResizing> activeResizing;
     std::unique_ptr<ColumnMove>     activeMove;
-    std::unique_ptr<size_t>         highlightCol; //column during mouse-over
+    Opt<size_t>                     highlightCol; //column during mouse-over
 };
 
 //----------------------------------------------------------------------------------------------------------------
@@ -863,7 +864,7 @@ public:
             ColLabelWin& colLabelWin) : SubWindow(parent),
         rowLabelWin_(rowLabelWin),
         colLabelWin_(colLabelWin)
-	{
+    {
         Connect(EVENT_GRID_HAS_SCROLLED, wxEventHandler(MainWin::onRequestWindowUpdate), nullptr, this);
     }
 
@@ -1068,7 +1069,7 @@ private:
             activeSelection->evalMousePos(); //eval on both mouse movement + timer event!
 
         //change tooltip
-        const wxString toolTip = [&]() -> wxString
+        const std::wstring toolTip = [&]
         {
             const ptrdiff_t rowCount = refParent().getRowCount();
             const wxPoint absPos = refParent().CalcUnscrolledPosition(event.GetPosition());
@@ -1078,7 +1079,7 @@ private:
             if (ct && 0 <= row && row < rowCount)
                 if (auto prov = refParent().getDataProvider())
                     return prov->getToolTip(row, *ct);
-            return wxString();
+            return std::wstring();
         }();
 
         setToolTip(toolTip);
@@ -1837,14 +1838,14 @@ Opt<Grid::ColAction> Grid::clientPosToColumnAction(const wxPoint& pos) const
             accuWidth += absWidths[col].width_;
             if (std::abs(absPosX - accuWidth) < resizeTolerance)
             {
-                ColAction out = {};
+                ColAction out;
                 out.wantResize = true;
                 out.col        = col;
                 return out;
             }
             else if (absPosX < accuWidth)
             {
-                ColAction out = {};
+                ColAction out;
                 out.wantResize = false;
                 out.col        = col;
                 return out;

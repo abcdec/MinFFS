@@ -24,6 +24,7 @@
     #include <wchar.h> //wcscasecmp
 
 #elif defined ZEN_MAC
+    #include <zen/osx_string.h>
     #include <CoreServices/CoreServices.h>
 #endif
 
@@ -39,7 +40,7 @@ public:
 
     wxLanguage langId() const { return langId_; }
 
-    std::wstring translate(const std::wstring& text) override
+    std::wstring translate(const std::wstring& text) const override
     {
         //look for translation in buffer table
         auto it = transMapping.find(text);
@@ -48,7 +49,7 @@ public:
         return text; //fallback
     }
 
-    std::wstring translate(const std::wstring& singular, const std::wstring& plural, std::int64_t n) override
+    std::wstring translate(const std::wstring& singular, const std::wstring& plural, std::int64_t n) const override
     {
         auto it = transMappingPl.find(std::make_pair(singular, plural));
         if (it != transMappingPl.end())
@@ -131,22 +132,15 @@ struct LessTranslation
 
 #elif defined ZEN_LINUX
         return ::wcscasecmp(lhs.languageName.c_str(), rhs.languageName.c_str()) < 0; //ignores case; locale-dependent!
-        //return lhs.languageName.CmpNoCase(rhs.languageName) < 0;
 
 #elif defined ZEN_MAC
-        auto allocCFStringRef = [](const std::wstring& str) -> CFStringRef //output not owned!
-        {
-            return ::CFStringCreateWithCString(nullptr, //CFAllocatorRef alloc,
-            utfCvrtTo<std::string>(str).c_str(), //const char *cStr,
-            kCFStringEncodingUTF8);              //CFStringEncoding encoding
-        };
-
-        CFStringRef langL = allocCFStringRef(lhs.languageName);
+        CFStringRef langL = osx::createCFString(utfCvrtTo<std::string>(lhs.languageName).c_str());
         ZEN_ON_SCOPE_EXIT(::CFRelease(langL));
 
-        CFStringRef langR = allocCFStringRef(rhs.languageName);
+        CFStringRef langR = osx::createCFString(utfCvrtTo<std::string>(rhs.languageName).c_str());
         ZEN_ON_SCOPE_EXIT(::CFRelease(langR));
 
+        //correctly position "czech" unlike wcscasecmp():
         return::CFStringCompare(langL, langR, kCFCompareLocalized | kCFCompareCaseInsensitive) == kCFCompareLessThan; //no-fail
 #endif
     }

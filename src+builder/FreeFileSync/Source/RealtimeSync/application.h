@@ -4,10 +4,11 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef REALTIMESYNCAPP_H
-#define REALTIMESYNCAPP_H
+#ifndef APPLICATION_H_18506781708176342677
+#define APPLICATION_H_18506781708176342677
 
 #include <wx/app.h>
+
 
 class Application : public wxApp
 {
@@ -23,4 +24,4 @@ private:
     //wxLayoutDirection GetLayoutDirection() const override { return wxLayout_LeftToRight; }
 };
 
-#endif // REALTIMESYNCAPP_H
+#endif //APPLICATION_H_18506781708176342677

@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef RECYCLER_H_INCLUDED_18345067341545
-#define RECYCLER_H_INCLUDED_18345067341545
+#ifndef RECYCLER_H_18345067341545
+#define RECYCLER_H_18345067341545
 
 #include <vector>
 #include <functional>
@@ -48,4 +48,4 @@ void recycleOrDelete(const std::vector<Zstring>& filePaths, //throw FileError, r
 #endif
 }
 
-#endif //RECYCLER_H_INCLUDED_18345067341545
+#endif //RECYCLER_H_18345067341545

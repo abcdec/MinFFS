@@ -4,11 +4,12 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef APP_ICON_H6748179634932174683214
-#define APP_ICON_H6748179634932174683214
+#ifndef APP_ICON_H_6748179634932174683214
+#define APP_ICON_H_6748179634932174683214
 
 #include <wx/icon.h>
 #include <wx+/image_resources.h>
+
 
 namespace zen
 {
@@ -23,7 +24,6 @@ wxIcon getFfsIcon()
     return wxIcon(L"A_FFS_ICON");
 
 #elif defined ZEN_LINUX
-    //attention: make sure to not implicitly call "instance()" again => deadlock on Linux
     wxIcon icon;
     icon.CopyFromBitmap(getResourceImage(L"FreeFileSync")); //use big logo bitmap for better quality
     return icon;
@@ -37,4 +37,4 @@ wxIcon getFfsIcon()
 }
 
 
-#endif //APP_ICON_H6748179634932174683214
+#endif //APP_ICON_H_6748179634932174683214

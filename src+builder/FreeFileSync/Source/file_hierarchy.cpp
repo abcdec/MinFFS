@@ -23,15 +23,15 @@ void HierarchyObject::removeEmptyRec()
         return objEmpty;
     };
 
-    refSubFiles().remove_if(isEmpty);
-    refSubLinks().remove_if(isEmpty);
-    refSubDirs ().remove_if(isEmpty);
+    refSubFiles  ().remove_if(isEmpty);
+    refSubLinks  ().remove_if(isEmpty);
+    refSubFolders().remove_if(isEmpty);
 
     if (emptyExisting) //notify if actual deletion happened
-        notifySyncCfgChanged(); //mustn't call this in ~FileSystemObject(), since parent, usually a DirPair, may already be partially destroyed and existing as a pure HierarchyObject!
+        notifySyncCfgChanged(); //mustn't call this in ~FileSystemObject(), since parent, usually a FolderPair, may already be partially destroyed and existing as a pure HierarchyObject!
 
-    for (DirPair& subDir : refSubDirs())
-        subDir.removeEmptyRec(); //recurse
+    for (FolderPair& folder : refSubFolders())
+        folder.removeEmptyRec(); //recurse
 }
 
 
@@ -134,9 +134,9 @@ SyncOperation getIsolatedSyncOperation(bool itemExistsLeft,
 template <class Predicate> inline
 bool hasDirectChild(const HierarchyObject& hierObj, Predicate p)
 {
-    return std::any_of(hierObj.refSubFiles().begin(), hierObj.refSubFiles().end(), p) ||
-           std::any_of(hierObj.refSubLinks().begin(), hierObj.refSubLinks().end(), p) ||
-           std::any_of(hierObj.refSubDirs(). begin(), hierObj.refSubDirs(). end(), p);
+    return std::any_of(hierObj.refSubFiles  ().begin(), hierObj.refSubFiles  ().end(), p) ||
+           std::any_of(hierObj.refSubLinks  ().begin(), hierObj.refSubLinks  ().end(), p) ||
+           std::any_of(hierObj.refSubFolders().begin(), hierObj.refSubFolders().end(), p);
 }
 }
 
@@ -154,10 +154,10 @@ SyncOperation FileSystemObject::getSyncOperation() const
 }
 
 
-//SyncOperation DirPair::testSyncOperation() const -> no recursion: we do NOT want to consider child elements when testing!
+//SyncOperation FolderPair::testSyncOperation() const -> no recursion: we do NOT want to consider child elements when testing!
 
 
-SyncOperation DirPair::getSyncOperation() const
+SyncOperation FolderPair::getSyncOperation() const
 {
     if (!haveBufferedSyncOp)
     {
@@ -408,8 +408,8 @@ std::wstring zen::getSyncOpDescription(const FileSystemObject& fsObj)
                     const Zstring relTarget = getRelName(*targetFile, !onLeft);
 
                     return getSyncOpDescription(op) + L"\n" +
-                           (EqualFilePath()(beforeLast(relSource, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE),
-                                            beforeLast(relTarget, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)) ?
+                           (equalFilePath(beforeLast(relSource, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE),
+                                          beforeLast(relTarget, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE)) ?
                             //detected pure "rename"
                             fmtPath(afterLast(relSource, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) + L" ->\n" + //show short name only
                             fmtPath(afterLast(relTarget, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_ALL)) :

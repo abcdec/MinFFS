@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef PARSE_PLURAL_H_INCLUDED
-#define PARSE_PLURAL_H_INCLUDED
+#ifndef PARSE_PLURAL_H_180465845670839576
+#define PARSE_PLURAL_H_180465845670839576
 
 #include <memory>
 #include <cstdint>
@@ -20,8 +20,7 @@ struct Expression { virtual ~Expression() {} };
 template <class T>
 struct Expr : public Expression
 {
-    typedef T ValueType;
-    virtual ValueType eval() const = 0;
+    virtual T eval() const = 0;
 };
 
 
@@ -35,7 +34,7 @@ public:
 
 private:
     std::shared_ptr<Expr<std::int64_t>> expr;
-    mutable std::int64_t n_;
+    mutable std::int64_t n_ = 0;
 };
 
 
@@ -54,9 +53,8 @@ public:
 private:
     struct FormInfo
     {
-        FormInfo() : count(0), firstNumber(0) {}
-        int count;
-        int firstNumber; //which maps to the plural form index position
+        int count       = 0;
+        int firstNumber = 0; //which maps to the plural form index position
     };
     std::vector<FormInfo> forms;
 };
@@ -114,30 +112,32 @@ pm-expression:
 
 namespace implementation
 {
-//specific binary expression based on STL function objects
-template <class StlOp>
-struct BinaryExp : public Expr<typename StlOp::result_type>
+template <class BinaryOp, class ParamType, class ResultType>
+struct BinaryExp : public Expr<ResultType>
 {
-    typedef std::shared_ptr<Expr<typename StlOp::first_argument_type >> ExpLhs;
-    typedef std::shared_ptr<Expr<typename StlOp::second_argument_type>> ExpRhs;
+    using ExpLhs = std::shared_ptr<Expr<ParamType>>;
+    using ExpRhs = std::shared_ptr<Expr<ParamType>>;
 
-    BinaryExp(const ExpLhs& lhs, const ExpRhs& rhs, StlOp biop) : lhs_(lhs), rhs_(rhs), biop_(biop) { assert(lhs && rhs); }
-    typename StlOp::result_type eval() const override { return biop_(lhs_->eval(), rhs_->eval()); }
+    BinaryExp(const ExpLhs& lhs, const ExpRhs& rhs) : lhs_(lhs), rhs_(rhs) { assert(lhs && rhs); }
+    ResultType eval() const override { return BinaryOp()(lhs_->eval(), rhs_->eval()); }
 private:
     ExpLhs lhs_;
     ExpRhs rhs_;
-    StlOp biop_;
 };
 
-template <class StlOp> inline
-std::shared_ptr<BinaryExp<StlOp>> makeBiExp(const std::shared_ptr<Expression>& lhs, const std::shared_ptr<Expression>& rhs, StlOp biop) //throw ParsingError
+
+template <class BinaryOp, class ParamType> inline
+std::shared_ptr<Expression> makeBiExp(const std::shared_ptr<Expression>& lhs, const std::shared_ptr<Expression>& rhs) //throw ParsingError
 {
-    auto exLeft  = std::dynamic_pointer_cast<Expr<typename StlOp::first_argument_type >>(lhs);
-    auto exRight = std::dynamic_pointer_cast<Expr<typename StlOp::second_argument_type>>(rhs);
+    auto exLeft  = std::dynamic_pointer_cast<Expr<ParamType>>(lhs);
+    auto exRight = std::dynamic_pointer_cast<Expr<ParamType>>(rhs);
     if (!exLeft || !exRight)
         throw ParsingError();
-    return std::make_shared<BinaryExp<StlOp>>(exLeft, exRight, biop);
+
+    using ResultType = decltype(BinaryOp()(std::declval<ParamType>(), std::declval<ParamType>()));
+    return std::make_shared<BinaryExp<BinaryOp, ParamType, ResultType>>(exLeft, exRight);
 }
+
 
 template <class T>
 struct ConditionalExp : public Expr<T>
@@ -146,12 +146,13 @@ struct ConditionalExp : public Expr<T>
                    const std::shared_ptr<Expr<T>>& thenExp,
                    const std::shared_ptr<Expr<T>>& elseExp) : ifExp_(ifExp), thenExp_(thenExp), elseExp_(elseExp) { assert(ifExp && thenExp && elseExp); }
 
-    typename Expr<T>::ValueType eval() const override { return ifExp_->eval() ? thenExp_->eval() : elseExp_->eval(); }
+    T eval() const override { return ifExp_->eval() ? thenExp_->eval() : elseExp_->eval(); }
 private:
     std::shared_ptr<Expr<bool>> ifExp_;
     std::shared_ptr<Expr<T>> thenExp_;
     std::shared_ptr<Expr<T>> elseExp_;
 };
+
 
 struct ConstNumberExp : public Expr<std::int64_t>
 {
@@ -160,6 +161,7 @@ struct ConstNumberExp : public Expr<std::int64_t>
 private:
     std::int64_t n_;
 };
+
 
 struct VariableNumberNExp : public Expr<std::int64_t>
 {
@@ -193,11 +195,11 @@ struct Token
         TK_END
     };
 
-    Token(Type t) : type(t), number(0) {}
-    Token(std::int64_t num) : type(TK_CONST_NUMBER), number(num) {}
+    Token(Type t) : type(t) {}
+    Token(std::int64_t num) : number(num) {}
 
-    Type type;
-    std::int64_t number; //if type == TK_CONST_NUMBER
+    Type type = TK_CONST_NUMBER;
+    std::int64_t number = 0; //if type == TK_CONST_NUMBER
 };
 
 class Scanner
@@ -230,11 +232,11 @@ public:
         if (pos == stream_.end())
             return Token::TK_END;
 
-        for (auto iter = tokens.begin(); iter != tokens.end(); ++iter)
-            if (startsWith(iter->first))
+        for (const auto& item : tokens)
+            if (startsWith(item.first))
             {
-                pos += iter->first.size();
-                return Token(iter->second);
+                pos += item.first.size();
+                return Token(item.second);
             }
 
         auto digitEnd = std::find_if(pos, stream_.end(), [](char c) { return !zen::isDigit(c); });
@@ -316,7 +318,7 @@ private:
             nextToken();
 
             std::shared_ptr<Expression> rhs = parseLogicalAnd();
-            e = makeBiExp(e, rhs, std::logical_or<bool>()); //throw ParsingError
+            e = makeBiExp<std::logical_or<>, bool>(e, rhs); //throw ParsingError
         }
         return e;
     }
@@ -329,7 +331,7 @@ private:
             nextToken();
             std::shared_ptr<Expression> rhs = parseEquality();
 
-            e = makeBiExp(e, rhs, std::logical_and<bool>()); //throw ParsingError
+            e = makeBiExp<std::logical_and<>, bool>(e, rhs); //throw ParsingError
         }
         return e;
     }
@@ -345,8 +347,8 @@ private:
             nextToken();
             std::shared_ptr<Expression> rhs = parseRelational();
 
-            if (t == Token::TK_EQUAL)     return makeBiExp(e, rhs, std::equal_to    <std::int64_t>()); //throw ParsingError
-            if (t == Token::TK_NOT_EQUAL) return makeBiExp(e, rhs, std::not_equal_to<std::int64_t>()); //
+            if (t == Token::TK_EQUAL)     return makeBiExp<std::equal_to<>,     std::int64_t>(e, rhs); //throw ParsingError
+            if (t == Token::TK_NOT_EQUAL) return makeBiExp<std::not_equal_to<>, std::int64_t>(e, rhs); //
         }
         return e;
     }
@@ -364,10 +366,10 @@ private:
             nextToken();
             std::shared_ptr<Expression> rhs = parseMultiplicative();
 
-            if (t == Token::TK_LESS)          return makeBiExp(e, rhs, std::less         <std::int64_t>()); //
-            if (t == Token::TK_LESS_EQUAL)    return makeBiExp(e, rhs, std::less_equal   <std::int64_t>()); //throw ParsingError
-            if (t == Token::TK_GREATER)       return makeBiExp(e, rhs, std::greater      <std::int64_t>()); //
-            if (t == Token::TK_GREATER_EQUAL) return makeBiExp(e, rhs, std::greater_equal<std::int64_t>()); //
+            if (t == Token::TK_LESS)          return makeBiExp<std::less         <>, std::int64_t>(e, rhs); //
+            if (t == Token::TK_LESS_EQUAL)    return makeBiExp<std::less_equal   <>, std::int64_t>(e, rhs); //throw ParsingError
+            if (t == Token::TK_GREATER)       return makeBiExp<std::greater      <>, std::int64_t>(e, rhs); //
+            if (t == Token::TK_GREATER_EQUAL) return makeBiExp<std::greater_equal<>, std::int64_t>(e, rhs); //
         }
         return e;
     }
@@ -386,7 +388,7 @@ private:
                 if (literal->eval() == 0)
                     throw ParsingError();
 
-            e = makeBiExp(e, rhs, std::modulus<std::int64_t>()); //throw ParsingError
+            e = makeBiExp<std::modulus<>, std::int64_t>(e, rhs); //throw ParsingError
         }
         return e;
     }
@@ -475,4 +477,4 @@ inline
 PluralForm::PluralForm(const std::string& stream) : expr(implementation::Parser(stream, n_).parse()) {} //throw ParsingError
 }
 
-#endif // PARSE_PLURAL_H_INCLUDED
+#endif //PARSE_PLURAL_H_180465845670839576

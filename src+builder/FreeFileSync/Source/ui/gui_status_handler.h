@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef GUISTATUSHANDLER_H_INCLUDED
-#define GUISTATUSHANDLER_H_INCLUDED
+#ifndef GUI_STATUS_HANDLER_H_0183247018545
+#define GUI_STATUS_HANDLER_H_0183247018545
 
 #include <zen/error_log.h>
 #include <wx/event.h>
@@ -84,4 +84,4 @@ private:
 };
 
 
-#endif // GUISTATUSHANDLER_H_INCLUDED
+#endif //GUI_STATUS_HANDLER_H_0183247018545

@@ -4,12 +4,13 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef XMLPROCESSING_H_0813748158321813490
-#define XMLPROCESSING_H_0813748158321813490
+#ifndef XML_PROC_H_0813748158321813490
+#define XML_PROC_H_0813748158321813490
 
 #include <vector>
 #include <zen/xml_io.h>
 #include <zen/zstring.h>
+
 
 namespace xmlAccess
 {
@@ -31,4 +32,4 @@ void readRealOrBatchConfig(const Zstring& filepath, xmlAccess::XmlRealConfig& co
 int getProgramLanguage();
 }
 
-#endif //XMLPROCESSING_H_0813748158321813490
+#endif //XML_PROC_H_0813748158321813490

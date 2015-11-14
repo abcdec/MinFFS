@@ -15,12 +15,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "MinFFS"
             VALUE "FileDescription", "MinFFS"
-            VALUE "FileVersion", "1.7.5.1"
+            VALUE "FileVersion", "1.7.6.1"
             VALUE "InternalName", "MinFFS.exe"
             VALUE "LegalCopyright", "See Lincense."
             VALUE "OriginalFilename", "MinFFS"
             VALUE "ProductName", "MinFFS"
-            VALUE "ProductVersion", "1.7.5.1"
+            VALUE "ProductVersion", "1.7.6.1"
         END
     END
 

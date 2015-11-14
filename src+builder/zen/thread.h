@@ -4,18 +4,22 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef STD_THREAD_WRAP_H_7896323423432
-#define STD_THREAD_WRAP_H_7896323423432
+#ifndef THREAD_H_7896323423432235246427
+#define THREAD_H_7896323423432235246427
 
 #include <thread>
 #include <future>
-#include <zen/scope_guard.h>
-#include <zen/type_traits.h>
+#include "scope_guard.h"
+#include "type_traits.h"
+#include "optional.h"
+#ifdef ZEN_WIN
+#include "win.h"
+#endif
+
 
 namespace zen
 {
 class InterruptionStatus;
-
 
 class InterruptibleThread
 {
@@ -58,6 +62,9 @@ void interruptibleWait(std::condition_variable& cv, std::unique_lock<std::mutex>
 template <class Rep, class Period>
 void interruptibleSleep(const std::chrono::duration<Rep, Period>& relTime); //throw ThreadInterruption
 
+#ifdef ZEN_WIN
+void setCurrentThreadName(const char* threadName);
+#endif
 //------------------------------------------------------------------------------------------
 
 /*
@@ -72,7 +79,7 @@ Example:
             //dir exising
 */
 template <class Function>
-auto runAsync(Function&& fun) -> std::future<decltype(fun())>;
+auto runAsync(Function&& fun);
 
 //wait for all with a time limit: return true if *all* results are available!
 template<class InputIterator, class Duration>
@@ -90,18 +97,18 @@ public:
     GetFirstResult();
 
     template <class Fun>
-    void addJob(Fun&& f); //f must return a std::unique_ptr<T> containing a value if successful
+    void addJob(Fun&& f); //f must return a zen::Opt<T> containing a value if successful
 
     template <class Duration>
     bool timedWait(const Duration& duration) const; //true: "get()" is ready, false: time elapsed
 
     //return first value or none if all jobs failed; blocks until result is ready!
-    std::unique_ptr<T> get() const; //may be called only once!
+    Opt<T> get() const; //may be called only once!
 
 private:
     class AsyncResult;
     std::shared_ptr<AsyncResult> asyncResult_;
-    size_t jobsTotal_;
+    size_t jobsTotal_ = 0;
 };
 
 //------------------------------------------------------------------------------------------
@@ -111,7 +118,7 @@ template <class T>
 class Protected
 {
 public:
-    Protected()               : value_() {}
+    Protected() {}
     Protected(const T& value) : value_(value) {}
 
     template <class Function>
@@ -126,7 +133,7 @@ private:
     Protected& operator=(const Protected&) = delete;
 
     std::mutex lockValue;
-    T value_;
+    T value_{};
 };
 
 
@@ -142,7 +149,7 @@ private:
 namespace impl
 {
 template <class Function> inline
-auto runAsync(Function&& fun, TrueType /*copy-constructible*/) -> std::future<decltype(fun())>
+auto runAsync(Function&& fun, TrueType /*copy-constructible*/)
 {
     typedef decltype(fun()) ResultType;
 
@@ -155,17 +162,17 @@ auto runAsync(Function&& fun, TrueType /*copy-constructible*/) -> std::future<de
 
 
 template <class Function> inline
-auto runAsync(Function&& fun, FalseType /*copy-constructible*/) -> std::future<decltype(fun())>
+auto runAsync(Function&& fun, FalseType /*copy-constructible*/)
 {
     //support move-only function objects!
     auto sharedFun = std::make_shared<Function>(std::forward<Function>(fun));
-    return runAsync([sharedFun]() { return (*sharedFun)(); }, TrueType());
+    return runAsync([sharedFun] { return (*sharedFun)(); }, TrueType());
 }
 }
 
 
 template <class Function> inline
-auto runAsync(Function&& fun) -> std::future<decltype(fun())>
+auto runAsync(Function&& fun)
 {
     return impl::runAsync(std::forward<Function>(fun), StaticBool<std::is_copy_constructible<Function>::value>());
 }
@@ -187,7 +194,7 @@ class GetFirstResult<T>::AsyncResult
 {
 public:
     //context: worker threads
-    void reportFinished(std::unique_ptr<T>&& result)
+    void reportFinished(Opt<T>&& result)
     {
         {
             std::lock_guard<std::mutex> dummy(lockResult);
@@ -206,7 +213,7 @@ public:
         return conditionJobDone.wait_for(dummy, duration, [&] { return this->jobDone(jobsTotal); });
     }
 
-    std::unique_ptr<T> getResult(size_t jobsTotal)
+    Opt<T> getResult(size_t jobsTotal)
     {
         std::unique_lock<std::mutex> dummy(lockResult);
         conditionJobDone.wait(dummy, [&] { return this->jobDone(jobsTotal); });
@@ -226,20 +233,20 @@ private:
 #endif
 
     std::mutex lockResult;
-    size_t jobsFinished = 0;    //
-    std::unique_ptr<T> result_; //our condition is: "have result" or "jobsFinished == jobsTotal"
+    size_t jobsFinished = 0; //
+    Opt<T> result_;          //our condition is: "have result" or "jobsFinished == jobsTotal"
     std::condition_variable conditionJobDone;
 };
 
 
 
 template <class T> inline
-GetFirstResult<T>::GetFirstResult() : asyncResult_(std::make_shared<AsyncResult>()), jobsTotal_(0) {}
+GetFirstResult<T>::GetFirstResult() : asyncResult_(std::make_shared<AsyncResult>()) {}
 
 
 template <class T>
 template <class Fun> inline
-void GetFirstResult<T>::addJob(Fun&& f) //f must return a std::unique_ptr<T> containing a value on success
+void GetFirstResult<T>::addJob(Fun&& f) //f must return a zen::Opt<T> containing a value on success
 {
     std::thread t([asyncResult = this->asyncResult_, f = std::forward<Fun>(f)] { asyncResult->reportFinished(f()); });
     ++jobsTotal_;
@@ -253,7 +260,7 @@ bool GetFirstResult<T>::timedWait(const Duration& duration) const { return async
 
 
 template <class T> inline
-std::unique_ptr<T> GetFirstResult<T>::get() const { return asyncResult_->getResult(jobsTotal_); }
+Opt<T> GetFirstResult<T>::get() const { return asyncResult_->getResult(jobsTotal_); }
 
 //------------------------------------------------------------------------------------------
 
@@ -263,7 +270,7 @@ std::unique_ptr<T> GetFirstResult<T>::get() const { return asyncResult_->getResu
 #elif defined __GNUC__ || defined __clang__
     #define ZEN_THREAD_LOCAL_SPECIFIER __thread
 #else
-    #error "game over"
+    #error "Game over!"
 #endif
 
 
@@ -316,7 +323,7 @@ public:
     void interruptibleSleep(const std::chrono::duration<Rep, Period>& relTime) //throw ThreadInterruption
     {
         std::unique_lock<std::mutex> lock(lockSleep);
-        if (conditionSleepInterruption.wait_for(lock, relTime, [&] { return static_cast<bool>(this->interrupted); }))
+        if (conditionSleepInterruption.wait_for(lock, relTime, [this] { return static_cast<bool>(this->interrupted); }))
             throw ThreadInterruption();
     }
 
@@ -406,6 +413,43 @@ InterruptibleThread::InterruptibleThread(Function&& f) : intStatus_(std::make_sh
 
 inline
 void InterruptibleThread::interrupt() { intStatus_->interrupt(); }
+
+
+#ifdef ZEN_WIN
+//https://randomascii.wordpress.com/2015/10/26/thread-naming-in-windows-time-for-something-better/
+
+#pragma pack(push,8)
+struct THREADNAME_INFO
+{
+   DWORD dwType; // Must be 0x1000.
+   LPCSTR szName; // Pointer to name (in user addr space).
+   DWORD dwThreadID; // Thread ID (-1=caller thread).
+   DWORD dwFlags; // Reserved for future use, must be zero.
+};
+#pragma pack(pop)
+
+
+inline
+void setCurrentThreadName(const char* threadName)
+{
+const DWORD MS_VC_EXCEPTION = 0x406D1388;
+
+THREADNAME_INFO info = {};
+   info.dwType = 0x1000;
+   info.szName = threadName;
+   info.dwThreadID = GetCurrentThreadId();
+
+#ifdef TODO_MinFFS_Exception_Handler
+   __try
+   {
+      ::RaiseException(MS_VC_EXCEPTION, 0, sizeof(info) / sizeof(ULONG_PTR), reinterpret_cast<ULONG_PTR*>(&info));
+   }
+   __except(EXCEPTION_EXECUTE_HANDLER){}
+#else//TODO_MinFFS_Exception_Handler
+   ::RaiseException(MS_VC_EXCEPTION, 0, sizeof(info) / sizeof(ULONG_PTR), reinterpret_cast<ULONG_PTR*>(&info));
+#endif//TODO_MinFFS_Exception_Handler
+}
+#endif
 }
 
-#endif //STD_THREAD_WRAP_H_7896323423432
+#endif //THREAD_H_7896323423432235246427

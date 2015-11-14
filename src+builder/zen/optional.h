@@ -8,6 +8,7 @@
 #define OPTIONAL_H_2857428578342203589
 
 #include <cassert>
+#include <type_traits>
 
 namespace zen
 {
@@ -36,36 +37,52 @@ template <class T>
 class Opt
 {
 public:
-    Opt()             : value()   , valid(false) {}
-    Opt(NoValue)      : value()   , valid(false) {}
-    Opt(const T& val) : value(val), valid(true ) {}
+    Opt()        {}
+    Opt(NoValue) {}
+    Opt(const T& val) : valid(true) { new (&rawMem) T(val); } //throw X
 
-    Opt(const Opt& tmp) : value(tmp.valid ? tmp.value : T()), valid(tmp.valid) {}
-
-    Opt& operator=(const Opt& tmp)
+    Opt(const Opt& other) : valid(other.valid)
     {
-        if (tmp.valid)
-            value = tmp.value;
-        valid = tmp.valid;
+        if (const T* val = other.get())
+            new (&rawMem) T(*val); //throw X
+    }
+
+    ~Opt() { if (T* val = get()) val->~T(); }
+
+    Opt& operator=(const Opt& other) //strong exception-safety iff T::operator=() is strongly exception-safe
+    {
+        if (T* val = get())
+        {
+            if (const T* valOther = other.get())
+                *val = *valOther; //throw X
+            else
+            {
+                valid = false;
+                val->~T();
+            }
+        }
+        else if (const T* valOther = other.get())
+        {
+            new (&rawMem) T(*valOther); //throw X
+            valid = true;
+        }
         return *this;
     }
 
-    ////rvalue optimization: only basic exception safety:
-    //   Opt(Opt&& tmp) : value(std::move(tmp.value)), valid(tmp.valid) {}
-
     explicit operator bool() const { return valid; } //thank you C++11!!!
 
-    const T& operator*() const { assert(valid); return value; }
-    /**/  T& operator*()       { assert(valid); return value; }
+    const T* get() const { return valid ? reinterpret_cast<const T*>(&rawMem) : nullptr; }
+    T*       get()       { return valid ? reinterpret_cast<      T*>(&rawMem) : nullptr; }
 
-    const T* operator->() const { assert(valid); return &value; }
-    /**/  T* operator->()       { assert(valid); return &value; }
+    const T& operator*() const { return *get(); }
+    /**/  T& operator*()       { return *get(); }
 
-    void reset() { valid = false; }
+    const T* operator->() const { return get(); }
+    /**/  T* operator->()       { return get(); }
 
 private:
-    T value;
-    bool valid;
+    std::aligned_storage_t<sizeof(T), alignof(T)> rawMem; //don't require T to be default-constructible!
+    bool valid = false;
 };
 
 }

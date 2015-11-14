@@ -27,9 +27,10 @@
     //    #include <gtk/gtk.h>
 #endif
 
-
 using namespace zen;
-using ABF = AbstractBaseFolder;
+#ifndef ZEN_WIN_VISTA_AND_LATER
+    using AFS = AbstractFileSystem;
+#endif
 
 
 namespace
@@ -39,7 +40,7 @@ void setFolderPathPhrase(const Zstring& folderPathPhrase, FolderHistoryBox* comb
     if (comboBox)
         comboBox->setValue(toWx(folderPathPhrase));
 
-    const Zstring folderPathPhraseFmt = createAbstractBaseFolder(folderPathPhrase)->getInitPathPhrase(); //noexcept
+    const Zstring folderPathPhraseFmt = AFS::getInitPathPhrase(createAbstractPath(folderPathPhrase)); //noexcept
     //may block when resolving [<volume name>]
 
     tooltipWnd.SetToolTip(nullptr); //workaround wxComboBox bug http://trac.wxwidgets.org/ticket/10512 / http://trac.wxwidgets.org/ticket/12659
@@ -48,7 +49,7 @@ void setFolderPathPhrase(const Zstring& folderPathPhrase, FolderHistoryBox* comb
     if (staticText)
     {
         //change static box label only if there is a real difference to what is shown in wxTextCtrl anyway
-        staticText->SetLabel(EqualFilePath()(appendSeparator(trimCpy(folderPathPhrase)), appendSeparator(folderPathPhraseFmt)) ?
+        staticText->SetLabel(equalFilePath(appendSeparator(trimCpy(folderPathPhrase)), appendSeparator(folderPathPhraseFmt)) ?
                              wxString(_("Drag && drop")) : toWx(folderPathPhraseFmt));
     }
 }
@@ -61,8 +62,8 @@ bool acceptShellItemPaths(const std::vector<Zstring>& shellItemPaths)
     //- MTP paths
 
     if (shellItemPaths.empty()) return false;
-    return acceptsFolderPathPhraseNative(shellItemPaths[0]) || //
-           acceptsFolderPathPhraseMtp   (shellItemPaths[0]);   //noexcept
+    return acceptsItemPathPhraseNative(shellItemPaths[0]) || //
+           acceptsItemPathPhraseMtp   (shellItemPaths[0]);   //noexcept
 }
 
 
@@ -171,9 +172,8 @@ void FolderSelector::onFilesDropped(FileDropEvent& event)
     {
         auto fmtShellPath = [](const Zstring& shellItemPath)
         {
-            std::unique_ptr<ABF> abf = createAbstractBaseFolder(shellItemPath);
-
-            if (!ABF::folderExists(abf->getAbstractPath()))
+            const AbstractPath itemPath = createAbstractPath(shellItemPath);
+            if (!AFS::folderExists(itemPath))
             {
                 Zstring parentShellPath = beforeLast(shellItemPath, FILE_NAME_SEPARATOR, IF_MISSING_RETURN_NONE);
                 if (!parentShellPath.empty())
@@ -182,15 +182,14 @@ void FolderSelector::onFilesDropped(FileDropEvent& event)
                     if (endsWith(parentShellPath, L":")) //volume root
                         parentShellPath += FILE_NAME_SEPARATOR;
 #endif
-                    std::unique_ptr<ABF> abfParent = createAbstractBaseFolder(parentShellPath);
-
-                    if (ABF::folderExists(abfParent->getAbstractPath()))
-                        return abfParent->getInitPathPhrase();
+                    const AbstractPath parentPath = createAbstractPath(parentShellPath);
+                    if (AFS::folderExists(parentPath))
+                        return AFS::getInitPathPhrase(parentPath);
                     //else: keep original name unconditionally: usecase: inactive mapped network shares
                 }
             }
             //make sure FFS-specific explicit MTP-syntax is applied!
-            return abf->getInitPathPhrase();
+            return AFS::getInitPathPhrase(itemPath);
         };
 
         setPath(fmtShellPath(itemPaths[0]));
@@ -225,35 +224,26 @@ void FolderSelector::onSelectFolder(wxCommandEvent& event)
     std::shared_ptr<const void> /*PCIDLIST_ABSOLUTE*/ defaultFolderPidl;
 #endif
     {
-        auto baseFolderExisting = [](const ABF& abf)
+        auto folderExistsTimed = [](const AbstractPath& folderPath)
         {
-            std::function<bool()> /*throw FileError*/ dirExists = ABF::getAsyncCheckFolderExists(abf.getAbstractPath()); //noexcept
-
-            auto ft = runAsync([dirExists]
-            {
-                try
-                {
-                    return dirExists(); //throw FileError
-                }
-                catch (FileError&) { return false; }
-            });
+            auto ft = runAsync([folderPath] { return AFS::folderExists(folderPath); });
             return ft.wait_for(std::chrono::milliseconds(200)) == std::future_status::ready && ft.get(); //potentially slow network access: wait 200ms at most
         };
 
         const Zstring folderPathPhrase = getPath();
-        if (acceptsFolderPathPhraseNative(folderPathPhrase)) //noexcept
+        if (acceptsItemPathPhraseNative(folderPathPhrase)) //noexcept
         {
-            std::unique_ptr<ABF> abf = createBaseFolderNative(folderPathPhrase);
-            if (baseFolderExisting(*abf))
-                if (Opt<Zstring> nativeFolderPath = ABF::getNativeItemPath(abf->getAbstractPath()))
+            const AbstractPath folderPath = createItemPathNative(folderPathPhrase);
+            if (folderExistsTimed(folderPath))
+                if (Opt<Zstring> nativeFolderPath = AFS::getNativeItemPath(folderPath))
                     defaultFolderPath = *nativeFolderPath;
         }
 #ifdef ZEN_WIN_VISTA_AND_LATER
-        else if (acceptsFolderPathPhraseMtp(folderPathPhrase)) //noexcept
+        else if (acceptsItemPathPhraseMtp(folderPathPhrase)) //noexcept
         {
-            std::unique_ptr<ABF> abf = createBaseFolderMtp(folderPathPhrase);
-            if (baseFolderExisting(*abf))
-                defaultFolderPidl = geMtpItemAbsolutePidl(abf->getAbstractPath());
+            const AbstractPath folderPath = createItemPathMtp(folderPathPhrase);
+            if (folderExistsTimed(folderPath))
+                defaultFolderPidl = geMtpItemAbsolutePidl(folderPath);
         }
 #endif
     }
@@ -275,7 +265,7 @@ void FolderSelector::onSelectFolder(wxCommandEvent& event)
             return;
 
         //make sure FFS-specific explicit MTP-syntax is applied!
-        newFolderPathPhrase = createAbstractBaseFolder(rv.first)->getInitPathPhrase(); //noexcept
+        newFolderPathPhrase = AFS::getInitPathPhrase(createAbstractPath(rv.first)); //noexcept
     }
     catch (const FileError& e) { showNotificationDialog(&dropWindow_, DialogInfoType::ERROR2, PopupDialogCfg().setDetailInstructions(e.toString())); return; }
 #else

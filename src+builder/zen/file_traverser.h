@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef FOLDER_TRAVERSER_H_INCLUDED_3127463214871234
-#define FOLDER_TRAVERSER_H_INCLUDED_3127463214871234
+#ifndef FILER_TRAVERSER_H_127463214871234
+#define FILER_TRAVERSER_H_127463214871234
 
 #include <cstdint>
 #include <functional>
@@ -41,4 +41,4 @@ void traverseFolder(const Zstring& dirPath, //noexcept
                     const std::function<void (const std::wstring& errorMsg)>& onError); //
 }
 
-#endif //FOLDER_TRAVERSER_H_INCLUDED_3127463214871234
+#endif //FILER_TRAVERSER_H_127463214871234

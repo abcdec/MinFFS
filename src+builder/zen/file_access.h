@@ -55,8 +55,8 @@ void copySymlink(const Zstring& sourceLink, const Zstring& targetLink, bool copy
 
 struct InSyncAttributes
 {
-    std::uint64_t fileSize;
-    std::int64_t modificationTime; //time_t UTC compatible
+    std::uint64_t fileSize = 0;
+    std::int64_t modificationTime = 0; //time_t UTC compatible
     FileId sourceFileId;
     FileId targetFileId;
 };

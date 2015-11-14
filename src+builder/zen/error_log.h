@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef ERRORLOGGING_H_INCLUDED
-#define ERRORLOGGING_H_INCLUDED
+#ifndef ERROR_LOG_H_8917590832147915
+#define ERROR_LOG_H_8917590832147915
 
 #include <cassert>
 #include <algorithm>
@@ -86,7 +86,7 @@ namespace
 template <class String>
 String formatMessageImpl(const LogEntry& entry) //internal linkage
 {
-    auto getTypeName = [&]() -> std::wstring
+    auto getTypeName = [&]
     {
         switch (entry.type)
         {
@@ -132,4 +132,4 @@ template <class String> inline
 String formatMessage(const LogEntry& entry) { return formatMessageImpl<String>(entry); }
 }
 
-#endif //ERRORLOGGING_H_INCLUDED
+#endif //ERROR_LOG_H_8917590832147915

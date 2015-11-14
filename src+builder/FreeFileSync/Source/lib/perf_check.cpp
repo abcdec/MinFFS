@@ -78,13 +78,13 @@ zen::Opt<double> PerfCheck::getRemainingTimeSec(double dataRemaining) const
         const auto& itemBack  = *blk.second;
         //-----------------------------------------------------------------------------------------------
         const std::int64_t timeDeltaMs = itemBack.first   - itemFront.first;
-        const double       dataDelta   = itemBack.second.data_ - itemFront.second.data_;
+        const double       bytesDelta   = itemBack.second.bytes_ - itemFront.second.bytes_;
 
         //objects model logical operations *NOT* disk accesses, so we better play safe and use "bytes" only!
         //http://sourceforge.net/p/freefilesync/feature-requests/197/
 
-        if (!numeric::isNull(dataDelta)) //sign(dataRemaining) != sign(dataDelta) usually an error, so show it!
-            return dataRemaining * timeDeltaMs / 1000.0 / dataDelta;
+        if (!numeric::isNull(bytesDelta)) //sign(dataRemaining) != sign(bytesDelta) usually an error, so show it!
+            return dataRemaining * timeDeltaMs / 1000.0 / bytesDelta;
     }
     return NoValue();
 }
@@ -99,10 +99,10 @@ zen::Opt<std::wstring> PerfCheck::getBytesPerSecond() const
         const auto& itemBack  = *blk.second;
         //-----------------------------------------------------------------------------------------------
         const std::int64_t timeDeltaMs = itemBack.first   - itemFront.first;
-        const double       dataDelta   = itemBack.second.data_ - itemFront.second.data_;
+        const double       bytesDelta  = itemBack.second.bytes_ - itemFront.second.bytes_;
 
         if (timeDeltaMs != 0)
-            return filesizeToShortString(static_cast<std::int64_t>(dataDelta * 1000.0 / timeDeltaMs)) + _("/sec");
+            return filesizeToShortString(static_cast<std::int64_t>(bytesDelta * 1000.0 / timeDeltaMs)) + _("/sec");
     }
     return NoValue();
 }
@@ -117,10 +117,10 @@ zen::Opt<std::wstring> PerfCheck::getItemsPerSecond() const
         const auto& itemBack  = *blk.second;
         //-----------------------------------------------------------------------------------------------
         const int64_t timeDeltaMs = itemBack.first             - itemFront.first;
-        const int     itemsDelta  = itemBack.second.itemCount_ - itemFront.second.itemCount_;
+        const int     itemsDelta  = itemBack.second.items_ - itemFront.second.items_;
 
         if (timeDeltaMs != 0)
-            return replaceCpy(_("%x items/sec"), L"%x", formatThreeDigitPrecision(itemsDelta * 1000.0 / timeDeltaMs));
+            return replaceCpy(_("%x items/sec"), L"%x", formatTwoDigitPrecision(itemsDelta * 1000.0 / timeDeltaMs));
     }
     return NoValue();
 }

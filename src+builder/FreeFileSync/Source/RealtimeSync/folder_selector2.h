@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef DIR_NAME2_H_073246031245342566
-#define DIR_NAME2_H_073246031245342566
+#ifndef FOLDER_SELECTOR2_H_073246031245342566
+#define FOLDER_SELECTOR2_H_073246031245342566
 
 #include <zen/zstring.h>
 #include <wx/stattext.h>
@@ -43,4 +43,4 @@ private:
 };
 }
 
-#endif //DIR_NAME2_H_073246031245342566
+#endif //FOLDER_SELECTOR2_H_073246031245342566

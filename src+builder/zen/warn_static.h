@@ -18,8 +18,8 @@
 // * General Public License for more details.                               *
 // **************************************************************************
 
-#ifndef WARN_STATIC_HEADER_08724567834560832745
-#define WARN_STATIC_HEADER_08724567834560832745
+#ifndef WARN_STATIC_H_08724567834560832745
+#define WARN_STATIC_H_08724567834560832745
 
 /*
 Portable Compile-Time Warning
@@ -49,4 +49,4 @@ Usage:
 // Do nothing
 #define warn_static(TXT)
 #endif//TODO_MinFFS_WARN_STATIC
-#endif //WARN_STATIC_HEADER_08724567834560832745
+#endif //WARN_STATIC_H_08724567834560832745

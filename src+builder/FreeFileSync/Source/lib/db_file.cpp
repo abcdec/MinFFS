@@ -35,7 +35,7 @@ using MemStreamIn  = MemoryStreamIn <ByteArray>;
 //-----------------------------------------------------------------------------------
 
 template <SelectedSide side> inline
-AbstractPathRef getDatabaseFilePath(const BaseDirPair& baseDirObj, bool tempfile = false)
+AbstractPath getDatabaseFilePath(const BaseFolderPair& baseFolder, bool tempfile = false)
 {
     //Linux and Windows builds are binary incompatible: different file id?, problem with case sensitivity? are UTC file times really compatible?
     //what about endianess!?
@@ -43,18 +43,18 @@ AbstractPathRef getDatabaseFilePath(const BaseDirPair& baseDirObj, bool tempfile
     //Give db files different names.
     //make sure they end with ".ffs_db". These files will be excluded from comparison
 #ifdef ZEN_WIN
-    const Zstring dbname = Zstr("sync");
+    const Zstring dbName = Zstr("sync");
 #elif defined ZEN_LINUX || defined ZEN_MAC
-    const Zstring dbname = Zstr(".sync"); //files beginning with dots are hidden e.g. in Nautilus
+    const Zstring dbName = Zstr(".sync"); //files beginning with dots are hidden e.g. in Nautilus
 #endif
-    const Zstring dbFileName = dbname + (tempfile ? Zstr(".tmp") : Zstr("")) + SYNC_DB_FILE_ENDING;
+    const Zstring dbFileName = dbName + (tempfile ? Zstr(".tmp") : Zstr("")) + SYNC_DB_FILE_ENDING;
 
-    return baseDirObj.getABF<side>().getAbstractPath(dbFileName);
+    return AFS::appendRelPath(baseFolder.getAbstractPath<side>(), dbFileName);
 }
 
 //#######################################################################################################################################
 
-void saveStreams(const DbStreams& streamList, const AbstractPathRef& dbPath, const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus) //throw FileError
+void saveStreams(const DbStreams& streamList, const AbstractPath& dbPath, const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus) //throw FileError
 {
     //perf? instead of writing to a file stream directly, collect data into memory first, then write to file block-wise
     MemStreamOut memStreamOut;
@@ -74,13 +74,13 @@ void saveStreams(const DbStreams& streamList, const AbstractPathRef& dbPath, con
         writeContainer<ByteArray>  (memStreamOut, stream.second);
     }
 
-    assert(!ABF::somethingExists(dbPath)); //orphan tmp files should have been cleaned up at this point!
+    assert(!AFS::somethingExists(dbPath)); //orphan tmp files should have been cleaned up at this point!
 
     //save memory stream to file (as a transaction!)
     {
         MemoryStreamIn<ByteArray> memStreamIn(memStreamOut.ref());
         const std::uint64_t streamSize = memStreamOut.ref().size();
-        const std::unique_ptr<ABF::OutputStream> fileStreamOut = ABF::getOutputStream(dbPath, &streamSize, nullptr /*modificationTime*/); //throw FileError, ErrorTargetExisting
+        const std::unique_ptr<AFS::OutputStream> fileStreamOut = AFS::getOutputStream(dbPath, &streamSize, nullptr /*modificationTime*/); //throw FileError, ErrorTargetExisting
         if (onUpdateStatus) onUpdateStatus(0);
         copyStream(memStreamIn, *fileStreamOut, fileStreamOut->optimalBlockSize(), onUpdateStatus); //throw FileError
         fileStreamOut->finalize([&] { if (onUpdateStatus) onUpdateStatus(0); }); //throw FileError
@@ -88,20 +88,20 @@ void saveStreams(const DbStreams& streamList, const AbstractPathRef& dbPath, con
     }
 
 #ifdef ZEN_WIN
-    if (Opt<Zstring> nativeFilePath = ABF::getNativeItemPath(dbPath))
+    if (Opt<Zstring> nativeFilePath = AFS::getNativeItemPath(dbPath))
         ::SetFileAttributes(applyLongPathPrefix(*nativeFilePath).c_str(), FILE_ATTRIBUTE_HIDDEN); //(try to) hide database file
 #endif
 }
 
 
-DbStreams loadStreams(const AbstractPathRef& dbPath, const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus) //throw FileError, FileErrorDatabaseNotExisting
+DbStreams loadStreams(const AbstractPath& dbPath, const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus) //throw FileError, FileErrorDatabaseNotExisting
 {
     try
     {
         //load memory stream from file
         MemoryStreamOut<ByteArray> memStreamOut;
         {
-            const std::unique_ptr<ABF::InputStream> fileStreamIn = ABF::getInputStream(dbPath); //throw FileError, ErrorFileLocked
+            const std::unique_ptr<AFS::InputStream> fileStreamIn = AFS::getInputStream(dbPath); //throw FileError, ErrorFileLocked
             if (onUpdateStatus) onUpdateStatus(0);
             copyStream(*fileStreamIn, memStreamOut, fileStreamIn->optimalBlockSize(), onUpdateStatus); //throw FileError
         } //close file handle
@@ -113,11 +113,11 @@ DbStreams loadStreams(const AbstractPathRef& dbPath, const std::function<void(st
         readArray(streamIn, formatDescr, sizeof(formatDescr)); //throw UnexpectedEndOfStreamError
 
         if (!std::equal(FILE_FORMAT_DESCR, FILE_FORMAT_DESCR + sizeof(FILE_FORMAT_DESCR), formatDescr))
-            throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(ABF::getDisplayPath(dbPath))));
+            throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))));
 
         const int version = readNumber<std::int32_t>(streamIn); //throw UnexpectedEndOfStreamError
         if (version != DB_FORMAT_CONTAINER) //read file format version number
-            throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(ABF::getDisplayPath(dbPath))));
+            throw FileError(replaceCpy(_("Database file %x is incompatible."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))));
 
         DbStreams output;
 
@@ -135,18 +135,18 @@ DbStreams loadStreams(const AbstractPathRef& dbPath, const std::function<void(st
     }
     catch (FileError&)
     {
-        if (!ABF::somethingExists(dbPath)) //a benign(?) race condition with FileError
+        if (!AFS::somethingExists(dbPath)) //a benign(?) race condition with FileError
             throw FileErrorDatabaseNotExisting(_("Initial synchronization:") + L" \n" +
-                                               replaceCpy(_("Database file %x does not yet exist."), L"%x", fmtPath(ABF::getDisplayPath(dbPath))));
+                                               replaceCpy(_("Database file %x does not yet exist."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))));
         throw;
     }
     catch (UnexpectedEndOfStreamError&)
     {
-        throw FileError(_("Database file is corrupt:") + L"\n" + fmtPath(ABF::getDisplayPath(dbPath)));
+        throw FileError(_("Database file is corrupt:") + L"\n" + fmtPath(AFS::getDisplayPath(dbPath)));
     }
     catch (const std::bad_alloc& e) //still required?
     {
-        throw FileError(_("Database file is corrupt:") + L"\n" + fmtPath(ABF::getDisplayPath(dbPath)),
+        throw FileError(_("Database file is corrupt:") + L"\n" + fmtPath(AFS::getDisplayPath(dbPath)),
                         _("Out of memory.") + L" " + utfCvrtTo<std::wstring>(e.what()));
     }
 }
@@ -156,7 +156,7 @@ DbStreams loadStreams(const AbstractPathRef& dbPath, const std::function<void(st
 class StreamGenerator //for db-file back-wards compatibility we stick with two output streams until further
 {
 public:
-    static void execute(const InSyncDir& dir, //throw FileError
+    static void execute(const InSyncFolder& dbFolder, //throw FileError
                         const std::wstring& displayFilePathL, //used for diagnostics only
                         const std::wstring& displayFilePathR,
                         ByteArray& streamL,
@@ -165,7 +165,7 @@ public:
         StreamGenerator generator;
 
         //PERF_START
-        generator.recurse(dir);
+        generator.recurse(dbFolder);
         //PERF_STOP
 
         auto compStream = [](const ByteArray& stream, const std::wstring& displayFilePath) -> ByteArray //throw FileError
@@ -224,7 +224,7 @@ public:
     }
 
 private:
-    void recurse(const InSyncDir& container)
+    void recurse(const InSyncFolder& container)
     {
         writeNumber<std::uint32_t>(outputBoth, static_cast<std::uint32_t>(container.files.size()));
         for (const auto& dbFile : container.files)
@@ -247,13 +247,13 @@ private:
             writeLink(outputRight, dbSymlink.second.right);
         }
 
-        writeNumber<std::uint32_t>(outputBoth, static_cast<std::uint32_t>(container.dirs.size()));
-        for (const auto& dbDir : container.dirs)
+        writeNumber<std::uint32_t>(outputBoth, static_cast<std::uint32_t>(container.folders.size()));
+        for (const auto& dbFolder : container.folders)
         {
-            writeUtf8(outputBoth, dbDir.first);
-            writeNumber<std::int32_t>(outputBoth, dbDir.second.status);
+            writeUtf8(outputBoth, dbFolder.first);
+            writeNumber<std::int32_t>(outputBoth, dbFolder.second.status);
 
-            recurse(dbDir.second);
+            recurse(dbFolder.second);
         }
     }
 
@@ -280,10 +280,10 @@ private:
 class StreamParser
 {
 public:
-    static std::shared_ptr<InSyncDir> execute(const ByteArray& streamL, //throw FileError
-                                              const ByteArray& streamR,
-                                              const std::wstring& displayFilePathL, //used for diagnostics only
-                                              const std::wstring& displayFilePathR)
+    static std::shared_ptr<InSyncFolder> execute(const ByteArray& streamL, //throw FileError
+                                                 const ByteArray& streamR,
+                                                 const std::wstring& displayFilePathL, //used for diagnostics only
+                                                 const std::wstring& displayFilePathR)
     {
         auto decompStream = [](const ByteArray& stream, const std::wstring& displayFilePath) -> ByteArray //throw FileError
         {
@@ -333,7 +333,7 @@ public:
             const ByteArray tmpL = readContainer<ByteArray>(inL);
             const ByteArray tmpR = readContainer<ByteArray>(inR);
 
-            auto output = std::make_shared<InSyncDir>(InSyncDir::DIR_STATUS_IN_SYNC);
+            auto output = std::make_shared<InSyncFolder>(InSyncFolder::DIR_STATUS_IN_SYNC);
             StreamParser parser(streamVersionL,
                                 decompStream(tmpL, displayFilePathL),
                                 decompStream(tmpR, displayFilePathR),
@@ -362,7 +362,7 @@ private:
         inputRight(bufferR),
         inputBoth (bufferB) {}
 
-    void recurse(InSyncDir& container)
+    void recurse(InSyncFolder& container)
     {
         size_t fileCount = readNumber<std::uint32_t>(inputBoth);
         while (fileCount-- != 0)
@@ -389,10 +389,10 @@ private:
         while (dirCount-- != 0)
         {
             const Zstring itemName = readUtf8(inputBoth);
-            const auto status = static_cast<InSyncDir::InSyncStatus>(readNumber<std::int32_t>(inputBoth));
+            const auto status = static_cast<InSyncFolder::InSyncStatus>(readNumber<std::int32_t>(inputBoth));
 
-            InSyncDir& subDir = container.addDir(itemName, status);
-            recurse(subDir);
+            InSyncFolder& dbFolder = container.addFolder(itemName, status);
+            recurse(dbFolder);
         }
     }
 
@@ -403,7 +403,7 @@ private:
         //attention: order of function argument evaluation is undefined! So do it one after the other...
         const auto lastWriteTimeRaw = readNumber<std::int64_t>(input); //throw UnexpectedEndOfStreamError
 
-        ABF::FileId fileId;
+        AFS::FileId fileId;
         warn_static("remove after migration! 2015-05-02")
         if (streamVersion_ == 1)
         {
@@ -445,10 +445,10 @@ class UpdateLastSynchronousState
         => update all database entries!
     */
 public:
-    static void execute(const BaseDirPair& baseDirObj, InSyncDir& dir)
+    static void execute(const BaseFolderPair& baseFolder, InSyncFolder& dbFolder)
     {
-        UpdateLastSynchronousState updater(baseDirObj.getCompVariant(), baseDirObj.getFilter());
-        updater.recurse(baseDirObj, dir);
+        UpdateLastSynchronousState updater(baseFolder.getCompVariant(), baseFolder.getFilter());
+        updater.recurse(baseFolder, dbFolder);
     }
 
 private:
@@ -456,11 +456,11 @@ private:
         filter_(filter),
         activeCmpVar_(activeCmpVar) {}
 
-    void recurse(const HierarchyObject& hierObj, InSyncDir& dir)
+    void recurse(const HierarchyObject& hierObj, InSyncFolder& dbFolder)
     {
-        process(hierObj.refSubFiles(), hierObj.getPairRelativePathPf(), dir.files);
-        process(hierObj.refSubLinks(), hierObj.getPairRelativePathPf(), dir.symlinks);
-        process(hierObj.refSubDirs (), hierObj.getPairRelativePathPf(), dir.dirs);
+        process(hierObj.refSubFiles  (), hierObj.getPairRelativePathPf(), dbFolder.files);
+        process(hierObj.refSubLinks  (), hierObj.getPairRelativePathPf(), dbFolder.symlinks);
+        process(hierObj.refSubFolders(), hierObj.getPairRelativePathPf(), dbFolder.folders);
     }
 
     template <class M, class V>
@@ -504,41 +504,41 @@ private:
         */
     }
 
-    void process(const HierarchyObject::SubFileVec& currentFiles, const Zstring& parentRelPathPf, InSyncDir::FileList& dbFiles)
+    void process(const HierarchyObject::FileList& currentFiles, const Zstring& parentRelPathPf, InSyncFolder::FileList& dbFiles)
     {
         std::unordered_set<const InSyncFile*> toPreserve; //referencing fixed-in-memory std::map elements
 
-        for (const FilePair& fileObj : currentFiles)
-            if (!fileObj.isEmpty())
+        for (const FilePair& file : currentFiles)
+            if (!file.isEmpty())
             {
-                if (fileObj.getCategory() == FILE_EQUAL) //data in sync: write current state
+                if (file.getCategory() == FILE_EQUAL) //data in sync: write current state
                 {
-                    //Caveat: If FILE_EQUAL, we *implicitly* assume equal left and right short names matching case: InSyncDir's mapping tables use short name as a key!
+                    //Caveat: If FILE_EQUAL, we *implicitly* assume equal left and right short names matching case: InSyncFolder's mapping tables use short name as a key!
                     //This makes us silently dependent from code in algorithm.h!!!
-                    assert(fileObj.getItemName<LEFT_SIDE>() == fileObj.getItemName<RIGHT_SIDE>());
+                    assert(file.getItemName<LEFT_SIDE>() == file.getItemName<RIGHT_SIDE>());
                     //this should be taken for granted:
-                    assert(fileObj.getFileSize<LEFT_SIDE>() == fileObj.getFileSize<RIGHT_SIDE>());
+                    assert(file.getFileSize<LEFT_SIDE>() == file.getFileSize<RIGHT_SIDE>());
 
                     //create or update new "in-sync" state
-                    InSyncFile& file = updateItem(dbFiles, fileObj.getPairShortName(),
-                                                  InSyncFile(InSyncDescrFile(fileObj.getLastWriteTime<LEFT_SIDE >(),
-                                                                             fileObj.getFileId       <LEFT_SIDE >()),
-                                                             InSyncDescrFile(fileObj.getLastWriteTime<RIGHT_SIDE>(),
-                                                                             fileObj.getFileId       <RIGHT_SIDE>()),
-                                                             activeCmpVar_,
-                                                             fileObj.getFileSize<LEFT_SIDE>()));
-                    toPreserve.insert(&file);
+                    InSyncFile& dbFile = updateItem(dbFiles, file.getPairItemName(),
+                                                    InSyncFile(InSyncDescrFile(file.getLastWriteTime<LEFT_SIDE >(),
+                                                                               file.getFileId       <LEFT_SIDE >()),
+                                                               InSyncDescrFile(file.getLastWriteTime<RIGHT_SIDE>(),
+                                                                               file.getFileId       <RIGHT_SIDE>()),
+                                                               activeCmpVar_,
+                                                               file.getFileSize<LEFT_SIDE>()));
+                    toPreserve.insert(&dbFile);
                 }
                 else //not in sync: preserve last synchronous state
                 {
-                    auto it = dbFiles.find(fileObj.getPairShortName());
+                    auto it = dbFiles.find(file.getPairItemName());
                     if (it != dbFiles.end())
                         toPreserve.insert(&it->second);
                 }
             }
 
         //delete removed items (= "in-sync") from database
-        erase_if(dbFiles, [&](const InSyncDir::FileList::value_type& v) -> bool
+        erase_if(dbFiles, [&](const InSyncFolder::FileList::value_type& v) -> bool
         {
             if (toPreserve.find(&v.second) != toPreserve.end())
                 return false;
@@ -549,58 +549,58 @@ private:
         });
     }
 
-    void process(const HierarchyObject::SubLinkVec& currentLinks, const Zstring& parentRelPathPf, InSyncDir::LinkList& dbLinks)
+    void process(const HierarchyObject::SymlinkList& currentSymlinks, const Zstring& parentRelPathPf, InSyncFolder::SymlinkList& dbSymlinks)
     {
         std::unordered_set<const InSyncSymlink*> toPreserve;
 
-        for (const SymlinkPair& linkObj : currentLinks)
-            if (!linkObj.isEmpty())
+        for (const SymlinkPair& symlink : currentSymlinks)
+            if (!symlink.isEmpty())
             {
-                if (linkObj.getLinkCategory() == SYMLINK_EQUAL) //data in sync: write current state
+                if (symlink.getLinkCategory() == SYMLINK_EQUAL) //data in sync: write current state
                 {
-                    assert(linkObj.getItemName<LEFT_SIDE>() == linkObj.getItemName<RIGHT_SIDE>());
+                    assert(symlink.getItemName<LEFT_SIDE>() == symlink.getItemName<RIGHT_SIDE>());
 
                     //create or update new "in-sync" state
-                    InSyncSymlink& link = updateItem(dbLinks, linkObj.getPairShortName(),
-                                                     InSyncSymlink(InSyncDescrLink(linkObj.getLastWriteTime<LEFT_SIDE>()),
-                                                                   InSyncDescrLink(linkObj.getLastWriteTime<RIGHT_SIDE>()),
-                                                                   activeCmpVar_));
-                    toPreserve.insert(&link);
+                    InSyncSymlink& dbSymlink = updateItem(dbSymlinks, symlink.getPairItemName(),
+                                                          InSyncSymlink(InSyncDescrLink(symlink.getLastWriteTime<LEFT_SIDE>()),
+                                                                        InSyncDescrLink(symlink.getLastWriteTime<RIGHT_SIDE>()),
+                                                                        activeCmpVar_));
+                    toPreserve.insert(&dbSymlink);
                 }
                 else //not in sync: preserve last synchronous state
                 {
-                    auto it = dbLinks.find(linkObj.getPairShortName());
-                    if (it != dbLinks.end())
+                    auto it = dbSymlinks.find(symlink.getPairItemName());
+                    if (it != dbSymlinks.end())
                         toPreserve.insert(&it->second);
                 }
             }
 
         //delete removed items (= "in-sync") from database
-        erase_if(dbLinks, [&](const InSyncDir::LinkList::value_type& v) -> bool
+        erase_if(dbSymlinks, [&](const InSyncFolder::SymlinkList::value_type& v) -> bool
         {
             if (toPreserve.find(&v.second) != toPreserve.end())
                 return false;
-            //all items not existing in "currentLinks" have either been deleted meanwhile or been excluded via filter:
+            //all items not existing in "currentSymlinks" have either been deleted meanwhile or been excluded via filter:
             const Zstring& itemRelPath = parentRelPathPf + v.first;
             return filter_.passFileFilter(itemRelPath);
         });
     }
 
-    void process(const HierarchyObject::SubDirVec& currentDirs, const Zstring& parentRelPathPf, InSyncDir::DirList& dbDirs)
+    void process(const HierarchyObject::FolderList& currentFolders, const Zstring& parentRelPathPf, InSyncFolder::FolderList& dbFolders)
     {
-        std::unordered_set<const InSyncDir*> toPreserve;
+        std::unordered_set<const InSyncFolder*> toPreserve;
 
-        for (const DirPair& dirObj : currentDirs)
-            if (!dirObj.isEmpty())
-                switch (dirObj.getDirCategory())
+        for (const FolderPair& folder : currentFolders)
+            if (!folder.isEmpty())
+                switch (folder.getDirCategory())
                 {
                     case DIR_EQUAL:
                     {
-                        assert(dirObj.getItemName<LEFT_SIDE>() == dirObj.getItemName<RIGHT_SIDE>());
+                        assert(folder.getItemName<LEFT_SIDE>() == folder.getItemName<RIGHT_SIDE>());
 
                         //update directory entry only (shallow), but do *not touch* exising child elements!!!
-                        const Zstring& key = dirObj.getPairShortName();
-                        auto insertResult = dbDirs.emplace(key, InSyncDir(InSyncDir::DIR_STATUS_IN_SYNC)); //get or create
+                        const Zstring& key = folder.getPairItemName();
+                        auto insertResult = dbFolders.emplace(key, InSyncFolder(InSyncFolder::DIR_STATUS_IN_SYNC)); //get or create
                         auto it = insertResult.first;
 
 #if defined ZEN_WIN || defined ZEN_MAC //caveat: key might need to be updated, too, if there is a change in short name case!!!
@@ -608,14 +608,14 @@ private:
                         if (alreadyExisting && it->first != key)
                         {
                             auto oldValue = std::move(it->second);
-                            dbDirs.erase(it); //don't fiddle with decrementing "it"! - you might lose while optimizing pointlessly
-                            it = dbDirs.emplace(key, std::move(oldValue)).first;
+                            dbFolders.erase(it); //don't fiddle with decrementing "it"! - you might lose while optimizing pointlessly
+                            it = dbFolders.emplace(key, std::move(oldValue)).first;
                         }
 #endif
-                        InSyncDir& dir = it->second;
-                        dir.status = InSyncDir::DIR_STATUS_IN_SYNC; //update immediate directory entry
-                        toPreserve.insert(&dir);
-                        recurse(dirObj, dir);
+                        InSyncFolder& dbFolder = it->second;
+                        dbFolder.status = InSyncFolder::DIR_STATUS_IN_SYNC; //update immediate directory entry
+                        toPreserve.insert(&dbFolder);
+                        recurse(folder, dbFolder);
                     }
                     break;
 
@@ -626,9 +626,9 @@ private:
                         //Example: directories on left and right differ in case while sub-files are equal
                     {
                         //reuse last "in-sync" if available or insert strawman entry (do not try to update and thereby remove child elements!!!)
-                        InSyncDir& dir = dbDirs.emplace(dirObj.getPairShortName(), InSyncDir(InSyncDir::DIR_STATUS_STRAW_MAN)).first->second;
-                        toPreserve.insert(&dir);
-                        recurse(dirObj, dir); //unconditional recursion without filter check! => no problem since "childItemMightMatch" is optional!!!
+                        InSyncFolder& dbFolder = dbFolders.emplace(folder.getPairItemName(), InSyncFolder(InSyncFolder::DIR_STATUS_STRAW_MAN)).first->second;
+                        toPreserve.insert(&dbFolder);
+                        recurse(folder, dbFolder); //unconditional recursion without filter check! => no problem since "childItemMightMatch" is optional!!!
                     }
                     break;
 
@@ -636,18 +636,18 @@ private:
                     case DIR_LEFT_SIDE_ONLY:
                     case DIR_RIGHT_SIDE_ONLY:
                     {
-                        auto it = dbDirs.find(dirObj.getPairShortName());
-                        if (it != dbDirs.end())
+                        auto it = dbFolders.find(folder.getPairItemName());
+                        if (it != dbFolders.end())
                         {
                             toPreserve.insert(&it->second);
-                            recurse(dirObj, it->second); //although existing sub-items cannot be in sync, items deleted on both sides *are* in-sync!!!
+                            recurse(folder, it->second); //although existing sub-items cannot be in sync, items deleted on both sides *are* in-sync!!!
                         }
                     }
                     break;
                 }
 
         //delete removed items (= "in-sync") from database
-        erase_if(dbDirs, [&](InSyncDir::DirList::value_type& v) -> bool
+        erase_if(dbFolders, [&](InSyncFolder::FolderList::value_type& v) -> bool
         {
             if (toPreserve.find(&v.second) != toPreserve.end())
                 return false;
@@ -665,12 +665,12 @@ private:
     }
 
     //delete all entries for removed folder (= "in-sync") from database
-    void dbSetEmptyState(InSyncDir& dir, const Zstring& parentRelPathPf)
+    void dbSetEmptyState(InSyncFolder& dbFolder, const Zstring& parentRelPathPf)
     {
-        erase_if(dir.files,    [&](const InSyncDir::FileList::value_type& v) { return filter_.passFileFilter(parentRelPathPf + v.first); });
-        erase_if(dir.symlinks, [&](const InSyncDir::LinkList::value_type& v) { return filter_.passFileFilter(parentRelPathPf + v.first); });
+        erase_if(dbFolder.files,    [&](const InSyncFolder::FileList   ::value_type& v) { return filter_.passFileFilter(parentRelPathPf + v.first); });
+        erase_if(dbFolder.symlinks, [&](const InSyncFolder::SymlinkList::value_type& v) { return filter_.passFileFilter(parentRelPathPf + v.first); });
 
-        erase_if(dir.dirs, [&](InSyncDir::DirList::value_type& v)
+        erase_if(dbFolder.folders, [&](InSyncFolder::FolderList::value_type& v)
         {
             const Zstring& itemRelPath = parentRelPathPf + v.first;
 
@@ -689,20 +689,20 @@ private:
 
 //#######################################################################################################################################
 
-std::shared_ptr<InSyncDir> zen::loadLastSynchronousState(const BaseDirPair& baseDirObj, //throw FileError, FileErrorDatabaseNotExisting -> return value always bound!
-                                                         const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus)
+std::shared_ptr<InSyncFolder> zen::loadLastSynchronousState(const BaseFolderPair& baseFolder, //throw FileError, FileErrorDatabaseNotExisting -> return value always bound!
+                                                            const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus)
 {
-    const AbstractPathRef dbPathLeft  = getDatabaseFilePath<LEFT_SIDE >(baseDirObj);
-    const AbstractPathRef dbPathRight = getDatabaseFilePath<RIGHT_SIDE>(baseDirObj);
+    const AbstractPath dbPathLeft  = getDatabaseFilePath<LEFT_SIDE >(baseFolder);
+    const AbstractPath dbPathRight = getDatabaseFilePath<RIGHT_SIDE>(baseFolder);
 
-    if (!baseDirObj.isExisting<LEFT_SIDE >() ||
-        !baseDirObj.isExisting<RIGHT_SIDE>())
+    if (!baseFolder.isExisting<LEFT_SIDE >() ||
+        !baseFolder.isExisting<RIGHT_SIDE>())
     {
         //avoid race condition with directory existence check: reading sync.ffs_db may succeed although first dir check had failed => conflicts!
         //https://sourceforge.net/tracker/?func=detail&atid=1093080&aid=3531351&group_id=234430
-        const AbstractPathRef filePath = !baseDirObj.isExisting<LEFT_SIDE>() ? dbPathLeft : dbPathRight;
+        const AbstractPath filePath = !baseFolder.isExisting<LEFT_SIDE>() ? dbPathLeft : dbPathRight;
         throw FileErrorDatabaseNotExisting(_("Initial synchronization:") + L" \n" + //it could be due to a to-be-created target directory not yet existing => FileErrorDatabaseNotExisting
-                                           replaceCpy(_("Database file %x does not yet exist."), L"%x", fmtPath(ABF::getDisplayPath(filePath))));
+                                           replaceCpy(_("Database file %x does not yet exist."), L"%x", fmtPath(AFS::getDisplayPath(filePath))));
     }
 
     //read file data: list of session ID + DirInfo-stream
@@ -717,8 +717,8 @@ std::shared_ptr<InSyncDir> zen::loadLastSynchronousState(const BaseDirPair& base
         {
             return StreamParser::execute(streamLeft.second, //throw FileError
                                          itRight->second,
-                                         ABF::getDisplayPath(dbPathLeft),
-                                         ABF::getDisplayPath(dbPathRight));
+                                         AFS::getDisplayPath(dbPathLeft),
+                                         AFS::getDisplayPath(dbPathRight));
         }
     }
     throw FileErrorDatabaseNotExisting(_("Initial synchronization:") + L" \n" +
@@ -726,18 +726,18 @@ std::shared_ptr<InSyncDir> zen::loadLastSynchronousState(const BaseDirPair& base
 }
 
 
-void zen::saveLastSynchronousState(const BaseDirPair& baseDirObj, const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus) //throw FileError
+void zen::saveLastSynchronousState(const BaseFolderPair& baseFolder, const std::function<void(std::int64_t bytesDelta)>& onUpdateStatus) //throw FileError
 {
     //transactional behaviour! write to tmp files first
-    const AbstractPathRef dbPathLeft  = getDatabaseFilePath<LEFT_SIDE >(baseDirObj);
-    const AbstractPathRef dbPathRight = getDatabaseFilePath<RIGHT_SIDE>(baseDirObj);
+    const AbstractPath dbPathLeft  = getDatabaseFilePath<LEFT_SIDE >(baseFolder);
+    const AbstractPath dbPathRight = getDatabaseFilePath<RIGHT_SIDE>(baseFolder);
 
-    const AbstractPathRef dbPathLeftTmp  = getDatabaseFilePath<LEFT_SIDE >(baseDirObj, true);
-    const AbstractPathRef dbPathRightTmp = getDatabaseFilePath<RIGHT_SIDE>(baseDirObj, true);
+    const AbstractPath dbPathLeftTmp  = getDatabaseFilePath<LEFT_SIDE >(baseFolder, true);
+    const AbstractPath dbPathRightTmp = getDatabaseFilePath<RIGHT_SIDE>(baseFolder, true);
 
     //delete old tmp file, if necessary -> throws if deletion fails!
-    ABF::removeFile(dbPathLeftTmp);  //
-    ABF::removeFile(dbPathRightTmp); //throw FileError
+    AFS::removeFile(dbPathLeftTmp);  //
+    AFS::removeFile(dbPathRightTmp); //throw FileError
 
     //(try to) load old database files...
     DbStreams streamsLeft; //list of session ID + DirInfo-stream
@@ -756,39 +756,39 @@ void zen::saveLastSynchronousState(const BaseDirPair& baseDirObj, const std::fun
     //find associated session: there can be at most one session within intersection of left and right ids
     auto itStreamLeftOld  = streamsLeft .cend();
     auto itStreamRightOld = streamsRight.cend();
-    for (auto iterLeft = streamsLeft.begin(); iterLeft != streamsLeft.end(); ++iterLeft)
+    for (auto itL = streamsLeft.begin(); itL != streamsLeft.end(); ++itL)
     {
-        auto iterRight = streamsRight.find(iterLeft->first);
-        if (iterRight != streamsRight.end())
+        auto itR = streamsRight.find(itL->first);
+        if (itR != streamsRight.end())
         {
-            itStreamLeftOld  = iterLeft;
-            itStreamRightOld = iterRight;
+            itStreamLeftOld  = itL;
+            itStreamRightOld = itR;
             break;
         }
     }
 
     //load last synchrounous state
-    std::shared_ptr<InSyncDir> lastSyncState = std::make_shared<InSyncDir>(InSyncDir::DIR_STATUS_IN_SYNC);
+    std::shared_ptr<InSyncFolder> lastSyncState = std::make_shared<InSyncFolder>(InSyncFolder::DIR_STATUS_IN_SYNC);
     if (itStreamLeftOld  != streamsLeft .end() &&
         itStreamRightOld != streamsRight.end())
         try
         {
             lastSyncState = StreamParser::execute(itStreamLeftOld ->second, //throw FileError
                                                   itStreamRightOld->second,
-                                                  ABF::getDisplayPath(dbPathLeft),
-                                                  ABF::getDisplayPath(dbPathRight));
+                                                  AFS::getDisplayPath(dbPathLeft),
+                                                  AFS::getDisplayPath(dbPathRight));
         }
         catch (FileError&) {} //if error occurs: just overwrite old file! User is already informed about issues right after comparing!
 
     //update last synchrounous state
-    UpdateLastSynchronousState::execute(baseDirObj, *lastSyncState);
+    UpdateLastSynchronousState::execute(baseFolder, *lastSyncState);
 
     //serialize again
     ByteArray updatedStreamLeft;
     ByteArray updatedStreamRight;
     StreamGenerator::execute(*lastSyncState, //throw FileError
-                             ABF::getDisplayPath(dbPathLeft),
-                             ABF::getDisplayPath(dbPathRight),
+                             AFS::getDisplayPath(dbPathLeft),
+                             AFS::getDisplayPath(dbPathRight),
                              updatedStreamLeft,
                              updatedStreamRight);
 
@@ -815,9 +815,9 @@ void zen::saveLastSynchronousState(const BaseDirPair& baseDirObj, const std::fun
 
     //operation finished: rename temp files -> this should work transactionally:
     //if there were no write access, creation of temp files would have failed
-    ABF::removeFile(dbPathLeft);                  //throw FileError
-    ABF::renameItem(dbPathLeftTmp, dbPathLeft);   //throw FileError, (ErrorTargetExisting, ErrorDifferentVolume)
+    AFS::removeFile(dbPathLeft);                  //throw FileError
+    AFS::renameItem(dbPathLeftTmp, dbPathLeft);   //throw FileError, (ErrorTargetExisting, ErrorDifferentVolume)
 
-    ABF::removeFile(dbPathRight);                 //
-    ABF::renameItem(dbPathRightTmp, dbPathRight); //
+    AFS::removeFile(dbPathRight);                 //
+    AFS::renameItem(dbPathRightTmp, dbPathRight); //
 }

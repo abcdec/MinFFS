@@ -19,35 +19,35 @@ void addNumbers(const FileSystemObject& fsObj, StatusResult& result)
     {
         GetValues(StatusResult& res) : result_(res) {}
 
-        void visit(const FilePair& fileObj) override
+        void visit(const FilePair& file) override
         {
-            if (!fileObj.isEmpty<LEFT_SIDE>())
+            if (!file.isEmpty<LEFT_SIDE>())
             {
-                result_.filesizeLeftView += fileObj.getFileSize<LEFT_SIDE>();
+                result_.filesizeLeftView += file.getFileSize<LEFT_SIDE>();
                 ++result_.filesOnLeftView;
             }
-            if (!fileObj.isEmpty<RIGHT_SIDE>())
+            if (!file.isEmpty<RIGHT_SIDE>())
             {
-                result_.filesizeRightView += fileObj.getFileSize<RIGHT_SIDE>();
+                result_.filesizeRightView += file.getFileSize<RIGHT_SIDE>();
                 ++result_.filesOnRightView;
             }
         }
 
-        void visit(const SymlinkPair& linkObj) override
+        void visit(const SymlinkPair& symlink) override
         {
-            if (!linkObj.isEmpty<LEFT_SIDE>())
+            if (!symlink.isEmpty<LEFT_SIDE>())
                 ++result_.filesOnLeftView;
 
-            if (!linkObj.isEmpty<RIGHT_SIDE>())
+            if (!symlink.isEmpty<RIGHT_SIDE>())
                 ++result_.filesOnRightView;
         }
 
-        void visit(const DirPair& dirObj) override
+        void visit(const FolderPair& folder) override
         {
-            if (!dirObj.isEmpty<LEFT_SIDE>())
+            if (!folder.isEmpty<LEFT_SIDE>())
                 ++result_.foldersOnLeftView;
 
-            if (!dirObj.isEmpty<RIGHT_SIDE>())
+            if (!folder.isEmpty<RIGHT_SIDE>())
                 ++result_.foldersOnRightView;
         }
         StatusResult& result_;
@@ -69,11 +69,11 @@ void GridView::updateView(Predicate pred)
         if (const FileSystemObject* fsObj = FileSystemObject::retrieve(ref.objId))
             if (pred(*fsObj))
             {
-                //save row position for direct random access to FilePair or DirPair
+                //save row position for direct random access to FilePair or FolderPair
                 this->rowPositions.emplace(ref.objId, viewRef.size()); //costs: 0.28 µs per call - MSVC based on std::set
                 //"this->" required by two-pass lookup as enforced by GCC 4.7
 
-                //save row position to identify first child *on sorted subview* of DirPair or BaseDirPair in case latter are filtered out
+                //save row position to identify first child *on sorted subview* of FolderPair or BaseFolderPair in case latter are filtered out
                 const HierarchyObject* parent = &fsObj->parent();
                 for (;;) //map all yet unassociated parents to this row
                 {
@@ -81,8 +81,8 @@ void GridView::updateView(Predicate pred)
                     if (!rv.second)
                         break;
 
-                    if (auto dirObj = dynamic_cast<const DirPair*>(parent))
-                        parent = &(dirObj->parent());
+                    if (auto folder = dynamic_cast<const FolderPair*>(parent))
+                        parent = &(folder->parent());
                     else
                         break;
                 }
@@ -105,23 +105,6 @@ ptrdiff_t GridView::findRowFirstChild(const HierarchyObject* hierObj) const
     auto it = rowPositionsFirstChild.find(hierObj);
     return it != rowPositionsFirstChild.end() ? it->second : -1;
 }
-
-
-GridView::StatusCmpResult::StatusCmpResult() :
-    existsExcluded  (false),
-    existsEqual     (false),
-    existsConflict  (false),
-    existsLeftOnly  (false),
-    existsRightOnly (false),
-    existsLeftNewer (false),
-    existsRightNewer(false),
-    existsDifferent (false),
-    filesOnLeftView   (0),
-    foldersOnLeftView (0),
-    filesOnRightView  (0),
-    foldersOnRightView(0),
-    filesizeLeftView  (0),
-    filesizeRightView (0) {}
 
 
 GridView::StatusCmpResult GridView::updateCmpResult(bool showExcluded, //maps sortedRef to viewRef
@@ -183,25 +166,6 @@ GridView::StatusCmpResult GridView::updateCmpResult(bool showExcluded, //maps so
 
     return output;
 }
-
-
-GridView::StatusSyncPreview::StatusSyncPreview() :
-    existsExcluded       (false),
-    existsEqual          (false),
-    existsConflict       (false),
-    existsSyncCreateLeft (false),
-    existsSyncCreateRight(false),
-    existsSyncDeleteLeft (false),
-    existsSyncDeleteRight(false),
-    existsSyncDirLeft    (false),
-    existsSyncDirRight   (false),
-    existsSyncDirNone    (false),
-    filesOnLeftView   (0),
-    foldersOnLeftView (0),
-    filesOnRightView  (0),
-    foldersOnRightView(0),
-    filesizeLeftView  (0),
-    filesizeRightView (0) {}
 
 
 GridView::StatusSyncPreview GridView::updateSyncPreview(bool showExcluded, //maps sortedRef to viewRef
@@ -319,14 +283,14 @@ private:
 
     void recurse(HierarchyObject& hierObj)
     {
-        for (FilePair& fileObj : hierObj.refSubFiles())
-            sortedRef_.emplace_back(index_, fileObj.getId());
-        for (SymlinkPair& linkObj : hierObj.refSubLinks())
-            sortedRef_.emplace_back(index_, linkObj.getId());
-        for (DirPair& dirObj : hierObj.refSubDirs())
+        for (FilePair& file : hierObj.refSubFiles())
+            sortedRef_.emplace_back(index_, file.getId());
+        for (SymlinkPair& symlink : hierObj.refSubLinks())
+            sortedRef_.emplace_back(index_, symlink.getId());
+        for (FolderPair& folder : hierObj.refSubFolders())
         {
-            sortedRef_.emplace_back(index_, dirObj.getId());
-            recurse(dirObj); //add recursion here to list sub-objects directly below parent!
+            sortedRef_.emplace_back(index_, folder.getId());
+            recurse(folder); //add recursion here to list sub-objects directly below parent!
         }
     }
 
@@ -340,13 +304,13 @@ void GridView::setData(FolderComparison& folderCmp)
     //clear everything
     std::vector<FileSystemObject::ObjectId>().swap(viewRef); //free mem
     std::vector<RefIndex>().swap(sortedRef);                 //
-    currentSort.reset();
+    currentSort = NoValue();
 
     folderPairCount = std::count_if(begin(folderCmp), end(folderCmp),
-                                    [](const BaseDirPair& baseObj) //count non-empty pairs to distinguish single/multiple folder pair cases
+                                    [](const BaseFolderPair& baseObj) //count non-empty pairs to distinguish single/multiple folder pair cases
     {
-        return !baseObj.getABF<LEFT_SIDE >().emptyBaseFolderPath() ||
-               !baseObj.getABF<RIGHT_SIDE>().emptyBaseFolderPath();
+        return !AFS::isNullPath(baseObj.getAbstractPath<LEFT_SIDE >()) ||
+               !AFS::isNullPath(baseObj.getAbstractPath<RIGHT_SIDE>());
     });
 
     for (auto it = begin(folderCmp); it != end(folderCmp); ++it)
@@ -522,7 +486,7 @@ void GridView::sortView(ColumnTypeRim type, bool onLeft, bool ascending)
     viewRef.clear();
     rowPositions.clear();
     rowPositionsFirstChild.clear();
-    currentSort = std::make_unique<SortInfo>(type, onLeft, ascending);
+    currentSort = SortInfo(type, onLeft, ascending);
 
     switch (type)
     {

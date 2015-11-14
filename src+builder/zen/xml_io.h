@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef XMLBASE_H_INCLUDED
-#define XMLBASE_H_INCLUDED
+#ifndef XML_IO_H_8914759321263879
+#define XML_IO_H_8914759321263879
 
 #include <zenxml/xml.h>
 #include "file_error.h"
@@ -23,4 +23,4 @@ void checkForMappingErrors(const XmlIn& xmlInput, const Zstring& filepath); //th
 void saveXmlDocument(const XmlDoc& doc, const Zstring& filepath); //throw FileError
 }
 
-#endif // XMLBASE_H_INCLUDED
+#endif //XML_IO_H_8914759321263879

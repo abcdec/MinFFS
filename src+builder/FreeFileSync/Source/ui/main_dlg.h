@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef MAINDIALOG_H_891048132454564
-#define MAINDIALOG_H_891048132454564
+#ifndef MAIN_DLG_H_8910481324545644545
+#define MAIN_DLG_H_8910481324545644545
 
 #include <map>
 #include <list>
@@ -331,4 +331,4 @@ private:
     bool localKeyEventsEnabled = true;
 };
 
-#endif //MAINDIALOG_H_891048132454564
+#endif //MAIN_DLG_H_8910481324545644545

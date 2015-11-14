@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef ICONBUFFER_H_INCLUDED_8425703245726394256
-#define ICONBUFFER_H_INCLUDED_8425703245726394256
+#ifndef ICON_BUFFER_H_8425703245726394256
+#define ICON_BUFFER_H_8425703245726394256
 
 #include <vector>
 #include <memory>
@@ -33,9 +33,9 @@ public:
     static int getSize(IconSize sz); //expected and *maximum* icon size in pixel
     int getSize() const { return getSize(iconSizeType); } //
 
-    bool          readyForRetrieval(const AbstractPathRef& filePath);
-    Opt<wxBitmap> retrieveFileIcon (const AbstractPathRef& filePath); //... and mark as hot
-    void          setWorkload      (const std::vector<AbstractPathRef>& load); //(re-)set new workload of icons to be retrieved;
+    bool          readyForRetrieval(const AbstractPath& filePath);
+    Opt<wxBitmap> retrieveFileIcon (const AbstractPath& filePath); //... and mark as hot
+    void          setWorkload      (const std::vector<AbstractPath>& load); //(re-)set new workload of icons to be retrieved;
 
     wxBitmap getIconByExtension(const Zstring& filePath); //...and add to buffer
 
@@ -53,4 +53,4 @@ private:
 bool hasLinkExtension(const Zstring& filepath);
 }
 
-#endif //ICONBUFFER_H_INCLUDED_8425703245726394256
+#endif //ICON_BUFFER_H_8425703245726394256

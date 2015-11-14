@@ -20,22 +20,31 @@
 #ifdef ZEN_WIN
     #include <zen/win.h> //tame wininet include
     #include <zen/win_ver.h>
+#include <zen/com_tools.h>
     #include <wininet.h>
 
-#elif defined ZEN_LINUX
-    #include <wx/protocol/http.h>
-    //    #include <wx/utils.h>
-
 #elif defined ZEN_MAC
-    #include <wx/protocol/http.h>
     #include <CoreServices/CoreServices.h> //Gestalt()
 #endif
+
+#if defined ZEN_LINUX || defined ZEN_MAC
+    #include <wx/protocol/http.h>
+    #include <wx/app.h>
+#endif
+
 
 using namespace zen;
 
 
 namespace
 {
+#ifndef ZEN_WIN
+    #ifndef NDEBUG
+        const std::thread::id mainThreadId = std::this_thread::get_id();
+    #endif
+#endif
+
+
 std::wstring getIso639Language()
 {
     //respect thread-safety for WinInetAccess => don't use wxWidgets in the Windows build here!!!
@@ -52,6 +61,8 @@ std::wstring getIso639Language()
     assert(false);
     return std::wstring();
 #else
+    assert(std::this_thread::get_id() == mainThreadId);
+
     const std::wstring localeName(wxLocale::GetLanguageCanonicalName(wxLocale::GetSystemLanguage()));
     if (localeName.empty())
         return std::wstring();
@@ -78,6 +89,8 @@ std::wstring getIso3166Country()
     assert(false);
     return std::wstring();
 #else
+    assert(std::this_thread::get_id() == mainThreadId);
+
     const std::wstring localeName(wxLocale::GetLanguageCanonicalName(wxLocale::GetSystemLanguage()));
     if (localeName.empty())
         return std::wstring();
@@ -100,6 +113,8 @@ std::wstring getUserAgentName()
     const auto osvMinor = getOsVersion().minor;
 
 #elif defined ZEN_LINUX
+    assert(std::this_thread::get_id() == mainThreadId);
+
     const wxLinuxDistributionInfo distribInfo = wxGetLinuxDistributionInfo();
     assert(contains(distribInfo.Release, L'.'));
     std::vector<wxString> digits = split<wxString>(distribInfo.Release, L'.'); //e.g. "15.04"
@@ -144,7 +159,7 @@ std::wstring getUserAgentName()
 class InternetConnectionError {};
 
 #ifdef ZEN_WIN
-//WinInet: 1. uses IE proxy settings! :) 2. follows HTTP redirects by default 3. swallows https
+//WinInet: 1. uses IE proxy settings! :) 2. follows HTTP redirects by default 3. swallows HTTPS
 std::string readBytesFromUrl(const wchar_t* url) //throw InternetConnectionError
 {
 #ifdef TODO_MinFFS_URL
@@ -219,10 +234,6 @@ bool internetIsAlive() //noexcept
 }
 
 #else
-#ifndef NDEBUG
-    const std::thread::id mainThreadId = std::this_thread::get_id();
-#endif
-
 std::string readBytesFromUrl(const wxString& url, int level = 0) //throw InternetConnectionError
 {
     assert(std::this_thread::get_id() == mainThreadId);
@@ -266,7 +277,7 @@ std::string readBytesFromUrl(const wxString& url, int level = 0) //throw Interne
     std::string buffer;
     int newValue = 0;
     while ((newValue = httpStream->GetC()) != wxEOF)
-        buffer.push_back(newValue);
+        buffer.push_back(static_cast<char>(newValue));
     return buffer;
 }
 
@@ -416,7 +427,7 @@ void zen::checkForUpdateNow(wxWindow* parent, std::wstring& lastOnlineVersion)
 }
 
 
-bool zen::runPeriodicUpdateCheckNow(time_t lastUpdateCheck)
+bool zen::shouldRunPeriodicUpdateCheck(time_t lastUpdateCheck)
 {
 #ifdef MinFFS_PATCH
     // Do nothing.
@@ -444,9 +455,19 @@ struct zen::UpdateCheckResult
 std::shared_ptr<UpdateCheckResult> zen::retrieveOnlineVersion()
 {
 #ifdef ZEN_WIN
-    auto result = std::make_shared<UpdateCheckResult>();
-    result->versionStatus = getOnlineVersion(result->onlineVersion); //access is thread-safe on Windows only!
-    return result;
+#ifdef MinFFS_PATCH
+    return nullptr;
+#else//MinFFS_PATCH
+    try
+    {
+        ComInitializer ci; //throw SysError
+
+        auto result = std::make_shared<UpdateCheckResult>();
+        result->versionStatus = getOnlineVersion(result->onlineVersion); //access is thread-safe on Windows only!
+        return result;
+    }
+    catch (SysError&) { assert(false); return nullptr; }
+#endif//MinFFS_PATCH
 #else
     return nullptr;
 #endif

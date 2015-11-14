@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef FONT_SIZE_HEADER_23849632846734343234532
-#define FONT_SIZE_HEADER_23849632846734343234532
+#ifndef FONT_SIZE_H_23849632846734343234532
+#define FONT_SIZE_H_23849632846734343234532
 
 #include <zen/basic_math.h>
 #include <wx/window.h>
@@ -19,13 +19,12 @@
 #endif
 #endif
 
+
 namespace zen
 {
 //set portable font size in multiples of the operating system's default font size
 void setRelativeFontSize(wxWindow& control, double factor);
 void setMainInstructionFont(wxWindow& control); //following Windows/Gnome/OS X guidelines
-
-
 
 
 
@@ -90,4 +89,4 @@ void setMainInstructionFont(wxWindow& control)
 };
 }
 
-#endif //FONT_SIZE_HEADER_23849632846734343234532
+#endif //FONT_SIZE_H_23849632846734343234532

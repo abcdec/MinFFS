@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT gmx DOT de) - All Rights Reserved        *
 // **************************************************************************
 
-#ifndef ERROR_LOG_89734181783491324134
-#define ERROR_LOG_89734181783491324134
+#ifndef ERROR_LOG_H_89734181783491324134
+#define ERROR_LOG_H_89734181783491324134
 
 #include <cassert>
 #include <zen/serialize.h>
@@ -40,4 +40,4 @@ void logError(const std::string& msg) //throw()
 }
 }
 
-#endif //ERROR_LOG_89734181783491324134
+#endif //ERROR_LOG_H_89734181783491324134

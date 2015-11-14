@@ -19,7 +19,8 @@ std::wstring remainingTimeToString(double timeInSec);
 std::wstring fractionToString(double fraction); //within [0, 1]
 std::wstring utcToLocalTimeString(std::int64_t utcTime); //like Windows Explorer would...
 
-std::wstring formatThreeDigitPrecision(double value); //= *at least* three digits
+std::wstring formatTwoDigitPrecision  (double value); //format with fixed number of digits
+std::wstring formatThreeDigitPrecision(double value); //(unless value is too large)
 
 template <class NumberType>
 std::wstring toGuiString(NumberType number); //format integer number including thousands separator
