@@ -18,12 +18,13 @@ A FreeFileSync modified for MinGW Build
 
 ## Source and binary distributions
 
-- The program binaries and sources of MinFFS are distributed under [GNU General Public License Version 3.0] (http://www.gnu.org/licenses/gpl-3.0.en.html) per original FreeFileSync License. 
+- The program binaries and sources of MinFFS are distributed under [GNU General Public License Version 3.0] (http://www.gnu.org/licenses/gpl-3.0.en.html) per original FreeFileSync License.
 - You can download from GitHub Release page. https://github.com/abcdec/MinFFS/releases
   - Windows installer (MinFFS-Setup.exe) and Portable (MinFFS-Portable.exe) binary versions are availble. (Built binaries are uploaded.)
     - Windows installer will require admin privilege and will update Windows Registry to tell Windows that a uninstaller is available.
     - Portable installer will not require admin priviledge and by default it will install on Desktop\MinFFS-Portable. Remove directory to uninstall.
   - ZIP and tar.gz source bundles are avaialble as well (GitHub automatically create one from repo).
+  - MinFFS_Doxygen.chm is a Windows Help file (chm) generated out of MinFFS source tree by Doxygen+GrahViz.
 - If you need original FreeFileSync binary and source distribution, please go to http://www.freefilesync.org/
 
 ## How to build
