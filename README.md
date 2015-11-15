@@ -1,4 +1,4 @@
-# ExMinFFS
+# MinFFS
 
 A FreeFileSync modified for MinGW Build with Extensions
 
@@ -7,8 +7,11 @@ A FreeFileSync modified for MinGW Build with Extensions
 
 - Make it possible to build binaries of FreeFileSync using MinGW.
 - Make it possible to add features that would not be added to original FreeFileSync anytime soon.
-- Adware free installer.
-- Automated testing and test resut visibility.
+- Provide better open source development environment
+  - Complete set of source codes to be able to build. What you run is what you see in source code.
+  - Automated testing and test result visibility.
+  - Improve internal documentation
+  - Adware free installer.
 - Implement features like:
   - Optimize FFS for large volume file system, large size binary files, many name changed files.
   - Background indexing and resume interrupted comparison/synchronization.
@@ -40,6 +43,7 @@ The following toolsets are used to build MinFFS.  Down below you can find brief 
   - Boost (required)
   - Unicode NSIS (Optional for creating a binary installer package)
   - AutoIt (Optional for automated testing)
+  - Doxygen (Optional for documentation generation)
 
 
 ### Installation Step 1. Install MinGW
@@ -104,14 +108,19 @@ Using MinGW, build Boost libraries.  The following is the step by step instructi
 NOTE: If MinGW toolset version is updated for any reason, it is recommended to rebuild Boost libraries from scratch to avoid unnecessary troubles.
 
 
-### Installation Step 4. Install Unicode NSIS
+### Installation Step 4. Install Unicode NSIS (Optional)
 
 Installing Unicode NSIS is relatively strait forward.  Just install from normal installer, and place distribution to default location ("C:\Program Files (x86)\NSIS\Unicode" as of version 2.46.5).  Unicode NSIS can be downlaoded from http://www.scratchpaper.com/.
 
 
-### Installation Step 5. Install AutoIt
+### Installation Step 5. Install AutoIt (Optional)
 
 AutoIt is used to run pre-created test scripts and generates test results.  Installing AutoIt is relatively strait forward.  Just install from normal installer, and place distribution to default location ("C:\Program Files (x86)\AutoIt\" as of version v3.3.14.2).  AutoIt can be downlaoded from https://www.autoitscript.com/site/.
+
+
+### Installation Step 6. Install Doxygen (Optional)
+
+Doxygen is used to generate documentation for MinFFS.  Installing Doxygent is relatively strait forward.  Just install from normal installer, and place distribution to default location ("C:\Program Files\doxygen" as of version 1.18.10).  AutoIt can be downlaoded from http://www.doxygen.org/ (Download Windows Installer version like doxygen-1.8.10-setup.exe, and run to install.)
 
 
 ### Build MinFFS
@@ -122,7 +131,7 @@ Once all dependent toolsets have been installed, use the following steps to buil
   - Place source code tree in a tempoary build directory.  In this README, D:\Builds\MinFFS is assumed.
   - Source tree would look like this:
 ```
-    D:\Builds\ExMinFFS
+    D:\Builds\MinFFS
                    + src+builder
                               + FreeFileSync
                                            + Build
@@ -152,6 +161,7 @@ Once all dependent toolsets have been installed, use the following steps to buil
   - Run p.bat to create distributable binary package installer
     - p.bat may need to be modified if Unicode NSIS packager is not in installed in default location.  Update following line if needed.
   - Run t.bat to run pre-defined test scripts. The test requires AutoIt.  Test summary is stored as ExMinFFS_Test_Result_Summary.txt, and detailed logs are stored in ExMinFFS_Test_Result_Log.txt
+  - Run g.bat to generate internal documentation
 
 ```
     "C:\Program Files (x86)\NSIS\Unicode\makensis.exe" MinFFS-Setup.nsi
@@ -161,13 +171,14 @@ Once all dependent toolsets have been installed, use the following steps to buil
 
 ### Toolset Versions
 
-As of Nov 1, 2015, MinFFS binary distribution is built by the following toolsets versions.
+As of Nov 15, 2015, MinFFS binary distribution is built by the following toolsets versions.
 
   - MinGW-w64 5.2.0
   - wxWidgets 3.0.2
   - Boost 1.58
   - Unicode NSIS 2.46.5
   - AutoIt v3.3.14.2
+  - Doxygent 1.8.10
 
 ## Contact
 
@@ -184,3 +195,13 @@ Please avoid contacting the original author of FreeFileSync for any bugs/issues 
 - Boost https://www.boost.org/
 - Unicode NSIS http://www.scratchpaper.com/
 - AutoIt https://www.autoitscript.com/site/
+- Doxygen http://www.doxygen.org/
+
+## Development Notes
+
+### Documentation
+
+Documentation is to follow a "Low-Commitment Markup" strategy.
+     - http://blog.hostilefork.com/low-commitment-doxygen-markup-cpp/
+
+
