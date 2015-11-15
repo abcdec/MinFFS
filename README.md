@@ -1,6 +1,6 @@
 # MinFFS
 
-A FreeFileSync modified for MinGW Build with Extensions
+A FreeFileSync modified for MinGW Build
 
 
 ## Project Goal
@@ -42,8 +42,10 @@ The following toolsets are used to build MinFFS.  Down below you can find brief 
   - wxWidgets (required)
   - Boost (required)
   - Unicode NSIS (Optional for creating a binary installer package)
+  - Microsoft HTML Help Workshop (Optional for creating a binary installer package with Help)
   - AutoIt (Optional for automated testing)
   - Doxygen (Optional for documentation generation)
+  - GraphViz (Optional for documentation generation)
 
 
 ### Installation Step 1. Install MinGW
@@ -110,17 +112,26 @@ NOTE: If MinGW toolset version is updated for any reason, it is recommended to r
 
 ### Installation Step 4. Install Unicode NSIS (Optional)
 
-Installing Unicode NSIS is relatively strait forward.  Just install from normal installer, and place distribution to default location ("C:\Program Files (x86)\NSIS\Unicode" as of version 2.46.5).  Unicode NSIS can be downlaoded from http://www.scratchpaper.com/.
+Installing Unicode NSIS is relatively straight forward.  Just install from normal installer, and place distribution to default location ("C:\Program Files (x86)\NSIS\Unicode" as of version 2.46.5).  Unicode NSIS can be downlaoded from http://www.scratchpaper.com/.
 
 
-### Installation Step 5. Install AutoIt (Optional)
+### Installation Step 5. Install Microsoft HTML Help Workshop (Optional)
 
-AutoIt is used to run pre-created test scripts and generates test results.  Installing AutoIt is relatively strait forward.  Just install from normal installer, and place distribution to default location ("C:\Program Files (x86)\AutoIt\" as of version v3.3.14.2).  AutoIt can be downlaoded from https://www.autoitscript.com/site/.
+HTML Help Workshop is used to generate Windows help file from HTML sources.  Installing Microsoft HTML Help Workshop is relatively straight forward.  Just install from normal installer, and place distribution to default location ("C:\Program Files (x86)\HTML Help Workshop" as of version 4.74.8702).  HTML Help Workshop can be downloaded from https://www.microsoft.com/en-us/download/details.aspx?id=21138 and the file to download is htmlhelp.exe.
 
 
-### Installation Step 6. Install Doxygen (Optional)
+### Installation Step 6. Install AutoIt (Optional)
 
-Doxygen is used to generate documentation for MinFFS.  Installing Doxygent is relatively strait forward.  Just install from normal installer, and place distribution to default location ("C:\Program Files\doxygen" as of version 1.18.10).  AutoIt can be downlaoded from http://www.doxygen.org/ (Download Windows Installer version like doxygen-1.8.10-setup.exe, and run to install.)
+AutoIt is used to run pre-created test scripts and generates test results.  Installing AutoIt is relatively straight forward.  Just install from normal installer, and place distribution to default location ("C:\Program Files (x86)\AutoIt\" as of version v3.3.14.2).  AutoIt can be downlaoded from https://www.autoitscript.com/site/.
+
+
+### Installation Step 7. Install Doxygen & GraphViz (Optional)
+
+Doxygen is used to generate Source Code documentation for MinFFS.  Doxygen then utilizes GraphViz tools to generate diagrams.  An HTML report and Windows HTML Help (chm) files will be generated.
+
+Installing Doxygen is relatively straight forward.  Just install from normal installer, and place distribution to default location ("C:\Program Files\doxygen" as of version 1.18.10).  Doxygen can be downlaoded from http://www.doxygen.org/ (Download Windows Installer version like doxygen-1.8.10-setup.exe.)
+
+Installing GraphViz is relatively straight forward.  Just install from normal installer, and place distribution to default location ("C:\Program Files\doxygen" as of version 1.18.10).  GraphViz can be downlaoded from http://www.graphviz.org/Download_windows.php (Download Windows Installer version like graphviz-2.38.msi.)
 
 
 ### Build MinFFS
@@ -177,8 +188,10 @@ As of Nov 15, 2015, MinFFS binary distribution is built by the following toolset
   - wxWidgets 3.0.2
   - Boost 1.58
   - Unicode NSIS 2.46.5
+  - Microsoft HTML Help Workshop 4.74.8702
   - AutoIt v3.3.14.2
   - Doxygent 1.8.10
+  - GraphViz 2.38
 
 ## Contact
 
@@ -194,8 +207,10 @@ Please avoid contacting the original author of FreeFileSync for any bugs/issues 
 - wxWidget https://www.wxwidgets.org/
 - Boost https://www.boost.org/
 - Unicode NSIS http://www.scratchpaper.com/
+- Microsoft HTML Help Workshop https://www.microsoft.com/en-us/download/details.aspx?id=21138
 - AutoIt https://www.autoitscript.com/site/
 - Doxygen http://www.doxygen.org/
+- GraphViz http://www.graphviz.org/
 
 ## Development Notes
 
@@ -204,4 +219,5 @@ Please avoid contacting the original author of FreeFileSync for any bugs/issues 
 Documentation is to follow a "Low-Commitment Markup" strategy.
      - http://blog.hostilefork.com/low-commitment-doxygen-markup-cpp/
 
-
+Microsoft Help Component
+     - MSDN: About the HTML Help Compiler https://msdn.microsoft.com/en-us/library/windows/desktop/ms524404(v=vs.85).aspx

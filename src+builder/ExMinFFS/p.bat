@@ -35,7 +35,15 @@
 @xcopy %MINGW%\bin\libstdc++-6.dll bin-release\Bin\ /Y/Q > NUL
 @xcopy %MINGW%\bin\libgcc_s_dw2-1.dll bin-release\Bin\ /Y/Q > NUL
 @xcopy %MINGW%\bin\libwinpthread-1.dll bin-release\Bin\ /Y/Q > NUL
-@xcopy ..\FreeFileSync\Platforms\MswCommon\Help\FreeFileSync.chm bin-release\ /Y/Q > NUL
+
+@IF EXIST "FreeFileSync.chm" ( GOTO PACK_BUILT_HELP ) ELSE (GOTO PACK_PREBUILT_HELP)
+:PACK_BUILT_HELP
+xcopy FreeFileSync.chm bin-release\ /Y/Q > NUL
+GOTO COPY_LANG_FILES
+:PACK_PREBUILT_HELP
+xcopy ..\FreeFileSync\Platforms\MswCommon\Help\FreeFileSync.chm bin-release\ /Y/Q > NUL
+:COPY_LANG_FILES
+
 @xcopy ..\FreeFileSync\Build\Languages bin-release\Languages\ /Y/Q/S  > NUL
 @xcopy ..\FreeFileSync\Build\Resources.zip bin-release\ /Y/Q > NUL
 @xcopy ..\FreeFileSync\Build\Sync_Complete.wav bin-release\ /Y/Q > NUL

@@ -25,6 +25,7 @@ OBJECT_LIST = $(CPP_LIST:%.cpp=%.o) res.o
 
 all: FreeFileSync
 
+
 .cpp.o:
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
@@ -38,9 +39,18 @@ FreeFileSync:	Ex$(APPNAME)
 Ex$(APPNAME):	$(OBJECT_LIST)
 	$(CXX) -o Ex$(APPNAME) $(OBJECT_LIST) $(LINKFLAGS)
 
-clean:
-	rm -rf Ex$(APPNAME) $(OBJECT_LIST)
+help:
+	-$(HHCEXE) ../FreeFileSync/Build/Help/FreeFileSync.hhp
+	mv ../FreeFileSync/Build/FreeFileSync.chm .
 
+doxygen:
+	mkdir -p MinFFS_Doxygen
+	cd ..; $(DOXYGENEXE) ExMinFFS/MinFFS_Doxygen.conf
+	-$(HHCEXE) MinFFS_Doxygen/html/index.hhp
+	mv  MinFFS_Doxygen/html/index.chm MinFFS_Doxygen.chm
+
+clean:
+	rm -rf Ex$(APPNAME) $(OBJECT_LIST) MinFFS_Doxygen ../FreeFileSync/Build/FreeFileSync.chm bin-release bin-debug ExMinFFS-*-Portable.exe ExMinFFS-*-Setup.exe FreeFileSync.chm MinFFS_Doxygen.chm
 
 #
 #install:

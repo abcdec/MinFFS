@@ -9,6 +9,10 @@ BOOST_MINGW := mgw52
 
 .SUFFIXES:	.rc
 
+# Documentation Generator Tools
+HHCEXE=hhc.exe
+DOXYGENEXE=doxygen.exe
+
 # wxWidgets wx-config --cxxflags
 CXXFLAGS := -mthreads
 CXXFLAGS += -DHAVE_W32API_H

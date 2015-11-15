@@ -30,7 +30,15 @@
 @REM xcopy ..\MswCommon\DLLs\* bin-debug\Bin\ /Y/Q > NUL
 @xcopy %MINGW%\bin\libstdc++-6.dll bin-debug\Bin\ /Y/Q > NUL
 @xcopy %MINGW%\bin\libgcc_s_dw2-1.dll bin-debug\Bin\ /Y/Q > NUL
-@xcopy ..\MswCommon\Help\FreeFileSync.chm bin-debug\ /Y/Q > NUL
+
+@IF EXIST "FreeFileSync.chm" ( GOTO PACK_BUILT_HELP ) ELSE (GOTO PACK_PREBUILT_HELP)
+:PACK_BUILT_HELP
+xcopy FreeFileSync.chm bin-debug\ /Y/Q > NUL
+GOTO COPY_LANG_FILES
+:PACK_PREBUILT_HELP
+xcopy ..\FreeFileSync\Platforms\MswCommon\Help\FreeFileSync.chm bin-debug\ /Y/Q > NUL
+:COPY_LANG_FILES
+
 @xcopy ..\..\Build\Languages bin-debug\Languages\ /Y/Q/S  > NUL
 @xcopy ..\..\Build\Resources.zip bin-debug\ /Y/Q > NUL
 @xcopy ..\..\Build\Sync_Complete.wav bin-debug\ /Y/Q > NUL
